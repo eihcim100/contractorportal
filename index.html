@@ -176,3 +176,49 @@
                 throw error; // Re-throw to be caught by specific handlers
             }
         }
+function renderJobs(jobs) {
+            if (!jobListDiv) { console.error("Job list container not found!"); return; } // Check if element exists
+            jobListDiv.innerHTML = '';
+            if (jobs.length === 0) {
+                if (noJobsMessage) noJobsMessage.style.display = 'block';
+            } else {
+                if (noJobsMessage) noJobsMessage.style.display = 'none';
+                jobs.forEach(job => {
+                    const jobCard = document.createElement('div');
+                    jobCard.className = 'job-card';
+                    jobCard.dataset.jobId = job.id; // Airtable record ID
+
+                    // Adjust these field names to EXACTLY match your Airtable "Appointments" table columns
+                    const customerName = job.fields['Customer Name'] || 'N/A';
+                    const serviceType = job.fields['Service Type'] || 'N/A';
+                    const address = job.fields['Customer Address'] || 'N/A';
+                    const phone = job.fields['Customer Phone'] || 'N/A';
+                    const apptDate = job.fields['Appointment Date'] || 'N/A';
+                    const apptTime = job.fields['Appointment Time'] || 'N/A';
+                    const vehicle = job.fields['Vehicle Make/Model'] || 'N/A';
+                    const notes = job.fields['Customer Notes'] || 'N/A';
+
+                    // Adjust these AI field names to EXACTLY match your Airtable "Appointments" table columns
+                    // If you don't have these fields in Airtable, they will show 'N/A' or default.
+                    const aiNotesSummary = job.fields['AI_Notes_Summary'] || 'No AI summary available.';
+                    const aiEstDuration = job.fields['AI_Est_Duration_Hours'] || 'N/A';
+                    // Removed AI Upsell Suggestions as requested
+
+
+                    jobCard.innerHTML = `
+                        <h3>${serviceType} for ${customerName}</h3>
+                        <p><strong>Address:</strong> ${address}</p>
+                        <p><strong>Phone:</strong> ${phone}</p>
+                        <p><strong>Date:</strong> ${apptDate} at ${apptTime}</p>
+                        <p><strong>Vehicle:</strong> ${vehicle}</p>
+                        <p><strong>Notes:</strong> ${notes}</p>
+                        <p class="mt-2 text-sm text-gray-700"><strong>AI Summary:</strong> ${aiNotesSummary}</p>
+                        <p class="text-sm text-gray-700"><strong>AI Est. Duration:</strong> ${aiEstDuration} hours</p>
+                        <div class="actions">
+                            <button class="claim-btn" data-job-id="${job.id}">Claim Job</button>
+                        </div>
+                    `;
+                    jobListDiv.appendChild(jobCard);
+                });
+            }
+        }
