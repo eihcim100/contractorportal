@@ -96,6 +96,8 @@
         let currentUser = null; // Store logged-in user info
 
         // --- DOM Elements ---
+        // These lines try to find your HTML elements by their IDs.
+        // If an ID is wrong, the variable will be 'null', and adding an event listener will fail.
         const notificationArea = document.getElementById('notification-area');
         const loginSignupContainer = document.getElementById('login-signup-container');
         const jobPortalContainer = document.getElementById('job-portal-container');
@@ -161,7 +163,7 @@
             if (data) options.body = JSON.stringify(data);
 
             try {
-                const response = await fetch(`<span class="math-inline">\{SERVER\_URL\}</span>{endpoint}`, options);
+                const response = await fetch(`${SERVER_URL}${endpoint}`, options);
                 const result = await response.json();
                 if (!response.ok) {
                     throw new Error(result.message || `API error: ${response.status} ${response.statusText}`);
@@ -169,12 +171,11 @@
                 return result;
             } catch (error) {
                 console.error(`API request to ${endpoint} failed:`, error);
+                // Show a notification for API errors
                 showNotification(`Error: ${error.message || 'Network issue'}`, 'error');
                 throw error; // Re-throw to be caught by specific handlers
             }
         }
-
-        // --- Render Jobs ---
         function renderJobs(jobs) {
             if (!jobListDiv) { console.error("Job list container not found!"); return; } // Check if element exists
             jobListDiv.innerHTML = '';
@@ -212,4 +213,160 @@
                         <p><strong>Vehicle:</strong> ${vehicle}</p>
                         <p><strong>Notes:</strong> ${notes}</p>
                         <p class="mt-2 text-sm text-gray-700"><strong>AI Summary:</strong> ${aiNotesSummary}</p>
-                        <p class="text-sm text-gray-700"><strong>AI Est. Duration:</strong> <span class="math-inline">\{aiEstDuration\} hours</p\>
+                        <p class="text-sm text-gray-700"><strong>AI Est. Duration:</strong> ${aiEstDuration} hours</p>
+                        <div class="actions">
+                            <button class="claim-btn" data-job-id="${job.id}">Claim Job</button>
+                        </div>
+                    `;
+                    jobListDiv.appendChild(jobCard);
+                });
+            }
+        }
+        if (loginBtn) {
+        loginBtn.addEventListener('click', async () => {
+            console.log("Login button clicked!"); // DEBUG: Confirm click registered
+            const username = loginUsernameInput.value;
+            const password = loginPasswordInput.value;
+            if (!username || !password) {
+                showNotification('Please enter username and password.', 'error');
+                return;
+            }
+            try {
+                const result = await apiRequest('/api/login', 'POST', { username, password });
+                if (result.success) {
+                    currentUser = result.user; // Store user details (includes Airtable fields)
+                    showNotification(`Welcome, ${currentUser.fields['Contractor Name']}!`);
+                    if (loginSignupContainer) loginSignupContainer.style.display = 'none';
+                    if (jobPortalContainer) jobPortalContainer.style.display = 'block';
+                    fetchAndRenderJobs();
+                } else {
+                    showNotification(result.message || 'Login failed.', 'error');
+                }
+            } catch (error) {
+                showNotification(error.message || 'Login failed due to network issue.', 'error');
+            }
+        });
+    } else {
+        console.error("DEBUG ERROR: Login button element not found! Check its ID in HTML.");
+    }
+
+
+    if (signupBtn) {
+        signupBtn.addEventListener('click', async () => {
+            console.log("Sign Up button clicked!"); // DEBUG: Confirm click registered
+            const name = signupNameInput.value;
+            const email = signupEmailInput.value;
+            const username = signupUsernameInput.value;
+            const password = signupPasswordInput.value;
+            if (!name || !email || !username || !password) {
+                showNotification('All signup fields are required.', 'error');
+                return;
+            }
+            try {
+                const result = await apiRequest('/api/signup', 'POST', { name, email, username, password });
+                if (result.success) {
+                    showNotification(result.message);
+                    // Switch to login tab after successful signup
+                    const loginTabButton = document.querySelector('.tab-button[data-tab="login"]');
+                    if (loginTabButton) loginTabButton.click();
+                    // Clear signup form
+                    signupNameInput.value = '';
+                    signupEmailInput.value = '';
+                    signupUsernameInput.value = '';
+                    signupPasswordInput.value = '';
+                } else {
+                    showNotification(result.message || 'Signup failed.', 'error');
+                }
+            } catch (error) {
+                showNotification(error.message || 'Signup failed due to network issue.', 'error');
+                console.error("Signup error details:", error); // More detailed logging
+            }
+        });
+    } else {
+        console.error("DEBUG ERROR: Sign Up button element not found! Check its ID in HTML.");
+    }
+
+
+    // Delegated event listener for Claim Job buttons (inside jobListDiv)
+    if (jobListDiv) {
+        jobListDiv.addEventListener('click', async (event) => {
+            if (event.target.classList.contains('claim-btn')) {
+                if (!currentUser || !currentUser.id) {
+                    showNotification('Please log in to claim jobs.', 'error');
+                    return;
+                }
+                const jobId = event.target.dataset.jobId; // Airtable record ID of the job
+                try {
+                    const result = await apiRequest('/api/jobs/claim', 'POST', {
+                        jobId: jobId,
+                        contractorId: currentUser.id, // Airtable record ID of the contractor
+                        contractorName: currentUser.fields['Contractor Name'] // Contractor's name from Airtable fields
+                    });
+                    if (result.success) {
+                        showNotification(result.message);
+                        fetchAndRenderJobs(); // Refresh job list
+
+                        // --- About the Detailer Notification (Server-side Trigger) ---
+                        // This part would ideally be triggered by your server after job claim.
+                        // The client-side simply requests the info for demonstration.
+                        try {
+                            const bioResult = await apiRequest(`/api/contractors/${currentUser.id}/bio`);
+                            if(bioResult.success) {
+                                console.log('--- FOR CUSTOMER NOTIFICATION ---');
+                                console.log(bioResult.bio); // This is the message your customer would receive!
+                                console.log('--- Send this message to customer via SMS/Email using Zapier/similar from your server ---');
+                            }
+                        } catch (bioError) {
+                            console.error('Failed to get contractor bio for notification:', bioError);
+                        }
+
+                    } else {
+                        showNotification(result.message || 'Failed to claim job.', 'error');
+                    }
+                } catch (error) {
+                    showNotification(error.message || 'Failed to claim job due to network issue.', 'error');
+                }
+            }
+        });
+    } else {
+        console.error("DEBUG ERROR: Job list container not found! Check its ID in HTML.");
+    }
+
+
+    // --- Initial Load ---
+    async function fetchAndRenderJobs() {
+        // Ensure the jobPortalContainer exists before trying to display it
+        if (!jobPortalContainer) { console.error("Job portal container not found!"); return; }
+
+        try {
+            const result = await apiRequest('/api/jobs/available');
+            if (result.success) {
+                renderJobs(result.jobs);
+            } else {
+                showNotification(result.message || 'Failed to load jobs.', 'error');
+            }
+        } catch (error) {
+            showNotification(error.message || 'Failed to load jobs due to network issue.', 'error');
+        }
+    }
+
+    // --- Initial UI State ---
+    // This function runs when the page loads
+    function initializeUI() {
+        // Ensure loginSignupContainer exists before manipulating its style
+        if (loginSignupContainer) {
+            loginSignupContainer.style.display = 'block';
+        } else {
+            console.error("Login/Signup container not found!");
+        }
+        // Ensure jobPortalContainer exists before manipulating its style
+        if (jobPortalContainer) {
+            jobPortalContainer.style.display = 'none'; // Hide job portal until login
+        } else {
+            console.error("Job portal container not found!");
+        }
+    }
+    initializeUI(); // Call on page load
+</script>
+</body>
+</html>
