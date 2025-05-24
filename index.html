@@ -155,7 +155,7 @@
         }
 
         // --- API Calls ---
-        async function apiRequest(endpoint, method = 'GET', data = null) {
+        const response = await fetch(`<span class="math-inline">\{SERVER\_URL\}</span>{endpoint}`, options);
             const options = {
                 method,
                 headers: { 'Content-Type': 'application/json' },
