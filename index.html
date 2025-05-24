@@ -7,86 +7,239 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; margin: 0; padding: 20px; display: flex; justify-content: center; min-height: 100vh; }
-        .container { background-color: #ffffff; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 30px; width: 100%; max-width: 600px; }
-        h1 { color: #1f2937; font-size: 2rem; font-weight: 700; margin-bottom: 20px; text-align: center; }
-        #login-signup-container, #job-portal-container { padding: 20px; border-radius: 8px; background-color: #f9fafb; box-shadow: inset 0 1px 3px rgba(0,0,0,0.05); }
-        #job-portal-container { display: none; }
-        .input-group { margin-bottom: 15px; }
-        .input-group label { display: block; font-size: 0.9rem; font-weight: 600; color: #374151; margin-bottom: 5px; }
-        .input-group input { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 1rem; }
-        button { background-color: #3b82f6; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: 600; transition: background-color 0.2s; width: 100%; margin-top: 10px;}
-        button:hover { background-color: #2563eb; }
-        .job-card { background-color: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .job-card h3 { font-size: 1.2rem; font-weight: 700; color: #1f2937; margin-bottom: 10px; }
-        .job-card p { font-size: 0.9rem; color: #4b5563; line-height: 1.5; margin-bottom: 8px; }
-        .job-card .actions { margin-top: 15px; display: flex; justify-content: flex-end; gap: 10px; }
-        .job-card .actions button { width: auto; padding: 8px 15px; font-size: 0.9rem; margin-top: 0; }
-        .job-card .actions .claim-btn { background-color: #10b981; }
-        .job-card .actions .claim-btn:hover { background-color: #059669; }
-        .notification { position: fixed; top: 20px; right: 20px; background-color: #d1fae5; color: #065f46; padding: 12px 20px; border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 1000; display: none; }
-        .notification.error { background-color: #fee2e2; color: #991b1b; }
-        .tab-button-container { display: flex; justify-content: center; margin-bottom: 20px; }
-        .tab-button { flex: 1; padding: 10px; border: 1px solid #d1d5db; border-bottom: none; background-color: #e5e7eb; cursor: pointer; font-weight: 600; }
-        .tab-button.active { background-color: #f9fafb; border-bottom: 1px solid #f9fafb; }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c; /* Dark background */
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .card-container {
+            background-color: #2d3748; /* Darker card background */
+            border-radius: 12px; /* More rounded corners */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4); /* Stronger shadow */
+            padding: 40px;
+            width: 100%;
+            max-width: 450px; /* Slightly narrower for focus */
+            color: #e2e8f0; /* Light text */
+        }
+        h1 {
+            color: #a0aec0; /* Lighter gray for title */
+            font-size: 2.5rem; /* Larger title */
+            font-weight: 700;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        h2 {
+            color: #cbd5e0; /* Slightly lighter heading */
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        .input-group label {
+            display: block;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: #cbd5e0;
+            margin-bottom: 8px;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #4a5568; /* Darker border */
+            border-radius: 8px;
+            font-size: 1rem;
+            background-color: #2d3748; /* Match card background */
+            color: #e2e8f0;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .input-group input:focus {
+            border-color: #63b3ed; /* Blue focus ring */
+        }
+        .btn-primary {
+            background-color: #4299e1; /* Vibrant blue */
+            color: white;
+            padding: 14px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 700;
+            transition: background-color 0.2s, transform 0.1s;
+            width: 100%;
+            margin-top: 20px;
+        }
+        .btn-primary:hover {
+            background-color: #3182ce;
+            transform: translateY(-1px);
+        }
+        .btn-secondary {
+            background-color: transparent;
+            color: #a0aec0;
+            padding: 10px 15px;
+            border: 1px solid #4a5568;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: background-color 0.2s, color 0.2s;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .btn-secondary:hover {
+            background-color: #4a5568;
+            color: white;
+        }
+
+        /* Toggle Button for Login/Signup */
+        .toggle-switch {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 25px;
+        }
+        .toggle-switch button {
+            background-color: #4a5568;
+            color: #a0aec0;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s, color 0.2s;
+            width: auto; /* Override 100% width */
+            margin: 0 5px;
+        }
+        .toggle-switch button.active {
+            background-color: #4299e1;
+            color: white;
+        }
+
+        /* Job Portal Specific Styles */
+        #job-portal-container {
+            display: none;
+            background-color: #2d3748;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+            padding: 40px;
+            width: 100%;
+            max-width: 700px; /* Wider for job list */
+            color: #e2e8f0;
+        }
+        .job-card {
+            background-color: #4a5568; /* Slightly lighter job card */
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            color: #e2e8f0;
+        }
+        .job-card h3 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #90cdf4; /* Light blue for job title */
+            margin-bottom: 10px;
+        }
+        .job-card p {
+            font-size: 0.95rem;
+            color: #cbd5e0;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+        .job-card .actions {
+            margin-top: 15px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .job-card .actions .btn-claim {
+            background-color: #48bb78; /* Green for claim */
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: background-color 0.2s;
+            width: auto;
+        }
+        .job-card .actions .btn-claim:hover {
+            background-color: #38a169;
+        }
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #48bb78; /* Green for success */
+            color: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            z-index: 1000;
+            display: none;
+            font-weight: 600;
+        }
+        .notification.error {
+            background-color: #fc8181; /* Red for error */
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Michie Auto Detailing Portal</h1>
+    <div class="card-container" id="login-signup-container">
+        <h1>Michie Auto Detailing</h1>
+        <h2 class="mb-6">Contractor Portal</h2>
 
-        <div id="notification-area" class="notification"></div>
-
-        <div id="login-signup-container">
-            <div class="tab-button-container">
-                <button class="tab-button active" data-tab="login">Login</button>
-                <button class="tab-button" data-tab="signup">Sign Up</button>
-            </div>
-
-            <div id="login-tab" class="tab-content active">
-                <h2 class="text-xl font-semibold text-gray-800 mb-4 text-center">Contractor Login</h2>
-                <div class="input-group">
-                    <label for="login-username">Username:</label>
-                    <input type="text" id="login-username" placeholder="Enter your username">
-                </div>
-                <div class="input-group">
-                    <label for="login-password">Password:</label>
-                    <input type="password" id="login-password" placeholder="Enter your password">
-                </div>
-                <button id="login-btn">Login</button>
-            </div>
-
-            <div id="signup-tab" class="tab-content">
-                <h2 class="text-xl font-semibold text-gray-800 mb-4 text-center">New Contractor Sign Up</h2>
-                <div class="input-group">
-                    <label for="signup-name">Full Name:</label>
-                    <input type="text" id="signup-name" placeholder="Your Full Name">
-                </div>
-                <div class="input-group">
-                    <label for="signup-email">Email:</label>
-                    <input type="email" id="signup-email" placeholder="your@email.com">
-                </div>
-                <div class="input-group">
-                    <label for="signup-username">Username:</label>
-                    <input type="text" id="signup-username" placeholder="Choose a username">
-                </div>
-                <div class="input-group">
-                    <label for="signup-password">Password:</label>
-                    <input type="password" id="signup-password" placeholder="Choose a password">
-                </div>
-                <button id="signup-btn">Sign Up</button>
-            </div>
+        <div class="toggle-switch">
+            <button class="tab-button active" data-tab="login">Login</button>
+            <button class="tab-button" data-tab="signup">Sign Up</button>
         </div>
 
-        <div id="job-portal-container">
-            <h2 class="text-xl font-semibold text-gray-800 mb-4">Available Jobs</h2>
-            <div id="job-list">
-                </div>
-            <p id="no-jobs-message" class="text-center text-gray-500 text-lg mt-8" style="display: none;">No jobs available at the moment.</p>
+        <div id="login-tab" class="tab-content active">
+            <div class="input-group">
+                <label for="login-username">Username:</label>
+                <input type="text" id="login-username" placeholder="Enter your username">
+            </div>
+            <div class="input-group">
+                <label for="login-password">Password:</label>
+                <input type="password" id="login-password" placeholder="Enter your password">
+            </div>
+            <button id="login-btn" class="btn-primary">Login</button>
+        </div>
+
+        <div id="signup-tab" class="tab-content">
+            <div class="input-group">
+                <label for="signup-name">Full Name:</label>
+                <input type="text" id="signup-name" placeholder="Your Full Name">
+            </div>
+            <div class="input-group">
+                <label for="signup-email">Email:</label>
+                <input type="email" id="signup-email" placeholder="your@email.com">
+            </div>
+            <div class="input-group">
+                <label for="signup-username">Username:</label>
+                <input type="text" id="signup-username" placeholder="Choose a username">
+            </div>
+            <div class="input-group">
+                <label for="signup-password">Password:</label>
+                <input type="password" id="signup-password" placeholder="Choose a password">
+            </div>
+            <button id="signup-btn" class="btn-primary">Sign Up</button>
         </div>
     </div>
+
+    <div id="job-portal-container" class="card-container">
+        <h2 class="mb-6">Available Jobs</h2>
+        <div id="job-list" class="space-y-4">
+            </div>
+        <p id="no-jobs-message" class="text-center text-gray-500 text-lg mt-8" style="display: none;">No jobs available at the moment.</p>
+    </div>
+
+    <div id="notification-area" class="notification"></div>
 
     <script>
         console.log("Script loaded and starting!"); // DEBUG: Confirm script starts
@@ -215,7 +368,7 @@
                         <p class="mt-2 text-sm text-gray-700"><strong>AI Summary:</strong> ${aiNotesSummary}</p>
                         <p class="text-sm text-gray-700"><strong>AI Est. Duration:</strong> ${aiEstDuration} hours</p>
                         <div class="actions">
-                            <button class="claim-btn" data-job-id="${job.id}">Claim Job</button>
+                            <button class="btn-claim" data-job-id="${job.id}">Claim Job</button>
                         </div>
                     `;
                     jobListDiv.appendChild(jobCard);
@@ -294,7 +447,7 @@
         // Delegated event listener for Claim Job buttons (inside jobListDiv)
         if (jobListDiv) {
             jobListDiv.addEventListener('click', async (event) => {
-                if (event.target.classList.contains('claim-btn')) {
+                if (event.target.classList.contains('btn-claim')) { // Changed from 'claim-btn' to 'btn-claim'
                     if (!currentUser || !currentUser.id) {
                         showNotification('Please log in to claim jobs.', 'error');
                         return;
@@ -372,68 +525,5 @@
         }
         initializeUI(); // Call on page load
     </script>
-
-
-</body></html>
-```
-Okay, I have reviewed the `index (3).html` file you've uploaded.
-
-**I have found the problem!**
-
-The issue is **still the same formatting corruption within the `fetch` API call's URL construction in your `apiRequest` function.** This is the fundamental reason why your frontend is failing and you're getting the "Unexpected token '<'" error.
-
-Look at this section in your `index.html` file (around line 105 in the script block, within the `apiRequest` function):
-
-```html
-            const response = await fetch(`<span class="math-inline">\{SERVER\_URL\}</span>{endpoint}`, options);
-```
-
-This line is **still corrupted** with `math-inline` and backslashes. This means the browser cannot correctly form the URL for your API requests. It's trying to send the request to a gibberish URL like `"<span%20class="math-inline">\{SERVER\_URL\}</span>/api/signup"` instead of `https://michie-detailing-backend.onrender.com/api/signup`.
-
-**This is the direct cause of your "Unexpected token '<', "<!DOCTYPE "... is not valid JSON" error.**
-
----
-
-### **The Definitive Fix: Correcting the `fetch` URL in `index.html` (One Last Time)**
-
-We need to fix that one single line in `index.html` to ensure the JavaScript correctly constructs the API call URL.
-
-**Action:** Open your `index.html` file on GitHub for editing.
-
-1.  **Go to your GitHub Repository:**
-    * Open your web browser and go to [https://github.com/](https://github.com/) and log in.
-    * Navigate to your **frontend repository** (e.g., `your-github-username/michie-detailing-portal-frontend`).
-    * Click on **`index.html`**.
-
-2.  **Edit the file:**
-    * Click the **pencil icon** to edit the file.
-
-3.  **Find the problematic line:**
-    * Scroll down to the `async function apiRequest(endpoint, method = 'GET', data = null)` function (around line 105 in the script block).
-    * Locate the line that starts with `const response = await fetch(`.
-
-4.  **Carefully change ONLY that single line to this EXACTLY:**
-
-    **Change this (what you have now):**
-    ```html
-    const response = await fetch(`<span class="math-inline">\{SERVER\_URL\}</span >\{endpoint}`, options);
-    ```
-    **TO THIS (the correct version):**
-    ```html
-    const response = await fetch(`${SERVER_URL}${endpoint}`, options);
-    ```
-    * **Crucially:**
-        * Ensure it starts with a **backtick** `` ` `` (the character typically under the Esc key, not single quotes `'` or double quotes `"`).
-        * It should have `${SERVER_URL}` and `${endpoint}` **inside the backticks**, with **no `span`, `math-inline`, or `\` characters** whatsoever.
-
-5.  **Commit the Changes:**
-    * Scroll down the page and add a short commit message (e.g., "Final Fix: Corrected API URL construction in fetch").
-    * Click the green **"Commit changes"** button.
-
----
-
-After you commit this change on GitHub, Netlify will automatically detect the change and redeploy your website.
-
-**Once Netlify says "Published"**, **reload your Netlify page** (`https://famous-praline-736e67.netlify.app/`) and then check the Developer Console (F12, "Console" tab) again.
-
-This is the exact, specific syntax error that has been breaking your JavaScript. Fixing this will allow the rest of your script to run, including the buttons, and finally communicate with your Python backe
+</body>
+</html>
