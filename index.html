@@ -162,7 +162,7 @@
         if (data) options.body = JSON.stringify(data);
 
         try {
-            const response = await fetch(`${SERVER_URL}${endpoint}`, options);
+           const response = await fetch(`<span class="math-inline">\{SERVER\_URL\}</span>{endpoint}`, options);
             const result = await response.json();
             if (!response.ok) {
                 throw new Error(result.message || `API error: ${response.status} ${response.statusText}`);
