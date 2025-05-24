@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Michie Auto Detailing Contractor Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; margin: 0; padding: 20px; display: flex; justify-content: center; min-height: 100vh; }
+        .container { background-color: #ffffff; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 30px; width: 100%; max-width: 600px; }
+        h1 { color: #1f2937; font-size: 2rem; font-weight: 700; margin-bottom: 20px; text-align: center; }
+        #login-signup-container, #job-portal-container { padding: 20px; border-radius: 8px; background-color: #f9fafb; box-shadow: inset 0 1px 3px rgba(0,0,0,0.05); }
+        #job-portal-container { display: none; }
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; font-size: 0.9rem; font-weight: 600; color: #374151; margin-bottom: 5px; }
+        .input-group input { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 1rem; }
+        button { background-color: #3b82f6; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: 600; transition: background-color 0.2s; width: 100%; margin-top: 10px;}
+        button:hover { background-color: #2563eb; }
+        .job-card { background-color: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .job-card h3 { font-size: 1.2rem; font-weight: 700; color: #1f2937; margin-bottom: 10px; }
+        .job-card p { font-size: 0.9rem; color: #4b5563; line-height: 1.5; margin-bottom: 8px; }
+        .job-card .actions { margin-top: 15px; display: flex; justify-content: flex-end; gap: 10px; }
+        .job-card .actions button { width: auto; padding: 8px 15px; font-size: 0.9rem; margin-top: 0; }
+        .job-card .actions .claim-btn { background-color: #10b981; }
+        .job-card .actions .claim-btn:hover { background-color: #059669; }
+        .notification { position: fixed; top: 20px; right: 20px; background-color: #d1fae5; color: #065f46; padding: 12px 20px; border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 1000; display: none; }
+        .notification.error { background-color: #fee2e2; color: #991b1b; }
+        .tab-button-container { display: flex; justify-content: center; margin-bottom: 20px; }
+        .tab-button { flex: 1; padding: 10px; border: 1px solid #d1d5db; border-bottom: none; background-color: #e5e7eb; cursor: pointer; font-weight: 600; }
+        .tab-button.active { background-color: #f9fafb; border-bottom: 1px solid #f9fafb; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Michie Auto Detailing Portal</h1>
+
+        <div id="notification-area" class="notification"></div>
+
+        <div id="login-signup-container">
+            <div class="tab-button-container">
+                <button class="tab-button active" data-tab="login">Login</button>
+                <button class="tab-button" data-tab="signup">Sign Up</button>
+            </div>
+
+            <div id="login-tab" class="tab-content active">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4 text-center">Contractor Login</h2>
+                <div class="input-group">
+                    <label for="login-username">Username:</label>
+                    <input type="text" id="login-username" placeholder="Enter your username">
+                </div>
+                <div class="input-group">
+                    <label for="login-password">Password:</label>
+                    <input type="password" id="login-password" placeholder="Enter your password">
+                </div>
+                <button id="login-btn">Login</button>
+            </div>
+
+            <div id="signup-tab" class="tab-content">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4 text-center">New Contractor Sign Up</h2>
+                <div class="input-group">
+                    <label for="signup-name">Full Name:</label>
+                    <input type="text" id="signup-name" placeholder="Your Full Name">
+                </div>
+                <div class="input-group">
+                    <label for="signup-email">Email:</label>
+                    <input type="email" id="signup-email" placeholder="your@email.com">
+                </div>
+                <div class="input-group">
+                    <label for="signup-username">Username:</label>
+                    <input type="text" id="signup-username" placeholder="Choose a username">
+                </div>
+                <div class="input-group">
+                    <label for="signup-password">Password:</label>
+                    <input type="password" id="signup-password" placeholder="Choose a password">
+                </div>
+                <button id="signup-btn">Sign Up</button>
+            </div>
+        </div>
+
+        <div id="job-portal-container">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Available Jobs</h2>
+            <div id="job-list">
+                </div>
+            <p id="no-jobs-message" class="text-center text-gray-500 text-lg mt-8" style="display: none;">No jobs available at the moment.</p>
+        </div>
+    </div>
+
+    <script>
+        console.log("Script loaded and starting!");
+
+        // --- Configuration ---
+        const SERVER_URL = 'https://auto-detailing-portal.onrender.com'; 
+        let currentUser = null; // Store logged-in user info
+
+        // --- DOM Elements ---
+        const notificationArea = document.getElementById('notification-area');
+        const loginSignupContainer = document.getElementById('login-signup-container');
+        const jobPortalContainer = document.getElementById('job-portal-container');
+        const jobListDiv = document.getElementById('job-list');
+        const noJobsMessage = document.getElementById('no-jobs-message');
+
+        const loginUsernameInput = document.getElementById('login-username');
+        const loginPasswordInput = document.getElementById('login-password');
+        const loginBtn = document.getElementById('login-btn');
+
+        const signupNameInput = document.getElementById('signup-name');
+        const signupEmailInput = document.getElementById('signup-email');
+        const signupUsernameInput = document.getElementById('signup-username');
+        const signupPasswordInput = document.getElementById('signup-password');
+        const signupBtn = document.getElementById('signup-btn');
+
+        // --- Tab Switching Logic ---
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', () => {
+                document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                document.getElementById(button.dataset.tab + '-tab').classList.add('active');
+            });
+        });
+
+        // --- Notification Function ---
+        function showNotification(message, type = 'success') {
+            notificationArea.textContent = message;
+            notificationArea.classList.remove('success', 'error');
+            notificationArea.classList.add(type);
+            notificationArea.style.display = 'block';
+            setTimeout(() => { notificationArea.style.display = 'none'; }, 3000);
+        }
+
+        // --- API Calls ---
+        async function apiRequest(endpoint, method = 'GET', data = null) {
+            const options = {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+            };
+            if (data) options.body = JSON.stringify(data);
+
+            try {
+                const response = await fetch(`<span class="math-inline">\{SERVER\_URL\}</span>{endpoint}`, options);
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.message || `API error: ${response.status}`);
+                }
+                return result;
+            } catch (error) {
+                console.error(`API request to ${endpoint} failed:`, error);
+                throw error; // Re-throw to be caught by specific handlers
+            }
+        }
+
+        // --- Render Jobs ---
+        function renderJobs(jobs) {
+            jobListDiv.innerHTML = '';
+            if (jobs.length === 0) {
+                noJobsMessage.style.display = 'block';
+            } else {
+                noJobsMessage.style.display = 'none';
+                jobs.forEach(job => {
+                    const jobCard = document.createElement('div');
+                    jobCard.className = 'job-card';
+                    jobCard.dataset.jobId = job.id; // Airtable record ID
+
+                    // Adjust these field names to EXACTLY match your Airtable "Appointments" table columns
+                    const customerName = job.fields['Customer Name'] || 'N/A';
+                    const serviceType = job.fields['Service Type'] || 'N/A';
+                    const address = job.fields['Customer Address'] || 'N/A';
+                    const phone = job.fields['Customer Phone'] || 'N/A';
+                    const apptDate = job.fields['Appointment Date'] || 'N/A';
+                    const apptTime = job.fields['Appointment Time'] || 'N/A';
+                    const vehicle = job.fields['Vehicle Make/Model'] || 'N/A';
+                    const notes = job.fields['Customer Notes'] || 'N/A';
+
+                    // Adjust these AI field names to EXACTLY match your Airtable "Appointments" table columns
+                    // If you don't have these, you can remove these lines or set a default.
+                    const aiNotesSummary = job.fields['AI_Notes_Summary'] || 'No AI summary available.';
+                    const aiEstDuration = job.fields['AI_Est_Duration_Hours'] || 'N/A';
+                    // Removed AI Upsell Suggestions as requested
+                    // const aiUpsellSuggestions = job.fields['AI_Upsell_Suggestions'] || 'None.';
+
+
+                    jobCard.innerHTML = `
+                        <h3>${serviceType} for ${customerName}</h3>
+                        <p><strong>Address:</strong> ${address}</p>
+                        <p><strong>Phone:</strong> ${phone}</p>
+                        <p><strong>Date:</strong> ${apptDate} at ${apptTime}</p>
+                        <p><strong>Vehicle:</strong> ${vehicle}</p>
+                        <p><strong>Notes:</strong> ${notes}</p>
+                        <p class="mt-2 text-sm text-gray-700"><strong>AI Summary:</strong> ${aiNotesSummary}</p>
+                        <p class="text-sm text-gray-700"><strong>AI Est. Duration:</strong> <span class="math-inline">\{aiEstDuration\} hours</p\>
