@@ -55,3 +55,124 @@
                     <label for="login-password">Password:</label>
                     <input type="password" id="login-password" placeholder="Enter your password">
                 </div>
+<button id="login-btn">Login</button>
+            </div>
+
+            <div id="signup-tab" class="tab-content">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4 text-center">New Contractor Sign Up</h2>
+                <div class="input-group">
+                    <label for="signup-name">Full Name:</label>
+                    <input type="text" id="signup-name" placeholder="Your Full Name">
+                </div>
+                <div class="input-group">
+                    <label for="signup-email">Email:</label>
+                    <input type="email" id="signup-email" placeholder="your@email.com">
+                </div>
+                <div class="input-group">
+                    <label for="signup-username">Username:</label>
+                    <input type="text" id="signup-username" placeholder="Choose a username">
+                </div>
+                <div class="input-group">
+                    <label for="signup-password">Password:</label>
+                    <input type="password" id="signup-password" placeholder="Choose a password">
+                </div>
+                <button id="signup-btn">Sign Up</button>
+            </div>
+        </div>
+
+        <div id="job-portal-container">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Available Jobs</h2>
+            <div id="job-list">
+                </div>
+            <p id="no-jobs-message" class="text-center text-gray-500 text-lg mt-8" style="display: none;">No jobs available at the moment.</p>
+        </div>
+    </div>
+
+    <script>
+        console.log("Script loaded and starting!"); // DEBUG: Confirm script starts
+
+        // --- Configuration ---
+        const SERVER_URL = 'https://auto-detailing-portal.onrender.com';
+        let currentUser = null; // Store logged-in user info
+
+        // --- DOM Elements ---
+        // These lines try to find your HTML elements by their IDs.
+        // If an ID is wrong, the variable will be 'null', and adding an event listener will fail.
+        const notificationArea = document.getElementById('notification-area');
+        const loginSignupContainer = document.getElementById('login-signup-container');
+        const jobPortalContainer = document.getElementById('job-portal-container');
+        const jobListDiv = document.getElementById('job-list');
+        const noJobsMessage = document.getElementById('no-jobs-message');
+
+        const loginUsernameInput = document.getElementById('login-username');
+        const loginPasswordInput = document.getElementById('login-password');
+        const loginBtn = document.getElementById('login-btn');
+
+        const signupNameInput = document.getElementById('signup-name');
+        const signupEmailInput = document.getElementById('signup-email');
+        const signupUsernameInput = document.getElementById('signup-username');
+        const signupPasswordInput = document.getElementById('signup-password');
+        const signupBtn = document.getElementById('signup-btn');
+
+        // --- DEBUG: Verify DOM Elements Found ---
+        console.log("DOM Elements found (should not be null):");
+        console.log("notificationArea:", notificationArea);
+        console.log("loginSignupContainer:", loginSignupContainer);
+        console.log("jobPortalContainer:", jobPortalContainer);
+        console.log("jobListDiv:", jobListDiv);
+        console.log("noJobsMessage:", noJobsMessage);
+        console.log("loginUsernameInput:", loginUsernameInput);
+        console.log("loginPasswordInput:", loginPasswordInput);
+        console.log("loginBtn:", loginBtn);
+        console.log("signupNameInput:", signupNameInput);
+        console.log("signupEmailInput:", signupEmailInput);
+        console.log("signupUsernameInput:", signupUsernameInput);
+        console.log("signupPasswordInput:", signupPasswordInput);
+        console.log("signupBtn:", signupBtn);
+
+        // --- Tab Switching Logic ---
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', () => {
+                document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                document.getElementById(button.dataset.tab + '-tab').classList.add('active');
+            });
+        });
+
+        // --- Notification Function ---
+        function showNotification(message, type = 'success') {
+            if (notificationArea) { // Check if element exists before using
+                notificationArea.textContent = message;
+                notificationArea.classList.remove('success', 'error');
+                notificationArea.classList.add(type);
+                notificationArea.style.display = 'block';
+                setTimeout(() => { notificationArea.style.display = 'none'; }, 3000);
+            } else {
+                console.error("Notification area not found!");
+                alert(message); // Fallback alert
+            }
+        }
+
+        // --- API Calls ---
+        async function apiRequest(endpoint, method = 'GET', data = null) {
+            const options = {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+            };
+            if (data) options.body = JSON.stringify(data);
+
+            try {
+                const response = await fetch(`${SERVER_URL}${endpoint}`, options);
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.message || `API error: ${response.status} ${response.statusText}`);
+                }
+                return result;
+            } catch (error) {
+                console.error(`API request to ${endpoint} failed:`, error);
+                // Show a notification for API errors
+                showNotification(`Error: ${error.message || 'Network issue'}`, 'error');
+                throw error; // Re-throw to be caught by specific handlers
+            }
+        }
