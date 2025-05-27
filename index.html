@@ -3,527 +3,316 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Michie Auto Detailing Contractor Portal</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>Contractor Job Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #1a202c; /* Dark background */
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-        }
-        .card-container {
-            background-color: #2d3748; /* Darker card background */
-            border-radius: 12px; /* More rounded corners */
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4); /* Stronger shadow */
-            padding: 40px;
-            width: 100%;
-            max-width: 450px; /* Slightly narrower for focus */
-            color: #e2e8f0; /* Light text */
-        }
-        h1 {
-            color: #a0aec0; /* Lighter gray for title */
-            font-size: 2.5rem; /* Larger title */
-            font-weight: 700;
-            margin-bottom: 30px;
-            text-align: center;
-        }
-        h2 {
-            color: #cbd5e0; /* Slightly lighter heading */
-            font-size: 1.5rem;
-            font-weight: 600;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        .input-group {
-            margin-bottom: 20px;
-        }
-        .input-group label {
-            display: block;
-            font-size: 0.95rem;
-            font-weight: 500;
-            color: #cbd5e0;
-            margin-bottom: 8px;
-        }
-        .input-group input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #4a5568; /* Darker border */
-            border-radius: 8px;
-            font-size: 1rem;
-            background-color: #2d3748; /* Match card background */
-            color: #e2e8f0;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-        .input-group input:focus {
-            border-color: #63b3ed; /* Blue focus ring */
-        }
-        .btn-primary {
-            background-color: #4299e1; /* Vibrant blue */
-            color: white;
-            padding: 14px 25px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1.1rem;
-            font-weight: 700;
-            transition: background-color 0.2s, transform 0.1s;
-            width: 100%;
-            margin-top: 20px;
-        }
-        .btn-primary:hover {
-            background-color: #3182ce;
-            transform: translateY(-1px);
-        }
-        .btn-secondary {
-            background-color: transparent;
-            color: #a0aec0;
-            padding: 10px 15px;
-            border: 1px solid #4a5568;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            font-weight: 600;
-            transition: background-color 0.2s, color 0.2s;
-            width: 100%;
-            margin-top: 10px;
-        }
-        .btn-secondary:hover {
-            background-color: #4a5568;
-            color: white;
-        }
-
-        /* Toggle Button for Login/Signup */
-        .toggle-switch {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 25px;
-        }
-        .toggle-switch button {
-            background-color: #4a5568;
-            color: #a0aec0;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 6px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.2s, color 0.2s;
-            width: auto; /* Override 100% width */
-            margin: 0 5px;
-        }
-        .toggle-switch button.active {
-            background-color: #4299e1;
-            color: white;
-        }
-
-        /* Job Portal Specific Styles */
-        #job-portal-container {
-            display: none;
-            background-color: #2d3748;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
-            padding: 40px;
-            width: 100%;
-            max-width: 700px; /* Wider for job list */
-            color: #e2e8f0;
-        }
-        .job-card {
-            background-color: #4a5568; /* Slightly lighter job card */
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 15px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-            color: #e2e8f0;
-        }
-        .job-card h3 {
-            font-size: 1.3rem;
-            font-weight: 700;
-            color: #90cdf4; /* Light blue for job title */
-            margin-bottom: 10px;
-        }
-        .job-card p {
-            font-size: 0.95rem;
-            color: #cbd5e0;
-            line-height: 1.6;
-            margin-bottom: 8px;
-        }
-        .job-card .actions {
-            margin-top: 15px;
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-        }
-        .job-card .actions .btn-claim {
-            background-color: #48bb78; /* Green for claim */
-            color: white;
-            padding: 10px 20px;
-            border-radius: 6px;
-            font-weight: 600;
-            transition: background-color 0.2s;
-            width: auto;
-        }
-        .job-card .actions .btn-claim:hover {
-            background-color: #38a169;
-        }
-        .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background-color: #48bb78; /* Green for success */
-            color: white;
-            padding: 15px 25px;
-            border-radius: 8px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-            z-index: 1000;
-            display: none;
-            font-weight: 600;
-        }
-        .notification.error {
-            background-color: #fc8181; /* Red for error */
         }
     </style>
 </head>
-<body>
-    <div class="card-container" id="login-signup-container">
-        <h1>Michie Auto Detailing</h1>
-        <h2 class="mb-6">Contractor Portal</h2>
-
-        <div class="toggle-switch">
-            <button class="tab-button active" data-tab="login">Login</button>
-            <button class="tab-button" data-tab="signup">Sign Up</button>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+    <div id="app" class="bg-white p-8 rounded-lg shadow-lg w-full max-w-2xl">
+        <div id="login-section">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Contractor Login</h2>
+            <div class="mb-4">
+                <label for="username" class="block text-gray-700 text-sm font-bold mb-2">Username:</label>
+                <input type="text" id="username" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" value="contractor1">
+            </div>
+            <div class="mb-6">
+                <label for="password" class="block text-gray-700 text-sm font-bold mb-2">Password:</label>
+                <input type="password" id="password" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline" value="password123">
+            </div>
+            <button id="login-button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline w-full transition duration-300 ease-in-out">Login</button>
+            <p id="login-message" class="text-red-500 text-xs italic mt-4 text-center"></p>
+            <button id="show-create-account-button" class="mt-4 text-blue-500 hover:text-blue-700 text-sm w-full text-center">Create New Account</button>
         </div>
 
-        <div id="login-tab" class="tab-content active">
-            <div class="input-group">
-                <label for="login-username">Username:</label>
-                <input type="text" id="login-username" placeholder="Enter your username">
+        <div id="create-account-section" class="hidden">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Create New Account</h2>
+            <div class="mb-4">
+                <label for="new-username" class="block text-gray-700 text-sm font-bold mb-2">Username:</label>
+                <input type="text" id="new-username" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
             </div>
-            <div class="input-group">
-                <label for="login-password">Password:</label>
-                <input type="password" id="login-password" placeholder="Enter your password">
+            <div class="mb-6">
+                <label for="new-password" class="block text-gray-700 text-sm font-bold mb-2">Password:</label>
+                <input type="password" id="new-password" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline">
             </div>
-            <button id="login-btn" class="btn-primary">Login</button>
+            <button id="create-account-button" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline w-full transition duration-300 ease-in-out">Create Account</button>
+            <p id="create-account-message" class="text-red-500 text-xs italic mt-4 text-center"></p>
+            <button id="show-login-button" class="mt-4 text-blue-500 hover:text-blue-700 text-sm w-full text-center">Back to Login</button>
         </div>
 
-        <div id="signup-tab" class="tab-content">
-            <div class="input-group">
-                <label for="signup-name">Full Name:</label>
-                <input type="text" id="signup-name" placeholder="Your Full Name">
+        <div id="jobs-section" class="hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">Available Jobs</h2>
+                <button id="logout-button" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out">Logout</button>
             </div>
-            <div class="input-group">
-                <label for="signup-email">Email:</label>
-                <input type="email" id="signup-email" placeholder="your@email.com">
+            <div id="jobs-list" class="space-y-4">
+                <p id="no-jobs-message" class="text-gray-600 text-center hidden">No jobs available at the moment.</p>
             </div>
-            <div class="input-group">
-                <label for="signup-username">Username:</label>
-                <input type="text" id="signup-username" placeholder="Choose a username">
-            </div>
-            <div class="input-group">
-                <label for="signup-password">Password:</label>
-                <input type="password" id="signup-password" placeholder="Choose a password">
-            </div>
-            <button id="signup-btn" class="btn-primary">Sign Up</button>
         </div>
     </div>
-
-    <div id="job-portal-container" class="card-container">
-        <h2 class="mb-6">Available Jobs</h2>
-        <div id="job-list" class="space-y-4">
-            </div>
-        <p id="no-jobs-message" class="text-center text-gray-500 text-lg mt-8" style="display: none;">No jobs available at the moment.</p>
-    </div>
-
-    <div id="notification-area" class="notification"></div>
 
     <script>
-        console.log("Script loaded and starting!"); // DEBUG: Confirm script starts
+        // IMPORTANT: This URL now points to your deployed Render.com backend.
+        const API_BASE_URL = 'https://michie-detailing-backend.onrender.com';
 
-        // --- Configuration ---
-        const SERVER_URL = 'https://michie-detailing-backend.onrender.com'; 
-        let currentUser = null; // Store logged-in user info
+        // Get references to HTML elements
+        const loginSection = document.getElementById('login-section');
+        const createAccountSection = document.getElementById('create-account-section');
+        const jobsSection = document.getElementById('jobs-section');
 
-        // --- DOM Elements ---
-        const notificationArea = document.getElementById('notification-area');
-        const loginSignupContainer = document.getElementById('login-signup-container');
-        const jobPortalContainer = document.getElementById('job-portal-container');
-        const jobListDiv = document.getElementById('job-list');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const loginButton = document.getElementById('login-button');
+        const loginMessage = document.getElementById('login-message');
+        const showCreateAccountButton = document.getElementById('show-create-account-button');
+
+        const newUsernameInput = document.getElementById('new-username');
+        const newPasswordInput = document.getElementById('new-password');
+        const createAccountButton = document.getElementById('create-account-button');
+        const createAccountMessage = document.getElementById('create-account-message');
+        const showLoginButton = document.getElementById('show-login-button');
+
+        const logoutButton = document.getElementById('logout-button');
+        const jobsList = document.getElementById('jobs-list');
         const noJobsMessage = document.getElementById('no-jobs-message');
 
-        const loginUsernameInput = document.getElementById('login-username');
-        const loginPasswordInput = document.getElementById('login-password');
-        const loginBtn = document.getElementById('login-btn');
+        // Retrieve authentication token from browser's local storage
+        let authToken = localStorage.getItem('authToken');
 
-        const signupNameInput = document.getElementById('signup-name');
-        const signupEmailInput = document.getElementById('signup-email');
-        const signupUsernameInput = document.getElementById('signup-username');
-        const signupPasswordInput = document.getElementById('signup-password');
-        const signupBtn = document.getElementById('signup-btn');
+        // Function to update the UI based on authentication status
+        function updateUI() {
+            if (authToken) {
+                // If authenticated, hide login/create and show jobs section
+                loginSection.classList.add('hidden');
+                createAccountSection.classList.add('hidden');
+                jobsSection.classList.remove('hidden');
+                fetchJobs(); // Automatically fetch jobs after login
+            } else {
+                // If not authenticated, show login and hide other sections
+                loginSection.classList.remove('hidden');
+                createAccountSection.classList.add('hidden'); // Ensure create account is hidden by default
+                jobsSection.classList.add('hidden');
+                jobsList.innerHTML = ''; // Clear any displayed jobs
+            }
+        }
 
-        // --- DEBUG: Verify DOM Elements Found ---
-        console.log("DOM Elements found (should not be null):");
-        console.log("notificationArea:", notificationArea);
-        console.log("loginSignupContainer:", loginSignupContainer);
-        console.log("jobPortalContainer:", jobPortalContainer);
-        console.log("jobListDiv:", jobListDiv);
-        console.log("noJobsMessage:", noJobsMessage);
-        console.log("loginUsernameInput:", loginUsernameInput);
-        console.log("loginPasswordInput:", loginPasswordInput);
-        console.log("loginBtn:", loginBtn);
-        console.log("signupNameInput:", signupNameInput);
-        console.log("signupEmailInput:", signupEmailInput);
-        console.log("signupUsernameInput:", signupUsernameInput);
-        console.log("signupPasswordInput:", signupPasswordInput);
-        console.log("signupBtn:", signupBtn);
-
-        // --- Tab Switching Logic ---
-        document.querySelectorAll('.tab-button').forEach(button => {
-            button.addEventListener('click', () => {
-                document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-                button.classList.add('active');
-                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-                document.getElementById(button.dataset.tab + '-tab').classList.add('active');
-            });
+        // --- Event Listeners for Login/Create Account UI Toggle ---
+        showCreateAccountButton.addEventListener('click', () => {
+            loginSection.classList.add('hidden');
+            createAccountSection.classList.remove('hidden');
+            loginMessage.textContent = ''; // Clear any login messages
         });
 
-        // --- Notification Function ---
-        function showNotification(message, type = 'success') {
-            if (notificationArea) { // Check if element exists before using
-                notificationArea.textContent = message;
-                notificationArea.classList.remove('success', 'error');
-                notificationArea.classList.add(type);
-                notificationArea.style.display = 'block';
-                setTimeout(() => { notificationArea.style.display = 'none'; }, 3000);
-            } else {
-                console.error("Notification area not found!");
-                alert(message); // Fallback alert
-            }
-        }
+        showLoginButton.addEventListener('click', () => {
+            createAccountSection.classList.add('hidden');
+            loginSection.classList.remove('hidden');
+            createAccountMessage.textContent = ''; // Clear any create account messages
+        });
 
-        // --- API Calls ---
-        async function apiRequest(endpoint, method = 'GET', data = null) {
-            const options = {
-                method,
-                headers: { 'Content-Type': 'application/json' },
-            };
-            if (data) options.body = JSON.stringify(data);
+
+        // --- Login Functionality ---
+        loginButton.addEventListener('click', async () => {
+            const username = usernameInput.value;
+            const password = passwordInput.value;
 
             try {
-                // THIS IS THE CRUCIAL LINE: Using template literals correctly
-                const response = await fetch(`${SERVER_URL}${endpoint}`, options); 
-                const result = await response.json();
-                if (!response.ok) {
-                    throw new Error(result.message || `API error: ${response.status} ${response.statusText}`);
-                }
-                return result;
-            } catch (error) {
-                console.error(`API request to ${endpoint} failed:`, error);
-                showNotification(`Error: ${error.message || 'Network issue'}`, 'error');
-                throw error; // Re-throw to be caught by specific handlers
-            }
-        }
-
-        // --- Render Jobs ---
-        function renderJobs(jobs) {
-            if (!jobListDiv) { console.error("Job list container not found!"); return; } // Check if element exists
-            jobListDiv.innerHTML = '';
-            if (jobs.length === 0) {
-                if (noJobsMessage) noJobsMessage.style.display = 'block';
-            } else {
-                if (noJobsMessage) noJobsMessage.style.display = 'none';
-                jobs.forEach(job => {
-                    const jobCard = document.createElement('div');
-                    jobCard.className = 'job-card';
-                    jobCard.dataset.jobId = job.id; // Airtable record ID
-
-                    // Adjust these field names to EXACTLY match your Airtable "Appointments" table columns
-                    const customerName = job.fields['Customer Name'] || 'N/A';
-                    const serviceType = job.fields['Service Type'] || 'N/A';
-                    const address = job.fields['Customer Address'] || 'N/A';
-                    const phone = job.fields['Customer Phone'] || 'N/A';
-                    const apptDate = job.fields['Appointment Date'] || 'N/A';
-                    const apptTime = job.fields['Appointment Time'] || 'N/A';
-                    const vehicle = job.fields['Vehicle Make/Model'] || 'N/A';
-                    const notes = job.fields['Customer Notes'] || 'N/A';
-
-                    // Adjust these AI field names to EXACTLY match your Airtable "Appointments" table columns
-                    // If you don't have these fields in Airtable, they will show 'N/A' or default.
-                    const aiNotesSummary = job.fields['AI_Notes_Summary'] || 'No AI summary available.';
-                    const aiEstDuration = job.fields['AI_Est_Duration_Hours'] || 'N/A';
-                    // Removed AI Upsell Suggestions as requested
-
-
-                    jobCard.innerHTML = `
-                        <h3>${serviceType} for ${customerName}</h3>
-                        <p><strong>Address:</strong> ${address}</p>
-                        <p><strong>Phone:</strong> ${phone}</p>
-                        <p><strong>Date:</strong> ${apptDate} at ${apptTime}</p>
-                        <p><strong>Vehicle:</strong> ${vehicle}</p>
-                        <p><strong>Notes:</strong> ${notes}</p>
-                        <p class="mt-2 text-sm text-gray-700"><strong>AI Summary:</strong> ${aiNotesSummary}</p>
-                        <p class="text-sm text-gray-700"><strong>AI Est. Duration:</strong> ${aiEstDuration} hours</p>
-                        <div class="actions">
-                            <button class="btn-claim" data-job-id="${job.id}">Claim Job</button>
-                        </div>
-                    `;
-                    jobListDiv.appendChild(jobCard);
+                const response = await fetch(`${API_BASE_URL}/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password }),
                 });
-            }
-        }
 
-        // --- Event Listeners ---
-
-        // Debugging check to ensure button elements exist before attaching listeners
-        if (loginBtn) {
-            loginBtn.addEventListener('click', async () => {
-                console.log("Login button clicked!"); // DEBUG: Confirm click registered
-                const username = loginUsernameInput.value;
-                const password = loginPasswordInput.value;
-                if (!username || !password) {
-                    showNotification('Please enter username and password.', 'error');
-                    return;
-                }
-                try {
-                    const result = await apiRequest('/api/login', 'POST', { username, password });
-                    if (result.success) {
-                        currentUser = result.user; // Store user details (includes Airtable fields)
-                        showNotification(`Welcome, ${currentUser.fields['Contractor Name']}!`);
-                        if (loginSignupContainer) loginSignupContainer.style.display = 'none';
-                        if (jobPortalContainer) jobPortalContainer.style.display = 'block';
-                        fetchAndRenderJobs();
-                    } else {
-                        showNotification(result.message || 'Login failed.', 'error');
-                    }
-                } catch (error) {
-                    showNotification(error.message || 'Login failed due to network issue.', 'error');
-                }
-            });
-        } else {
-            console.error("DEBUG ERROR: Login button element not found! Check its ID in HTML.");
-        }
-
-
-        if (signupBtn) {
-            signupBtn.addEventListener('click', async () => {
-                console.log("Sign Up button clicked!"); // DEBUG: Confirm click registered
-                const name = signupNameInput.value;
-                const email = signupEmailInput.value;
-                const username = signupUsernameInput.value;
-                const password = signupPasswordInput.value;
-                if (!name || !email || !username || !password) {
-                    showNotification('All signup fields are required.', 'error');
-                    return;
-                }
-                try {
-                    const result = await apiRequest('/api/signup', 'POST', { name, email, username, password });
-                    if (result.success) {
-                        showNotification(result.message);
-                        // Switch to login tab after successful signup
-                        const loginTabButton = document.querySelector('.tab-button[data-tab="login"]');
-                        if (loginTabButton) loginTabButton.click();
-                        // Clear signup form
-                        signupNameInput.value = '';
-                        signupEmailInput.value = '';
-                        signupUsernameInput.value = '';
-                        signupPasswordInput.value = '';
-                    } else {
-                        showNotification(result.message || 'Signup failed.', 'error');
-                    }
-                } catch (error) {
-                    showNotification(error.message || 'Signup failed due to network issue.', 'error');
-                    console.error("Signup error details:", error); // More detailed logging
-                }
-            });
-        } else {
-            console.error("DEBUG ERROR: Sign Up button element not found! Check its ID in HTML.");
-        }
-
-
-        // Delegated event listener for Claim Job buttons (inside jobListDiv)
-        if (jobListDiv) {
-            jobListDiv.addEventListener('click', async (event) => {
-                if (event.target.classList.contains('btn-claim')) { // Changed from 'claim-btn' to 'btn-claim'
-                    if (!currentUser || !currentUser.id) {
-                        showNotification('Please log in to claim jobs.', 'error');
-                        return;
-                    }
-                    const jobId = event.target.dataset.jobId; // Airtable record ID of the job
-                    try {
-                        const result = await apiRequest('/api/jobs/claim', 'POST', {
-                            jobId: jobId,
-                            contractorId: currentUser.id, // Airtable record ID of the contractor
-                            contractorName: currentUser.fields['Contractor Name'] // Contractor's name from Airtable fields
-                        });
-                        if (result.success) {
-                            showNotification(result.message);
-                            fetchAndRenderJobs(); // Refresh job list
-
-                            // --- About the Detailer Notification (Server-side Trigger) ---
-                            // This part would ideally be triggered by your server after job claim.
-                            // The client-side simply requests the info for demonstration.
-                            try {
-                                const bioResult = await apiRequest(`/api/contractors/${currentUser.id}/bio`);
-                                if(bioResult.success) {
-                                    console.log('--- FOR CUSTOMER NOTIFICATION ---');
-                                    console.log(bioResult.bio); // This is the message your customer would receive!
-                                    console.log('--- Send this message to customer via SMS/Email using Zapier/similar from your server ---');
-                                }
-                            } catch (bioError) {
-                                console.error('Failed to get contractor bio for notification:', bioError);
-                            }
-
-                        } else {
-                            showNotification(result.message || 'Failed to claim job.', 'error');
-                        }
-                    } catch (error) {
-                        showNotification(error.message || 'Failed to claim job due to network issue.', 'error');
-                    }
-                }
-            });
-        } else {
-            console.error("DEBUG ERROR: Job list container not found! Check its ID in HTML.");
-        }
-
-
-        // --- Initial Load ---
-        async function fetchAndRenderJobs() {
-            // Ensure the jobPortalContainer exists before trying to display it
-            if (!jobPortalContainer) { console.error("Job portal container not found!"); return; }
-
-            try {
-                const result = await apiRequest('/api/jobs/available');
-                if (result.success) {
-                    renderJobs(result.jobs);
+                const data = await response.json();
+                if (response.ok) {
+                    authToken = data.token;
+                    localStorage.setItem('authToken', authToken); // Store token for future requests
+                    loginMessage.textContent = ''; // Clear any previous login messages
+                    updateUI(); // Update UI to show jobs
                 } else {
-                    showNotification(result.message || 'Failed to load jobs.', 'error');
+                    loginMessage.textContent = data.message || 'Login failed. Please check your credentials.';
                 }
             } catch (error) {
-                showNotification(error.message || 'Failed to load jobs due to network issue.', 'error');
+                console.error('Login error:', error);
+                loginMessage.textContent = 'An error occurred during login. Please try again.';
+            }
+        });
+
+        // --- Create Account Functionality (Frontend Only - Backend Needed!) ---
+        createAccountButton.addEventListener('click', async () => {
+            const newUsername = newUsernameInput.value;
+            const newPassword = newPasswordInput.value;
+
+            if (!newUsername || !newPassword) {
+                createAccountMessage.textContent = 'Please enter both username and password.';
+                return;
+            }
+
+            // This is a placeholder. In a real app, you'd send this to a /register endpoint on your backend.
+            // For now, it just simulates success/failure on the frontend.
+            console.log(`Attempting to create account for: ${newUsername}`);
+            createAccountMessage.textContent = 'Account creation is not yet implemented on the backend. Please use existing credentials (contractor1/password123).';
+            createAccountMessage.classList.remove('text-red-500');
+            createAccountMessage.classList.add('text-blue-500'); // Indicate it's an informational message
+
+            // You would uncomment and modify this fetch call when your backend /register endpoint is ready:
+            /*
+            try {
+                const response = await fetch(`${API_BASE_URL}/register`, { // Assuming a /register endpoint
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username: newUsername, password: newPassword }),
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    createAccountMessage.textContent = data.message || 'Account created successfully! You can now log in.';
+                    createAccountMessage.classList.remove('text-red-500');
+                    createAccountMessage.classList.add('text-green-500');
+                    // Optionally, switch back to login form after successful registration
+                    setTimeout(() => {
+                        showLoginButton.click();
+                        newUsernameInput.value = '';
+                        newPasswordInput.value = '';
+                    }, 2000);
+                } else {
+                    createAccountMessage.textContent = data.message || 'Account creation failed.';
+                    createAccountMessage.classList.remove('text-green-500');
+                    createAccountMessage.classList.add('text-red-500');
+                }
+            } catch (error) {
+                console.error('Create account error:', error);
+                createAccountMessage.textContent = 'An error occurred during account creation. Please try again.';
+                createAccountMessage.classList.remove('text-green-500');
+                createAccountMessage.classList.add('text-red-500');
+            }
+            */
+        });
+
+
+        // --- Logout Functionality ---
+        logoutButton.addEventListener('click', () => {
+            authToken = null; // Clear the token in memory
+            localStorage.removeItem('authToken'); // Remove token from local storage
+            updateUI(); // Update UI to show login
+        });
+
+        // --- Fetch Jobs Functionality ---
+        async function fetchJobs() {
+            if (!authToken) {
+                console.log('Not authenticated. Cannot fetch jobs.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/jobs`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`, // Send the authentication token
+                        'Content-Type': 'application/json',
+                    },
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    renderJobs(data); // Render the fetched jobs
+                } else {
+                    console.error('Failed to fetch jobs:', data.message);
+                    jobsList.innerHTML = `<p class="text-red-500 text-center">${data.message || 'Error fetching jobs.'}</p>`;
+                }
+            } catch (error) {
+                console.error('Fetch jobs error:', error);
+                jobsList.innerHTML = `<p class="text-red-500 text-center">An error occurred while fetching jobs.</p>`;
             }
         }
 
-        // --- Initial UI State ---
-        // This function runs when the page loads
-        function initializeUI() {
-            // Ensure loginSignupContainer exists before manipulating its style
-            if (loginSignupContainer) {
-                loginSignupContainer.style.display = 'block';
+        // --- Render Jobs Functionality ---
+        function renderJobs(jobs) {
+            jobsList.innerHTML = ''; // Clear previous job listings
+            if (jobs.length === 0) {
+                noJobsMessage.classList.remove('hidden'); // Show "No jobs" message
+                return;
             } else {
-                console.error("Login/Signup container not found!");
+                noJobsMessage.classList.add('hidden'); // Hide "No jobs" message
             }
-            // Ensure jobPortalContainer exists before manipulating its style
-            if (jobPortalContainer) {
-                jobPortalContainer.style.display = 'none'; // Hide job portal until login
-            } else {
-                console.error("Job portal container not found!");
+
+            jobs.forEach(job => {
+                const jobCard = document.createElement('div');
+                jobCard.className = 'bg-gray-50 p-6 rounded-lg shadow-md border border-gray-200';
+
+                // Construct the HTML for each job card, using the specified field names
+                jobCard.innerHTML = `
+                    <h3 class="text-xl font-semibold text-gray-800 mb-2">${job.year} ${job.make} ${job.model}</h3>
+                    <p class="text-gray-600 mb-1"><strong>Zip Code:</strong> ${job.zip_code}</p>
+                    <p class="text-gray-600 mb-1"><strong>Appointment Date:</strong> ${job.appointment_date}</p>
+                    <p class="text-gray-600 mb-4"><strong>Appointment Time:</strong> ${job.appointment_time}</p>
+                    <p class="text-gray-700 font-medium mb-4"><strong>Status:</strong> <span class="${job.status === 'accepted' ? 'text-green-600' : job.status === 'declined' ? 'text-red-600' : 'text-yellow-600'} capitalize">${job.status}</span></p>
+                    ${job.status === 'accepted' ? `
+                        <div class="mt-4 border-t pt-4 border-gray-200">
+                            <h4 class="text-lg font-semibold text-gray-700 mb-2">Customer Details:</h4>
+                            <p class="text-gray-600 mb-1"><strong>Customer Name:</strong> ${job.customer_name}</p>
+                            <p class="text-gray-600 mb-1"><strong>Customer Phone:</strong> ${job.customer_phone}</p>
+                            <p class="text-gray-600"><strong>Customer Address:</strong> ${job.customer_address}</p>
+                        </div>
+                    ` : `
+                        <div class="flex space-x-2 mt-4">
+                            <button data-job-id="${job.id}" class="accept-button bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out w-1/2">Accept</button>
+                            <button data-job-id="${job.id}" class="decline-button bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out w-1/2">Decline</button>
+                        </div>
+                    `}
+                `;
+                jobsList.appendChild(jobCard);
+            });
+
+            // Add event listeners to the newly created Accept/Decline buttons
+            document.querySelectorAll('.accept-button').forEach(button => {
+                button.addEventListener('click', (event) => handleJobAction(event.target.dataset.jobId, 'accept'));
+            });
+            document.querySelectorAll('.decline-button').forEach(button => {
+                button.addEventListener('click', (event) => handleJobAction(event.target.dataset.jobId, 'decline'));
+            });
+        }
+
+        // --- Handle Job Action (Accept/Decline) ---
+        async function handleJobAction(jobId, actionType) {
+            if (!authToken) {
+                console.log('Not authenticated.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/${actionType}`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json',
+                    },
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    // If action is successful, refresh the job list to reflect changes
+                    fetchJobs();
+                } else {
+                    // Use a simple alert for error messages (consider a custom modal for better UX)
+                    alert(data.message || `Failed to ${actionType} job.`);
+                    console.error(`Failed to ${actionType} job:`, data.message);
+                }
+            } catch (error) {
+                console.error(`Error during ${actionType} job:`, error);
+                alert(`An error occurred while trying to ${actionType} the job.`);
             }
         }
-        initializeUI(); // Call on page load
+
+        // Initial UI update when the DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', updateUI);
     </script>
 </body>
 </html>
