@@ -26,7 +26,7 @@
             </div>
             <button id="login-button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline w-full transition duration-300 ease-in-out">Login</button>
             <p id="login-message" class="text-red-500 text-xs italic mt-4 text-center"></p>
-            <button id="show-create-account-button" class="mt-4 text-blue-500 hover:text-blue-700 text-sm w-full text-center">Create New Account</button>
+            <button id="show-create-account-button" class="mt-4 text-blue-500 hover:text-blue-700 text-sm w-full text-center hidden">Create New Account</button>
         </div>
 
         <div id="create-account-section" class="hidden">
@@ -66,8 +66,9 @@
         const passwordInput = document.getElementById('password');
         const loginButton = document.getElementById('login-button');
         const loginMessage = document.getElementById('login-message');
-        const showCreateAccountButton = document.getElementById('show-create-account-button');
+        const showCreateAccountButton = document.getElementById('show-create-account-button'); // Now hidden
 
+        // These elements are present in HTML but JS logic is removed for temporary auth
         const newUsernameInput = document.getElementById('new-username');
         const newPasswordInput = document.getElementById('new-password');
         const createAccountButton = document.getElementById('create-account-button');
@@ -83,28 +84,20 @@
         function updateUI() {
             if (authToken) {
                 loginSection.classList.add('hidden');
-                createAccountSection.classList.add('hidden');
+                createAccountSection.classList.add('hidden'); // Ensure hidden
                 jobsSection.classList.remove('hidden');
                 fetchJobs();
             } else {
                 loginSection.classList.remove('hidden');
-                createAccountSection.classList.add('hidden');
+                createAccountSection.classList.add('hidden'); // Ensure hidden
                 jobsSection.classList.add('hidden');
                 jobsList.innerHTML = '';
             }
         }
 
-        showCreateAccountButton.addEventListener('click', () => {
-            loginSection.classList.add('hidden');
-            createAccountSection.classList.remove('hidden');
-            loginMessage.textContent = '';
-        });
-
-        showLoginButton.addEventListener('click', () => {
-            createAccountSection.classList.add('hidden');
-            loginSection.classList.remove('hidden');
-            createAccountMessage.textContent = '';
-        });
+        // --- Removed listeners for create account toggle for temporary auth ---
+        // showCreateAccountButton.addEventListener('click', () => { ... });
+        // showLoginButton.addEventListener('click', () => { ... });
 
         loginButton.addEventListener('click', async () => {
             const username = usernameInput.value;
@@ -134,52 +127,8 @@
             }
         });
 
-        // --- UPDATED Create Account Functionality ---
-        createAccountButton.addEventListener('click', async () => {
-            const newUsername = newUsernameInput.value; // Must be email format
-            const newPassword = newPasswordInput.value;
-
-            if (!newUsername || !newPassword) {
-                createAccountMessage.textContent = 'Please enter both email and password.';
-                createAccountMessage.classList.remove('text-green-500');
-                createAccountMessage.classList.add('text-red-500');
-                return;
-            }
-
-            try {
-                const response = await fetch(`${API_BASE_URL}/register`, { // Call the backend /register endpoint
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ username: newUsername, password: newPassword }),
-                });
-
-                const data = await response.json();
-                if (response.ok) {
-                    createAccountMessage.textContent = data.message || 'Account created successfully! You can now log in.';
-                    createAccountMessage.classList.remove('text-red-500');
-                    createAccountMessage.classList.add('text-green-500');
-                    // Optionally, switch back to login form after successful registration
-                    setTimeout(() => {
-                        showLoginButton.click(); // Simulate click on "Back to Login"
-                        usernameInput.value = newUsername; // Pre-fill login username
-                        passwordInput.value = ''; // Clear password for login
-                        newUsernameInput.value = ''; // Clear registration form
-                        newPasswordInput.value = '';
-                    }, 2000);
-                } else {
-                    createAccountMessage.textContent = data.message || 'Account creation failed.';
-                    createAccountMessage.classList.remove('text-green-500');
-                    createAccountMessage.classList.add('text-red-500');
-                }
-            } catch (error) {
-                console.error('Create account error:', error);
-                createAccountMessage.textContent = 'An error occurred during account creation. Please try again.';
-                createAccountMessage.classList.remove('text-green-500');
-                createAccountMessage.classList.add('text-red-500');
-            }
-        });
+        // --- Removed Create Account Functionality for temporary hardcoded auth ---
+        // createAccountButton.addEventListener('click', async () => { ... });
 
 
         logoutButton.addEventListener('click', () => {
