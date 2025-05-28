@@ -12,8 +12,8 @@
         }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4">
-    <div id="app" class="bg-white p-8 rounded-lg shadow-lg w-full max-w-2xl flex-grow">
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+    <div id="app" class="bg-white p-8 rounded-lg shadow-lg w-full max-w-2xl">
         <div id="login-section">
             <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Contractor Login</h2>
             <div class="mb-4">
@@ -47,19 +47,15 @@
         <div id="jobs-section" class="hidden">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold text-gray-800">Available Jobs</h2>
+                <button id="refresh-jobs-button" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out">Refresh Jobs</button>
                 <button id="logout-button" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out">Logout</button>
             </div>
             <div id="jobs-list" class="space-y-4">
                 <p id="no-jobs-message" class="text-gray-600 text-center hidden">No jobs available at the moment.</p>
             </div>
         </div>
-
     </div>
 
-    <div class="w-full max-w-2xl mt-4">
-        <button id="refresh-jobs-button-bottom" class="bg-black text-white font-bold py-1 px-3 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out mx-auto block">Refresh Jobs</button>
-    </div>
-    
     <script>
         const API_BASE_URL = 'https://michie-detailing-backend.onrender.com';
 
@@ -79,7 +75,8 @@
         const createAccountMessage = document.getElementById('create-account-message');
         const showLoginButton = document.getElementById('show-login-button');
 
-        const refreshJobsButtonBottom = document.getElementById('refresh-jobs-button-bottom');
+        // REFRESH BUTTON: Using original ID
+        const refreshJobsButton = document.getElementById('refresh-jobs-button'); 
         const logoutButton = document.getElementById('logout-button');
         const jobsList = document.getElementById('jobs-list');
         const noJobsMessage = document.getElementById('no-jobs-message');
@@ -91,18 +88,20 @@
                 loginSection.classList.add('hidden');
                 createAccountSection.classList.add('hidden');
                 jobsSection.classList.remove('hidden');
-                refreshJobsButtonBottom.classList.remove('hidden');
+                // Ensure the refresh button is visible/hidden correctly
+                refreshJobsButton.classList.remove('hidden'); 
                 fetchJobs();
             } else {
                 loginSection.classList.remove('hidden');
                 createAccountSection.classList.add('hidden');
                 jobsSection.classList.add('hidden');
-                refreshJobsButtonBottom.classList.add('hidden');
+                refreshJobsButton.classList.add('hidden');
                 jobsList.innerHTML = '';
             }
         }
 
-        refreshJobsButtonBottom.addEventListener('click', fetchJobs);
+        // Event listener for the refresh button
+        refreshJobsButton.addEventListener('click', fetchJobs);
 
         loginButton.addEventListener('click', async () => {
             const username = usernameInput.value;
@@ -223,7 +222,7 @@
                 jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Zip Code:</strong> ${job.zip_code || "N/A"}</p>`;
                 jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Appointment Date:</strong> ${job.appointment_date || "N/A"}</p>`;
                 jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Appointment Time:</strong> ${job.appointment_time || "N/A"}</p>`;
-                jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Date of Service:</strong> ${job.date_of_service || "N/A"}</p>`; // NEW: Date of Service
+                jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Date of Service:</strong> ${job.date_of_service || "N/A"}</p>`;
                 jobDescriptionHTML += `<p class="text-gray-600 mb-4"><strong>Estimated Time:</strong> ${job.estimated_time || "N/A"}</p>`;
 
 
