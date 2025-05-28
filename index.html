@@ -220,7 +220,7 @@
          */
         async function fetchJobs() {
             if (!authToken) {
-                console.log('Not authenticated. Cannot fetch jobs.');
+                console.log('Not authenticated.');
                 return;
             }
 
@@ -235,7 +235,7 @@
 
                 const data = await response.json();
                 if (response.ok) {
-                    console.log("DEBUG: Jobs data received from backend:", data); // DEBUG LOG
+                    console.log("Jobs data received from backend:", data); // DEBUG LOG
                     renderJobs(data); // Render the fetched jobs
                 } else {
                     console.error('Failed to fetch jobs:', data.message);
