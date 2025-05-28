@@ -1,284 +1,367 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contractor Job Portal</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-    </style>
-</head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
-    <div id="app" class="bg-white p-8 rounded-lg shadow-lg w-full max-w-2xl">
-        <div id="login-section">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Contractor Login</h2>
-            <div class="mb-4">
-                <label for="username" class="block text-gray-700 text-sm font-bold mb-2">Username (Email):</label>
-                <input type="email" id="username" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" value="contractor1@example.com">
-            </div>
-            <div class="mb-6">
-                <label for="password" class="block text-gray-700 text-sm font-bold mb-2">Password:</label>
-                <input type="password" id="password" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline" value="password123">
-            </div>
-            <button id="login-button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline w-full transition duration-300 ease-in-out">Login</button>
-            <p id="login-message" class="text-red-500 text-xs italic mt-4 text-center"></p>
-            <button id="show-create-account-button" class="mt-4 text-blue-500 hover:text-blue-700 text-sm w-full text-center hidden">Create New Account</button>
-        </div>
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+import os
+import uuid
+import httpx
+import sys
+import traceback
+import json
 
-        <div id="create-account-section" class="hidden">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Create New Account</h2>
-            <div class="mb-4">
-                <label for="new-username" class="block text-gray-700 text-sm font-bold mb-2">Username (Email):</label>
-                <input type="email" id="new-username" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-            </div>
-            <div class="mb-6">
-                <label for="new-password" class="block text-gray-700 text-sm font-bold mb-2">Password:</label>
-                <input type="password" id="new-password" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline">
-            </div>
-            <button id="create-account-button" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline w-full transition duration-300 ease-in-out">Create Account</button>
-            <p id="create-account-message" class="text-red-500 text-xs italic mt-4 text-center"></p>
-            <button id="show-login-button" class="mt-4 text-blue-500 hover:text-blue-700 text-sm w-full text-center">Back to Login</button>
-        </div>
+app = Flask(__name__)
 
-        <div id="jobs-section" class="hidden">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-gray-800">Available Jobs</h2>
-                <button id="logout-button" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out">Logout</button>
-            </div>
-            <div id="jobs-list" class="space-y-4">
-                <p id="no-jobs-message" class="text-gray-600 text-center hidden">No jobs available at the moment.</p>
-            </div>
-        </div>
-    </div>
+# --- TEMPORARY: Hardcoded Contractors (for login) ---
+CONTRACTORS = {
+    "contractor1@example.com": {"password": "password123", "id": "user1"},
+    "contractor2@example.com": {"password": "password123", "id": "user2"},
+}
 
-    <script>
-        const API_BASE_URL = 'https://michie-detailing-backend.onrender.com';
 
-        const loginSection = document.getElementById('login-section');
-        const createAccountSection = document.getElementById('create-account-section');
-        const jobsSection = document.getElementById('jobs-section');
+# --- Firebase Initialization (TEMPORARILY DISABLED) ---
+firebase_admin_initialized = False
+db = None
 
-        const usernameInput = document.getElementById('username');
-        const passwordInput = document.getElementById('password');
-        const loginButton = document.getElementById('login-button');
-        const loginMessage = document.getElementById('login-message');
-        const showCreateAccountButton = document.getElementById('show-create-account-button');
+# ... (Firebase initialization block commented out) ...
 
-        const newUsernameInput = document.getElementById('new-username');
-        const newPasswordInput = document.getElementById('new-password');
-        const createAccountButton = document.getElementById('create-account-button');
-        const createAccountMessage = document.getElementById('create-account-message');
-        const showLoginButton = document.getElementById('show-login-button');
 
-        const logoutButton = document.getElementById('logout-button');
-        const jobsList = document.getElementById('jobs-list');
-        const noJobsMessage = document.getElementById('no-jobs-message');
+# --- Pipedrive API Configuration (Direct Calls) ---
+PIPEDRIVE_API_TOKEN = os.environ.get('PIPEDRIVE_API_TOKEN')
+PIPEDRIVE_COMPANY_DOMAIN = os.environ.get('PIPEDRIVE_COMPANY_DOMAIN')
 
-        let authToken = localStorage.getItem('authToken');
+PIPEDRIVE_BASE_URL = None
+if PIPEDRIVE_COMPANY_DOMAIN:
+    PIPEDRIVE_BASE_URL = f"https://{PIPEDRIVE_COMPANY_DOMAIN}.pipedrive.com/api/v1"
+    print(f"Pipedrive API Base URL: {PIPEDRIVE_BASE_URL}")
+else:
+    print("WARNING: PIPEDRIVE_COMPANY_DOMAIN environment variable is NOT set. Pipedrive API calls will not work.")
 
-        function updateUI() {
-            if (authToken) {
-                loginSection.classList.add('hidden');
-                createAccountSection.classList.add('hidden');
-                jobsSection.classList.remove('hidden');
-                fetchJobs();
-            } else {
-                loginSection.classList.remove('hidden');
-                createAccountSection.classList.add('hidden');
-                jobsSection.classList.add('hidden');
-                jobsList.innerHTML = '';
+if not PIPEDRIVE_API_TOKEN:
+    print("WARNING: PIPEDRIVE_API_TOKEN environment variable is NOT set. Pipedrive API calls will not work.")
+
+
+# --- CORS Configuration ---
+CORS(app, resources={r"/*": {"origins": "https://famous-praline-736e67.netlify.app"}})
+
+# --- Mock Data (for Pipedrive fallback if it fails, OR if you want to remove it later) ---
+MOCK_JOBS = [
+    {
+        "id": "mock-job-1",
+        "job_title": "Mock Honda Civic Detail", # Added job_title
+        "year": 2020, "make": "Honda", "model": "Civic", "zip_code": "90210",
+        "appointment_date": "2025-06-01", "appointment_time": "10:00 AM",
+        "estimated_time": "2 hours", # NEW: Estimated time
+        "customer_name": "Alice Smith", "customer_phone": "555-123-4567",
+        "customer_address": "123 Mock St, Mockville, CA",
+        "status": "pending", "accepted_by": None,
+    },
+    {
+        "id": "mock-job-2",
+        "job_title": "Mock Tesla Model 3 Clean", # Added job_title
+        "year": 2022, "make": "Tesla", "model": "Model 3", "zip_code": "10001",
+        "appointment_date": "2025-06-02", "appointment_time": "02:00 PM",
+        "estimated_time": "3.5 hours", # NEW: Estimated time
+        "customer_name": "Bob Johnson", "customer_phone": "555-987-6543",
+        "customer_address": "456 Mock Ave, Mock City, NY",
+        "status": "pending", "accepted_by": None,
+    },
+]
+
+# In-memory token storage (still used for session management)
+active_sessions = {} # token: contractor_id (from CONTRACTORS dict)
+
+# --- Helper function for authentication ---
+def authenticate_contractor(request):
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return None
+    token = auth_header.split(' ')[1]
+    return active_sessions.get(token)
+
+# --- Utility function to map Pipedrive deal fields to your job format ---
+def map_pipedrive_deal_to_job(deal):
+    """
+    Maps a Pipedrive deal object to the job format expected by your frontend.
+    YOU MUST CUSTOMIZE THIS BASED ON YOUR ACTUAL PIPEDRIVE CUSTOM FIELDS AND WORKFLOW.
+    """
+    if not deal:
+        return None
+
+    job_data = {
+        "id": str(deal.get('id')),
+        "status": "pending",
+        "accepted_by": None,
+        "job_title": deal.get('title', "Untitled Job - No Pipedrive Title"),
+        "year": "N/A",
+        "make": "N/A",
+        "model": "N/A",
+        "zip_code": "N/A",
+        "appointment_date": "N/A",
+        "appointment_time": "N/A",
+        "estimated_time": "N/A", # NEW: Initialize estimated_time
+        "customer_name": "N/A",
+        "customer_phone": "N/A",
+        "customer_address": "N/A",
+    }
+
+    # Map details from the associated Person (if a person is linked to the deal)
+    person_data = deal.get('person_id')
+    if person_data and isinstance(person_data, dict):
+        job_data["customer_name"] = person_data.get('name', "N/A")
+        if person_data.get('phone'):
+            phone_list = person_data['phone']
+            job_data["customer_phone"] = phone_list[0]['value'] if phone_list and isinstance(phone_list, list) and 'value' in phone_list[0] else "N/A"
+        job_data["customer_address"] = person_data.get('address', "N/A")
+
+    # --- IMPORTANT: Map your Pipedrive Custom Fields ---
+    # To find these keys: Go to Pipedrive -> Company Settings -> Data Fields -> Deals tab.
+    # Click on each custom field (e.g., "Vehicle Year", "Vehicle Make") to see its API key (e.g., "f_123abc").
+    # REPLACE THE PLACEHOLDERS BELOW WITH YOUR ACTUAL PIPEDRIVE CUSTOM FIELD API KEYS
+    # Example: job_data["year"] = deal.get('f_myvehicleyearkey', "N/A")
+    job_data["year"] = deal.get('f_YOUR_VEHICLE_YEAR_KEY', "N/A")
+    job_data["make"] = deal.get('f_YOUR_VEHICLE_MAKE_KEY', "N/A")
+    job_data["model"] = deal.get('f_YOUR_VEHICLE_MODEL_KEY', "N/A")
+    job_data["zip_code"] = deal.get('f_YOUR_ZIP_CODE_KEY', "N/A")
+    job_data["appointment_date"] = deal.get('f_YOUR_APPOINTMENT_DATE_KEY', "N/A")
+    job_data["appointment_time"] = deal.get('f_YOUR_APPOINTMENT_TIME_KEY', "N/A")
+    job_data["estimated_time"] = deal.get('f_YOUR_ESTIMATED_TIME_KEY', "N/A") # NEW: Map estimated time custom field
+    job_data["customer_address"] = deal.get('f_YOUR_CUSTOMER_ADDRESS_KEY', job_data["customer_address"])
+
+    # --- Status Mapping based on Pipedrive Deal Status or Stage ---
+    if deal.get('status') == 'won':
+        job_data['status'] = 'accepted'
+    elif deal.get('status') == 'lost':
+        job_data['status'] = 'declined'
+    else:
+        job_data['status'] = 'pending'
+
+    return job_data
+
+# --- API Endpoints ---
+
+@app.route('/register', methods=['POST'])
+def register():
+    return jsonify({"message": "Account creation is temporarily disabled. Please use existing credentials."}), 403
+
+
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+
+    contractor = CONTRACTORS.get(username)
+    if contractor and contractor['password'] == password:
+        token = str(uuid.uuid4())
+        active_sessions[token] = contractor['id']
+        return jsonify({"message": "Login successful", "token": token}), 200
+    return jsonify({"message": "Invalid credentials"}), 401
+
+
+@app.route('/jobs', methods=['GET'])
+def get_jobs():
+    contractor_id = authenticate_contractor(request)
+    if not contractor_id:
+        return jsonify({"message": "Unauthorized"}), 401
+
+    if not PIPEDRIVE_BASE_URL or not PIPEDRIVE_API_TOKEN:
+        print("Pipedrive API URL or Token not configured. Serving mock data.")
+        return jsonify(MOCK_JOBS), 200
+
+    response_jobs = []
+    try:
+        deals_url = f"{PIPEDRIVE_BASE_URL}/deals"
+        params = {'status': 'open', 'api_token': PIPEDRIVE_API_TOKEN}
+        
+        with httpx.Client(verify=False) as client:
+            api_response = client.get(deals_url, params=params)
+        
+        api_response.raise_for_status()
+        
+        deals_data = api_response.json()
+        
+        print(f"DEBUG: Raw Pipedrive deals_response: {json.dumps(deals_data, indent=2)}")
+        
+        deals = deals_data.get('data')
+        print(f"DEBUG: Pipedrive 'data' portion: {json.dumps(deals, indent=2)}")
+
+        if not deals:
+            print("No open deals found in Pipedrive or 'data' key missing in response.")
+            return jsonify([]), 200
+
+        for deal in deals:
+            mapped_job = map_pipedrive_deal_to_job(deal)
+            if mapped_job:
+                job_to_send = {
+                    "id": mapped_job['id'],
+                    "job_title": mapped_job['job_title'],
+                    "year": mapped_job['year'],
+                    "make": mapped_job['make'],
+                    "model": mapped_job['model'],
+                    "zip_code": mapped_job['zip_code'],
+                    "appointment_date": mapped_job['appointment_date'],
+                    "appointment_time": mapped_job['appointment_time'],
+                    "estimated_time": mapped_job['estimated_time'], # NEW: Include estimated_time
+                    "status": mapped_job['status'],
+                }
+                if mapped_job['status'] == 'accepted':
+                    job_to_send["customer_name"] = mapped_job['customer_name']
+                    job_to_send["customer_phone"] = mapped_job['customer_phone']
+                    job_to_send["customer_address"] = mapped_job['customer_address']
+                
+                print(f"DEBUG: Job sent to frontend: {json.dumps(job_to_send, indent=2)}") 
+                
+                response_jobs.append(job_to_send)
+
+    except httpx.RequestError as e:
+        print(f"Network or HTTP error fetching deals from Pipedrive (httpx): {e}")
+        return jsonify({"message": f"Network error fetching jobs: {e}", "fallback_to_mock": True, "mock_jobs": MOCK_JOBS}), 500
+    except ValueError as e:
+        print(f"JSON decoding error from Pipedrive response (httpx): {e}. Response text: {api_response.text}")
+        return jsonify({"message": f"Data format error from Pipedrive: {e}", "fallback_to_mock": True, "mock_jobs": MOCK_JOBS}), 500
+    except Exception as e:
+        print(f"Unexpected error fetching deals from Pipedrive: {e}")
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        traceback_details = traceback.format_exception(exc_type, exc_value, exc_traceback)
+        print("".join(traceback_details))
+        return jsonify({"message": f"Error fetching jobs from Pipedrive: {e}", "fallback_to_mock": True, "mock_jobs": MOCK_JOBS}), 500
+
+    return jsonify(response_jobs), 200
+
+
+@app.route('/jobs/<job_id>/accept', methods=['POST'])
+def accept_job(job_id):
+    contractor_id = authenticate_contractor(request)
+    if not contractor_id:
+        return jsonify({"message": "Unauthorized"}), 401
+
+    if not PIPEDRIVE_BASE_URL or not PIPEDRIVE_API_TOKEN:
+        return jsonify({"message": "Pipedrive API not configured."}), 500
+
+    try:
+        deal_url = f"{PIPEDRIVE_BASE_URL}/deals/{job_id}"
+        params = {'api_token': PIPEDRIVE_API_TOKEN}
+        
+        with httpx.Client(verify=False) as client:
+            deal_response = client.get(deal_url, params=params)
+        deal_response.raise_for_status()
+        current_deal = deal_response.json().get('data')
+
+        if not current_deal:
+            return jsonify({"message": "Job (Deal) not found in Pipedrive"}), 404
+
+        if current_deal.get('status') == 'open':
+            update_url = f"{PIPEDRIVE_BASE_URL}/deals/{job_id}"
+            update_data = {
+                'status': 'won',
+                # 'stage_id': YOUR_PIPEDRIVE_ACCEPTED_STAGE_ID,
+                # 'f_YOUR_CONTRACTOR_ACCEPTED_BY_FIELD_KEY': contractor_id
             }
-        }
+            update_params = {'api_token': PIPEDRIVE_API_TOKEN}
+            
+            with httpx.Client(verify=False) as client:
+                update_response = client.put(update_url, params=update_params, json=update_data)
+            update_response.raise_for_status()
 
-        loginButton.addEventListener('click', async () => {
-            const username = usernameInput.value;
-            const password = passwordInput.value;
+            with httpx.Client(verify=False) as client:
+                updated_deal_response = client.get(deal_url, params=params)
+            updated_deal_response.raise_for_status()
+            updated_deal = updated_deal_response.json().get('data')
+            
+            if updated_deal:
+                job = map_pipedrive_deal_to_job(updated_deal)
+                job['status'] = 'accepted'
+                job['accepted_by'] = contractor_id
+                return jsonify({"message": "Job accepted successfully", "job": job}), 200
+            else:
+                return jsonify({"message": "Job accepted, but failed to retrieve updated details."}), 200
 
-            try {
-                const response = await fetch(`${API_BASE_URL}/login`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ username, password }),
-                });
+        elif current_deal.get('status') == 'won':
+            return jsonify({"message": "Job already accepted."}), 400
+        elif current_deal.get('status') == 'lost':
+            return jsonify({"message": "Job has been declined/lost and cannot be accepted."}), 400
 
-                const data = await response.json();
-                if (response.ok) {
-                    authToken = data.token;
-                    localStorage.setItem('authToken', authToken);
-                    loginMessage.textContent = '';
-                    updateUI();
-                } else {
-                    loginMessage.textContent = data.message || 'Login failed. Please check your credentials.';
-                }
-            } catch (error) {
-                console.error('Login error:', error);
-                loginMessage.textContent = 'An error occurred during login.';
+    except httpx.RequestError as e:
+        print(f"Network or HTTP error accepting job (httpx): {e}")
+        return jsonify({"message": f"Network error accepting job: {e}"}), 500
+    except ValueError as e:
+        print(f"JSON decoding error accepting job (httpx): {e}. Response text: {deal_response.text if 'deal_response' in locals() else 'N/A'}")
+        return jsonify({"message": f"Data format error accepting job: {e}"}), 500
+    except Exception as e:
+        print(f"Unexpected error accepting job: {e}")
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        traceback_details = traceback.format_exception(exc_type, exc_value, exc_traceback)
+        print("".join(traceback_details))
+        return jsonify({"message": f"Error accepting job: {e}"}), 500
+
+
+@app.route('/jobs/<job_id>/decline', methods=['POST'])
+def decline_job(job_id):
+    contractor_id = authenticate_contractor(request)
+    if not contractor_id:
+        return jsonify({"message": "Unauthorized"}), 401
+
+    if not PIPEDRIVE_BASE_URL or not PIPEDRIVE_API_TOKEN:
+        return jsonify({"message": "Pipedrive API not configured."}), 500
+
+    try:
+        deal_url = f"{PIPEDRIVE_BASE_URL}/deals/{job_id}"
+        params = {'api_token': PIPEDRIVE_API_TOKEN}
+        
+        with httpx.Client(verify=False) as client:
+            deal_response = client.get(deal_url, params=params)
+        deal_response.raise_for_status()
+        current_deal = deal_response.json().get('data')
+
+        if not current_deal:
+            return jsonify({"message": "Job (Deal) not found in Pipedrive"}), 404
+
+        if current_deal.get('status') == 'open':
+            update_url = f"{PIPEDRIVE_BASE_URL}/deals/{job_id}"
+            update_data = {
+                'status': 'lost', # Mark as lost
+                # 'stage_id': YOUR_PIPEDRIVE_DECLINED_STAGE_ID,
+                # 'lost_reason_id': YOUR_LOST_REASON_ID
             }
-        });
+            update_params = {'api_token': PIPEDRIVE_API_TOKEN}
+            
+            with httpx.Client(verify=False) as client:
+                update_response = client.put(update_url, params=update_params, json=update_data)
+            update_response.raise_for_status()
 
-        logoutButton.addEventListener('click', () => {
-            authToken = null;
-            localStorage.removeItem('authToken');
-            updateUI();
-        });
+            with httpx.Client(verify=False) as client:
+                updated_deal_response = client.get(deal_url, params=params)
+            updated_deal_response.raise_for_status()
+            updated_deal = updated_deal_response.json().get('data')
+            
+            if updated_deal:
+                job = map_pipedrive_deal_to_job(updated_deal)
+                job['status'] = 'declined'
+                job['accepted_by'] = contractor_id
+                return jsonify({"message": "Job declined successfully", "job": job}), 200
+            else:
+                return jsonify({"message": "Job declined, but failed to retrieve updated details."}), 200
 
-        async function fetchJobs() {
-            if (!authToken) {
-                console.log('Not authenticated.');
-                return;
-            }
+        elif current_deal.get('status') == 'won':
+            return jsonify({"message": "Job already accepted, cannot decline."}), 400
+        elif current_deal.get('status') == 'lost':
+            return jsonify({"message": "Job already declined."}), 400
 
-            try {
-                const response = await fetch(`${API_BASE_URL}/jobs`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`,
-                        'Content-Type': 'application/json',
-                    },
-                });
+    except httpx.RequestError as e:
+        print(f"Network or HTTP error declining job (httpx): {e}")
+        return jsonify({"message": f"Network error declining job: {e}"}), 500
+    except ValueError as e:
+        print(f"JSON decoding error declining job (httpx): {e}. Response text: {deal_response.text if 'deal_response' in locals() else 'N/A'}")
+        return jsonify({"message": f"Data format error declining job: {e}"}), 500
+    except Exception as e:
+        print(f"Unexpected error declining job: {e}")
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        traceback_details = traceback.format_exception(exc_type, exc_value, exc_traceback)
+        print("".join(traceback_details))
+        return jsonify({"message": f"Error declining job: {e}"}), 500
 
-                const data = await response.json();
-                if (response.ok) {
-                    console.log("Jobs data received from backend:", data); // DEBUG LOG
-                    renderJobs(data);
-                } else {
-                    console.error('Failed to fetch jobs:', data.message);
-                    jobsList.innerHTML = `<p class="text-red-500 text-center">${data.message || 'Error fetching jobs.'}</p>`;
-                }
-            } catch (error) {
-                console.error('Fetch jobs error:', error);
-                jobsList.innerHTML = `<p class="text-red-500 text-center">An error occurred while fetching jobs.</p>`;
-            }
-        }
+@app.route('/')
+def home():
+    return "Auto Detailing Backend is running!"
 
-        function renderJobs(jobs) {
-            jobsList.innerHTML = '';
-            if (jobs.length === 0) {
-                noJobsMessage.classList.remove('hidden');
-                return;
-            } else {
-                noJobsMessage.classList.add('hidden');
-            }
-
-            jobs.forEach(job => {
-                console.log("Rendering job:", job); // DEBUG LOG
-                const jobCard = document.createElement('div');
-                jobCard.className = 'bg-gray-50 p-6 rounded-lg shadow-md border border-gray-200';
-
-                let jobDescriptionHTML = '';
-                let mainTitle = '';
-
-                // NEW: Prioritize job_title from Pipedrive deal title
-                if (job.job_title && job.job_title !== "N/A" && job.job_title !== "Untitled Job - No Pipedrive Title") { // Check for default fallback
-                    mainTitle = job.job_title;
-                } else {
-                    // Fallback to year, make, model if job_title is not available
-                    if (job.year && job.year !== "N/A") {
-                        mainTitle += job.year + ' ';
-                    }
-                    if (job.make && job.make !== "N/A") {
-                        mainTitle += job.make + ' ';
-                    }
-                    if (job.model && job.model !== "N/A") {
-                        mainTitle += job.model;
-                    }
-                }
-
-                if (mainTitle.trim() === "") {
-                    mainTitle = "Untitled Job"; // Final fallback
-                }
-
-                jobDescriptionHTML += `<h3 class="text-xl font-semibold text-gray-800 mb-2">${mainTitle.trim()}</h3>`;
-
-                if (job.zip_code && job.zip_code !== "N/A") {
-                    jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Zip Code:</strong> ${job.zip_code}</p>`;
-                }
-                if (job.appointment_date && job.appointment_date !== "N/A") {
-                    jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Appointment Date:</strong> ${job.appointment_date}</p>`;
-                }
-                if (job.appointment_time && job.appointment_time !== "N/A") {
-                    jobDescriptionHTML += `<p class="text-gray-600 mb-4"><strong>Appointment Time:</strong> ${job.appointment_time}</p>`;
-                }
-
-                jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-4"><strong>Status:</strong> <span class="${job.status === 'accepted' ? 'text-green-600' : job.status === 'declined' ? 'text-red-600' : 'text-yellow-600'} capitalize">${job.status}</span></p>`;
-
-                if (job.status === 'accepted') {
-                    let customerDetails = '';
-                    if (job.customer_name && job.customer_name !== "N/A") {
-                        customerDetails += `<p class="text-gray-600 mb-1"><strong>Customer Name:</strong> ${job.customer_name}</p>`;
-                    }
-                    if (job.customer_phone && job.customer_phone !== "N/A") {
-                        customerDetails += `<p class="text-gray-600 mb-1"><strong>Customer Phone:</strong> ${job.customer_phone}</p>`;
-                    }
-                    if (job.customer_address && job.customer_address !== "N/A") {
-                        customerDetails += `<p class="text-gray-600"><strong>Customer Address:</strong> ${job.customer_address}</p>`;
-                    }
-
-                    if (customerDetails) {
-                        jobDescriptionHTML += `
-                            <div class="mt-4 border-t pt-4 border-gray-200">
-                                <h4 class="text-lg font-semibold text-gray-700 mb-2">Customer Details:</h4>
-                                ${customerDetails}
-                            </div>
-                        `;
-                    }
-                } else {
-                    jobDescriptionHTML += `
-                        <div class="flex space-x-2 mt-4">
-                            <button data-job-id="${job.id}" class="accept-button bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out w-1/2">Accept</button>
-                            <button data-job-id="${job.id}" class="decline-button bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out w-1/2">Decline</button>
-                        </div>
-                    `;
-                }
-
-                jobCard.innerHTML = jobDescriptionHTML;
-                jobsList.appendChild(jobCard);
-            });
-
-            document.querySelectorAll('.accept-button').forEach(button => {
-                button.addEventListener('click', (event) => handleJobAction(event.target.dataset.jobId, 'accept'));
-            });
-            document.querySelectorAll('.decline-button').forEach(button => {
-                button.addEventListener('click', (event) => handleJobAction(event.target.dataset.jobId, 'decline'));
-            });
-        }
-
-        async function handleJobAction(jobId, actionType) {
-            if (!authToken) {
-                console.log('Not authenticated.');
-                return;
-            }
-
-            try {
-                const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/${actionType}`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ data: 'some_data' }), // Pass some data for accept/decline for robustness
-                });
-
-                const data = await response.json();
-                if (response.ok) {
-                    fetchJobs();
-                } else {
-                    alert(data.message || `Failed to ${actionType} job.`);
-                    console.error(`Failed to ${actionType} job:`, data.message);
-                }
-            } catch (error) {
-                console.error(`Error during ${actionType} job:`, error);
-                alert(`An error occurred while trying to ${actionType} the job.`);
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', updateUI);
-    </script>
-</body>
-</html>
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    app.run(debug=True, host='0.0.0.0', port=port)
