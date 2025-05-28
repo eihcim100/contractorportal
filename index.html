@@ -61,49 +61,63 @@
     </div>
     
     <script>
+        // Base URL for your Render.com backend API
         const API_BASE_URL = 'https://michie-detailing-backend.onrender.com';
 
+        // Get references to main UI sections
         const loginSection = document.getElementById('login-section');
         const createAccountSection = document.getElementById('create-account-section');
         const jobsSection = document.getElementById('jobs-section');
 
+        // Get references to login form elements
         const usernameInput = document.getElementById('username');
         const passwordInput = document.getElementById('password');
         const loginButton = document.getElementById('login-button');
         const loginMessage = document.getElementById('login-message');
         const showCreateAccountButton = document.getElementById('show-create-account-button');
 
+        // Get references to create account form elements (present but hidden/non-functional)
         const newUsernameInput = document.getElementById('new-username');
         const newPasswordInput = document.getElementById('new-password');
         const createAccountButton = document.getElementById('create-account-button');
         const createAccountMessage = document.getElementById('create-account-message');
         const showLoginButton = document.getElementById('show-login-button');
 
+        // Get references to job list elements and action buttons
         const refreshJobsButtonBottom = document.getElementById('refresh-jobs-button-bottom');
         const logoutButton = document.getElementById('logout-button');
         const jobsList = document.getElementById('jobs-list');
         const noJobsMessage = document.getElementById('no-jobs-message');
 
+        // Retrieve authentication token from browser's local storage
         let authToken = localStorage.getItem('authToken');
 
+        /**
+         * Updates the UI visibility based on whether the user is authenticated.
+         * Fetches jobs if authenticated.
+         */
         function updateUI() {
             if (authToken) {
                 loginSection.classList.add('hidden');
-                createAccountSection.classList.add('hidden');
+                createAccountSection.classList.add('hidden'); // Ensure create account is hidden
                 jobsSection.classList.remove('hidden');
-                refreshJobsButtonBottom.classList.remove('hidden');
-                fetchJobs();
+                refreshJobsButtonBottom.classList.remove('hidden'); // Show refresh button
+                fetchJobs(); // Fetch jobs automatically on UI update (after login)
             } else {
                 loginSection.classList.remove('hidden');
-                createAccountSection.classList.add('hidden');
+                createAccountSection.classList.add('hidden'); // Ensure create account is hidden
                 jobsSection.classList.add('hidden');
-                refreshJobsButtonBottom.classList.add('hidden');
-                jobsList.innerHTML = '';
+                refreshJobsButtonBottom.classList.add('hidden'); // Hide refresh button
+                jobsList.innerHTML = ''; // Clear job list on logout
             }
         }
 
+        // Event listener for the Refresh Jobs button
         refreshJobsButtonBottom.addEventListener('click', fetchJobs);
 
+        /**
+         * Handles the login process by sending credentials to the backend.
+         */
         loginButton.addEventListener('click', async () => {
             const username = usernameInput.value;
             const password = passwordInput.value;
@@ -120,9 +134,9 @@
                 const data = await response.json();
                 if (response.ok) {
                     authToken = data.token;
-                    localStorage.setItem('authToken', authToken);
-                    loginMessage.textContent = '';
-                    updateUI();
+                    localStorage.setItem('authToken', authToken); // Store token for future requests
+                    loginMessage.textContent = ''; // Clear any previous login messages
+                    updateUI(); // Update UI to show jobs section
                 } else {
                     loginMessage.textContent = data.message || 'Login failed. Please check your credentials.';
                 }
@@ -132,15 +146,21 @@
             }
         });
 
+        /**
+         * Handles the logout process by clearing the authentication token.
+         */
         logoutButton.addEventListener('click', () => {
-            authToken = null;
-            localStorage.removeItem('authToken');
-            updateUI();
+            authToken = null; // Clear the token in memory
+            localStorage.removeItem('authToken'); // Remove token from local storage
+            updateUI(); // Update UI to show login section
         });
 
+        /**
+         * Fetches job data from the backend API.
+         */
         async function fetchJobs() {
             if (!authToken) {
-                console.log('Not authenticated.');
+                console.log('Not authenticated. Cannot fetch jobs.');
                 return;
             }
 
@@ -148,15 +168,15 @@
                 const response = await fetch(`${API_BASE_URL}/jobs`, {
                     method: 'GET',
                     headers: {
-                        'Authorization': `Bearer ${authToken}`,
+                        'Authorization': `Bearer ${authToken}`, // Send the authentication token
                         'Content-Type': 'application/json',
                     },
                 });
 
                 const data = await response.json();
                 if (response.ok) {
-                    console.log("Jobs data received from backend:", data); // DEBUG LOG
-                    renderJobs(data);
+                    console.log("DEBUG: Jobs data received from backend:", data); // DEBUG LOG
+                    renderJobs(data); // Render the fetched jobs
                 } else {
                     console.error('Failed to fetch jobs:', data.message);
                     jobsList.innerHTML = `<p class="text-red-500 text-center">${data.message || 'Error fetching jobs.'}</p>`;
@@ -167,28 +187,32 @@
             }
         }
 
+        /**
+         * Dynamically renders the list of jobs in the UI.
+         * @param {Array<Object>} jobs - An array of job objects to render.
+         */
         function renderJobs(jobs) {
-            jobsList.innerHTML = '';
+            jobsList.innerHTML = ''; // Clear previous job listings
             if (jobs.length === 0) {
-                noJobsMessage.classList.remove('hidden');
+                noJobsMessage.classList.remove('hidden'); // Show "No jobs" message if list is empty
                 return;
             } else {
-                noJobsMessage.classList.add('hidden');
+                noJobsMessage.classList.add('hidden'); // Hide "No jobs" message
             }
 
             jobs.forEach(job => {
-                console.log("Rendering job:", job); // DEBUG LOG
+                console.log("DEBUG: Rendering job:", job); // DEBUG LOG
                 const jobCard = document.createElement('div');
                 jobCard.className = 'bg-gray-50 p-6 rounded-lg shadow-md border border-gray-200';
 
                 let jobDescriptionHTML = '';
                 let mainTitle = '';
 
-                // Prioritize job_title from Pipedrive deal title
+                // Prioritize job_title from Pipedrive deal title for the main heading
                 if (job.job_title && job.job_title !== "N/A" && job.job_title !== "Untitled Job - No Pipedrive Title") {
                     mainTitle = job.job_title;
                 } else {
-                    // Fallback to year, make, model if job_title is not available
+                    // Fallback to Year, Make, Model if job_title is not available
                     if (job.year && job.year !== "N/A") {
                         mainTitle += job.year + ' ';
                     }
@@ -201,12 +225,12 @@
                 }
 
                 if (mainTitle.trim() === "") {
-                    mainTitle = "Untitled Job"; // Final fallback
+                    mainTitle = "Untitled Job"; // Final fallback title
                 }
 
                 jobDescriptionHTML += `<h3 class="text-xl font-semibold text-gray-800 mb-2">${mainTitle.trim()}</h3>`;
 
-                // Display Vehicle (Year, Make, Model)
+                // Display Vehicle (Year, Make, Model) - always show label, value or N/A
                 let vehicleInfo = '';
                 if (job.year && job.year !== "N/A") {
                     vehicleInfo += job.year + ' ';
@@ -220,17 +244,19 @@
                 jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Vehicle:</strong> ${vehicleInfo.trim() || "N/A"}</p>`;
 
 
+                // Display other general job details - always show label, value or N/A
                 jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Zip Code:</strong> ${job.zip_code || "N/A"}</p>`;
                 jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Appointment Date:</strong> ${job.appointment_date || "N/A"}</p>`;
                 jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Appointment Time:</strong> ${job.appointment_time || "N/A"}</p>`;
-                jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Date of Service:</strong> ${job.date_of_service || "N/A"}</p>`; // NEW: Date of Service
+                jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Date of Service:</strong> ${job.date_of_service || "N/A"}</p>`;
                 jobDescriptionHTML += `<p class="text-gray-600 mb-4"><strong>Estimated Time:</strong> ${job.estimated_time || "N/A"}</p>`;
 
 
+                // Display job status
                 jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-4"><strong>Status:</strong> <span class="${job.status === 'accepted' ? 'text-green-600' : job.status === 'declined' ? 'text-red-600' : 'text-yellow-600'} capitalize">${job.status}</span></p>`;
 
+                // Display customer details ONLY if the job is accepted
                 if (job.status === 'accepted') {
-                    // Always display labels for customer details, show N/A if data is missing
                     let customerDetailsHTML = `
                         <p class="text-gray-600 mb-1"><strong>Customer Name:</strong> ${job.customer_name || "N/A"}</p>
                         <p class="text-gray-600 mb-1"><strong>Customer Phone:</strong> ${job.customer_phone || "N/A"}</p>
@@ -243,6 +269,7 @@
                         </div>
                     `;
                 } else {
+                    // Show Accept/Decline buttons if job is pending
                     jobDescriptionHTML += `
                         <div class="flex space-x-2 mt-4">
                             <button data-job-id="${job.id}" class="accept-button bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out w-1/2">Accept</button>
@@ -255,6 +282,7 @@
                 jobsList.appendChild(jobCard);
             });
 
+            // Add event listeners to the dynamically created Accept/Decline buttons
             document.querySelectorAll('.accept-button').forEach(button => {
                 button.addEventListener('click', (event) => handleJobAction(event.target.dataset.jobId, 'accept'));
             });
@@ -263,6 +291,11 @@
             });
         }
 
+        /**
+         * Handles job acceptance or declination by sending a request to the backend.
+         * @param {string} jobId - The ID of the job to act on.
+         * @param {string} actionType - 'accept' or 'decline'.
+         */
         async function handleJobAction(jobId, actionType) {
             if (!authToken) {
                 console.log('Not authenticated.');
@@ -275,12 +308,12 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ data: 'some_data' }), // Pass some data for accept/decline for robustness
+                    body: JSON.stringify({ data: 'some_data' }), // Pass some data for robustness
                 });
 
                 const data = await response.json();
                 if (response.ok) {
-                    fetchJobs(); // Refresh jobs after action
+                    fetchJobs(); // Refresh jobs list after successful action
                 } else {
                     alert(data.message || `Failed to ${actionType} job.`);
                     console.error(`Failed to ${actionType} job:`, data.message);
@@ -291,6 +324,7 @@
             }
         }
 
+        // Initial UI update when the DOM is fully loaded
         document.addEventListener('DOMContentLoaded', updateUI);
     </script>
 </body>
