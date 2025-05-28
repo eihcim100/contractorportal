@@ -145,6 +145,7 @@
 
                 const data = await response.json();
                 if (response.ok) {
+                    console.log("Jobs data received from backend:", data); // DEBUG LOG
                     renderJobs(data);
                 } else {
                     console.error('Failed to fetch jobs:', data.message);
@@ -166,6 +167,7 @@
             }
 
             jobs.forEach(job => {
+                console.log("Rendering job:", job); // DEBUG LOG
                 const jobCard = document.createElement('div');
                 jobCard.className = 'bg-gray-50 p-6 rounded-lg shadow-md border border-gray-200';
 
@@ -173,7 +175,7 @@
                 let mainTitle = '';
 
                 // NEW: Prioritize job_title from Pipedrive deal title
-                if (job.job_title && job.job_title !== "N/A") {
+                if (job.job_title && job.job_title !== "N/A" && job.job_title !== "Untitled Job - No Pipedrive Title") { // Check for default fallback
                     mainTitle = job.job_title;
                 } else {
                     // Fallback to year, make, model if job_title is not available
@@ -260,6 +262,7 @@
                         'Authorization': `Bearer ${authToken}`,
                         'Content-Type': 'application/json',
                     },
+                    body: JSON.stringify({ data: 'some_data' }), // Pass some data for accept/decline for robustness
                 });
 
                 const data = await response.json();
