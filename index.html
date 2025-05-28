@@ -12,8 +12,8 @@
         }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
-    <div id="app" class="bg-white p-8 rounded-lg shadow-lg w-full max-w-2xl">
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4">
+    <div id="app" class="bg-white p-8 rounded-lg shadow-lg w-full max-w-2xl flex-grow">
         <div id="login-section">
             <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Contractor Login</h2>
             <div class="mb-4">
@@ -54,10 +54,12 @@
             </div>
         </div>
 
-        <button id="refresh-jobs-button-bottom" class="bg-black text-white font-bold py-1 px-3 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out mt-6 mx-auto block w-full max-w-xs">Refresh Jobs</button>
-
     </div>
 
+    <div class="w-full max-w-2xl mt-4">
+        <button id="refresh-jobs-button-bottom" class="bg-black text-white font-bold py-1 px-3 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out mx-auto block">Refresh Jobs</button>
+    </div>
+    
     <script>
         const API_BASE_URL = 'https://michie-detailing-backend.onrender.com';
 
@@ -77,7 +79,7 @@
         const createAccountMessage = document.getElementById('create-account-message');
         const showLoginButton = document.getElementById('show-login-button');
 
-        const refreshJobsButtonBottom = document.getElementById('refresh-jobs-button-bottom'); // NEW ID for refresh button
+        const refreshJobsButtonBottom = document.getElementById('refresh-jobs-button-bottom');
         const logoutButton = document.getElementById('logout-button');
         const jobsList = document.getElementById('jobs-list');
         const noJobsMessage = document.getElementById('no-jobs-message');
@@ -89,18 +91,17 @@
                 loginSection.classList.add('hidden');
                 createAccountSection.classList.add('hidden');
                 jobsSection.classList.remove('hidden');
-                refreshJobsButtonBottom.classList.remove('hidden'); // Show refresh button
+                refreshJobsButtonBottom.classList.remove('hidden');
                 fetchJobs();
             } else {
                 loginSection.classList.remove('hidden');
                 createAccountSection.classList.add('hidden');
                 jobsSection.classList.add('hidden');
-                refreshJobsButtonBottom.classList.add('hidden'); // Hide refresh button
+                refreshJobsButtonBottom.classList.add('hidden');
                 jobsList.innerHTML = '';
             }
         }
 
-        // Event listener for the new refresh button ID
         refreshJobsButtonBottom.addEventListener('click', fetchJobs);
 
         loginButton.addEventListener('click', async () => {
@@ -216,14 +217,13 @@
                 if (job.model && job.model !== "N/A") {
                     vehicleInfo += job.model;
                 }
-                // Always display label, show N/A if data is missing
                 jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Vehicle:</strong> ${vehicleInfo.trim() || "N/A"}</p>`;
 
 
-                // Always display label, show N/A if data is missing
                 jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Zip Code:</strong> ${job.zip_code || "N/A"}</p>`;
                 jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Appointment Date:</strong> ${job.appointment_date || "N/A"}</p>`;
                 jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Appointment Time:</strong> ${job.appointment_time || "N/A"}</p>`;
+                jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Date of Service:</strong> ${job.date_of_service || "N/A"}</p>`; // NEW: Date of Service
                 jobDescriptionHTML += `<p class="text-gray-600 mb-4"><strong>Estimated Time:</strong> ${job.estimated_time || "N/A"}</p>`;
 
 
@@ -231,29 +231,17 @@
 
                 if (job.status === 'accepted') {
                     // Always display labels for customer details, show N/A if data is missing
-                    jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Customer Name:</strong> ${job.customer_name || "N/A"}</p>`;
-                    jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Customer Phone:</strong> ${job.customer_phone || "N/A"}</p>`;
-                    jobDescriptionHTML += `<p class="text-gray-600"><strong>Customer Address:</strong> ${job.customer_address || "N/A"}</p>`;
-
-                    // No need for 'if customerDetails' check here, as labels are always there
+                    let customerDetailsHTML = `
+                        <p class="text-gray-600 mb-1"><strong>Customer Name:</strong> ${job.customer_name || "N/A"}</p>
+                        <p class="text-gray-600 mb-1"><strong>Customer Phone:</strong> ${job.customer_phone || "N/A"}</p>
+                        <p class="text-gray-600"><strong>Customer Address:</strong> ${job.customer_address || "N/A"}</p>
+                    `;
                     jobDescriptionHTML += `
                         <div class="mt-4 border-t pt-4 border-gray-200">
                             <h4 class="text-lg font-semibold text-gray-700 mb-2">Customer Details:</h4>
-                            ${jobDescriptionHTML.substring(jobDescriptionHTML.lastIndexOf('<p class="text-gray-600 mb-1"><strong>Customer Name:</strong>'))}
+                            ${customerDetailsHTML}
                         </div>
                     `;
-                    // Fix: The previous logic for customer details was duplicating the P tags.
-                    // Instead, construct customerDetails string and then append it.
-                    let acceptedCustomerDetailsHTML = `
-                        <div class="mt-4 border-t pt-4 border-gray-200">
-                            <h4 class="text-lg font-semibold text-gray-700 mb-2">Customer Details:</h4>
-                            <p class="text-gray-600 mb-1"><strong>Customer Name:</strong> ${job.customer_name || "N/A"}</p>
-                            <p class="text-gray-600 mb-1"><strong>Customer Phone:</strong> ${job.customer_phone || "N/A"}</p>
-                            <p class="text-gray-600"><strong>Customer Address:</strong> ${job.customer_address || "N/A"}</p>
-                        </div>
-                    `;
-                    jobDescriptionHTML += acceptedCustomerDetailsHTML;
-
                 } else {
                     jobDescriptionHTML += `
                         <div class="flex space-x-2 mt-4">
