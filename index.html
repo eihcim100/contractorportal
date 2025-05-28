@@ -117,7 +117,6 @@
 
         /**
          * Handles the login process by sending credentials to the backend.
-         * Now uses Firebase Authentication via backend.
          */
         loginButton.addEventListener('click', async () => {
             const username = usernameInput.value; // This should be an email
@@ -134,10 +133,8 @@
 
                 const data = await response.json();
                 if (response.ok) {
-                    // Backend now returns firebase_custom_token and uid
-                    // We will store the uid as the authToken for simplicity
-                    // In a full Firebase client-side app, you'd use signInWithCustomToken here.
-                    authToken = data.uid; // Use Firebase UID as the token for subsequent requests
+                    // Backend now returns the session token from Firestore
+                    authToken = data.token; // Use the session token as the authToken
                     localStorage.setItem('authToken', authToken); 
                     loginMessage.textContent = ''; // Clear any previous login messages
                     updateUI(); // Update UI to show jobs section
@@ -231,7 +228,7 @@
                 const response = await fetch(`${API_BASE_URL}/jobs`, {
                     method: 'GET',
                     headers: {
-                        'Authorization': `Bearer ${authToken}`, // Send the Firebase UID as the token
+                        'Authorization': `Bearer ${authToken}`, // Send the session token
                         'Content-Type': 'application/json',
                     },
                 });
@@ -370,7 +367,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}` // Send the Firebase UID as the token
+                        'Authorization': `Bearer ${authToken}` // Send the session token
                     },
                     body: JSON.stringify({ data: 'some_data' }), // Pass some data for robustness
                 });
