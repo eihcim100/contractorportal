@@ -75,7 +75,7 @@
         const createAccountMessage = document.getElementById('create-account-message');
         const showLoginButton = document.getElementById('show-login-button');
 
-        const refreshJobsButton = document.getElementById('refresh-jobs-button'); // NEW: Refresh button
+        const refreshJobsButton = document.getElementById('refresh-jobs-button');
         const logoutButton = document.getElementById('logout-button');
         const jobsList = document.getElementById('jobs-list');
         const noJobsMessage = document.getElementById('no-jobs-message');
@@ -96,7 +96,6 @@
             }
         }
 
-        // NEW: Event listener for Refresh Jobs button
         refreshJobsButton.addEventListener('click', fetchJobs);
 
         loginButton.addEventListener('click', async () => {
@@ -135,7 +134,7 @@
 
         async function fetchJobs() {
             if (!authToken) {
-                console.log('Not authenticated. Cannot fetch jobs.');
+                console.log('Not authenticated.');
                 return;
             }
 
@@ -201,7 +200,7 @@
 
                 jobDescriptionHTML += `<h3 class="text-xl font-semibold text-gray-800 mb-2">${mainTitle.trim()}</h3>`;
 
-                // Display Year, Make, Model if available
+                // Display Year, Make, Model
                 let vehicleInfo = '';
                 if (job.year && job.year !== "N/A") {
                     vehicleInfo += job.year + ' ';
@@ -212,30 +211,13 @@
                 if (job.model && job.model !== "N/A") {
                     vehicleInfo += job.model;
                 }
-                if (vehicleInfo.trim() !== "") {
-                    jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Vehicle:</strong> ${vehicleInfo.trim()}</p>`;
-                }
+                jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Vehicle:</strong> ${vehicleInfo.trim() || "N/A"}</p>`;
 
-                if (job.zip_code && job.zip_code !== "N/A") {
-                    jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Zip Code:</strong> ${job.zip_code}</p>`;
-                }
-                if (job.appointment_date && job.appointment_date !== "N/A") {
-                    jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Appointment Date:</strong> ${job.appointment_date}</p>`;
-                }
-                if (job.appointment_time && job.appointment_time !== "N/A") {
-                    jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Appointment Time:</strong> ${job.appointment_time}</p>`;
-                }
-                // NEW: Display Estimated Time
-                if (job.estimated_time && job.estimated_time !== "N/A") {
-                    jobDescriptionHTML += `<p class="text-gray-600 mb-4"><strong>Estimated Time:</strong> ${job.estimated_time}</p>`;
-                } else {
-                    // If no estimated time, keep the mb-4 spacing from appointment time if it exists
-                    if (job.appointment_time && job.appointment_time !== "N/A") {
-                        jobDescriptionHTML += `<div class="mb-4"></div>`; // Add empty div for consistent spacing
-                    } else {
-                        jobDescriptionHTML += `<div class="mb-1"></div>`; // Smaller spacing if no time
-                    }
-                }
+
+                jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Zip Code:</strong> ${job.zip_code || "N/A"}</p>`;
+                jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Appointment Date:</strong> ${job.appointment_date || "N/A"}</p>`;
+                jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Appointment Time:</strong> ${job.appointment_time || "N/A"}</p>`;
+                jobDescriptionHTML += `<p class="text-gray-600 mb-4"><strong>Estimated Time:</strong> ${job.estimated_time || "N/A"}</p>`;
 
 
                 jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-4"><strong>Status:</strong> <span class="${job.status === 'accepted' ? 'text-green-600' : job.status === 'declined' ? 'text-red-600' : 'text-yellow-600'} capitalize">${job.status}</span></p>`;
@@ -299,7 +281,7 @@
 
                 const data = await response.json();
                 if (response.ok) {
-                    fetchJobs();
+                    fetchJobs(); // Refresh jobs after action
                 } else {
                     alert(data.message || `Failed to ${actionType} job.`);
                     console.error(`Failed to ${actionType} job:`, data.message);
@@ -314,4 +296,3 @@
     </script>
 </body>
 </html>
-
