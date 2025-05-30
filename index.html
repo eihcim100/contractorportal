@@ -25,11 +25,11 @@
             <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Contractor Login</h2>
             <div class="mb-4">
                 <label for="username" class="block text-gray-700 text-sm font-bold mb-2">Username (Email):</label>
-                <input type="email" id="username" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" value="contractor1@example.com">
+                <input type="email" id="username" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
             </div>
             <div class="mb-6">
                 <label for="password" class="block text-gray-700 text-sm font-bold mb-2">Password:</label>
-                <input type="password" id="password" class="text-input" value="password123">
+                <input type="password" id="password" class="text-input">
             </div>
             <button id="login-button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline w-full transition duration-300 ease-in-out">Login</button>
             <p id="login-message" class="text-red-500 text-xs italic mt-4 text-center"></p>
@@ -203,16 +203,24 @@
         function formatAppointmentTime(timeString) {
             if (!timeString || timeString === "N/A") return "N/A";
             try {
-                const [hours, minutes, seconds] = timeString.split(':');
+                // Pipedrive time format is HH:MM:SS (24-hour)
+                const [hours, minutes] = timeString.split(':'); // Split only hours and minutes
                 let hour = parseInt(hours, 10);
                 const ampm = hour >= 12 ? 'PM' : 'AM';
                 hour = hour % 12;
-                hour = hour ? hour : 12;
-                return `${hour}:${minutes} ${ampm}`;
+                hour = hour ? hour : 12; // The hour '0' (midnight) should be '12'
+                return `${hour}:${minutes} ${ampm}`; // 12-hour format without seconds
             } catch (e) {
                 console.error("Error formatting time:", timeString, e);
                 return timeString;
             }
+        }
+
+        function formatCustomerAddress(addressString) {
+            if (!addressString || addressString === "N/A") return "N/A";
+            // This assumes the address comes as a single string and adds line breaks for readability
+            // You might need to refine this if Pipedrive provides structured address components
+            return addressString.replace(/, /g, ',<br>'); // Replace comma-space with comma-line-break
         }
 
 
@@ -243,12 +251,12 @@
                 } else {
                     console.error('FRONTEND ERROR: Failed to fetch jobs:', data.message);
                     openJobsList.innerHTML = `<p class="text-red-500 text-center">${data.message || 'Error fetching jobs.'}</p>`;
-                    claimedJobsList.innerHTML = '';
+                    claimedJobsList.innerHTML = ''; // Clear other list on error
                 }
             } catch (error) {
                 console.error('FRONTEND ERROR: Fetch jobs fetch error:', error);
                 openJobsList.innerHTML = `<p class="text-red-500 text-center">An error occurred while fetching jobs.</p>`;
-                claimedJobsList.innerHTML = '';
+                claimedJobsList.innerHTML = ''; // Clear other list on error
             }
         }
 
@@ -355,7 +363,7 @@
                 let customerDetailsHTML = `
                     <p class="text-gray-600 mb-1"><strong>Customer Name:</strong> ${job.customer_name || "N/A"}</p>
                     <p class="text-gray-600 mb-1"><strong>Customer Phone:</strong> ${job.customer_phone || "N/A"}</p>
-                    <p class="text-gray-600"><strong>Customer Address:</strong> ${job.customer_address || "N/A"}</p>
+                    <p class="text-gray-600"><strong>Customer Address:</strong> ${formatCustomerAddress(job.customer_address)}</p>
                 `;
                 jobDescriptionHTML += `
                     <div class="mt-4 border-t pt-4 border-gray-200">
