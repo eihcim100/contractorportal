@@ -215,6 +215,36 @@
             }
         });
 
+        // --- Date and Time Formatting Functions ---
+        function formatAppointmentDate(dateString) {
+            if (!dateString || dateString === "N/A") return "N/A";
+            try {
+                // Pipedrive date format is YYYY-MM-DD
+                const [year, month, day] = dateString.split('-');
+                return `${month}/${day}/${year}`; // MM/DD/YYYY
+            } catch (e) {
+                console.error("Error formatting date:", dateString, e);
+                return dateString; // Return original if formatting fails
+            }
+        }
+
+        function formatAppointmentTime(timeString) {
+            if (!timeString || timeString === "N/A") return "N/A";
+            try {
+                // Pipedrive time format is HH:MM:SS
+                const [hours, minutes, seconds] = timeString.split(':');
+                let hour = parseInt(hours, 10);
+                const ampm = hour >= 12 ? 'PM' : 'AM';
+                hour = hour % 12;
+                hour = hour ? hour : 12; // The hour '0' should be '12'
+                return `${hour}:${minutes} ${ampm}`; // 12-hour format
+            } catch (e) {
+                console.error("Error formatting time:", timeString, e);
+                return timeString; // Return original if formatting fails
+            }
+        }
+
+
         /**
          * Fetches job data from the backend API.
          */
@@ -306,15 +336,13 @@
 
                 // Display other general job details - always show label, value or N/A
                 jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Zip Code:</strong> ${job.zip_code || "N/A"}</p>`;
-                jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Appointment Date:</strong> ${job.appointment_date || "N/A"}</p>`;
-                jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Appointment Time:</strong> ${job.appointment_time || "N/A"}</p>`;
+                jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Appointment Date:</strong> ${formatAppointmentDate(job.appointment_date)}</p>`; // Formatted Date
+                jobDescriptionHTML += `<p class="text-gray-600 mb-4"><strong>Appointment Time:</strong> ${formatAppointmentTime(job.appointment_time)}</p>`; // Formatted Time
                 // Removed "Date of Service" and "Estimated Time" lines from here
-                // jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Date of Service:</strong> ${job.date_of_service || "N/A"}</p>`;
-                // jobDescriptionHTML += `<p class="text-gray-600 mb-4"><strong>Estimated Time:</strong> ${job.estimated_time || "N/A"}</p>`;
 
 
                 // Add a div for consistent spacing if the removed fields were the last ones before status
-                jobDescriptionHTML += `<div class="mb-4"></div>`;
+                // jobDescriptionHTML += `<div class="mb-4"></div>`; // This is now handled by the last displayed field having mb-4
 
 
                 // Display job status
