@@ -200,7 +200,7 @@
                 const date = new Date(dateString + 'T00:00:00Z'); 
                 if (isNaN(date.getTime())) { // Check for invalid date
                     console.warn("Invalid date string for formatting:", dateString);
-                    return dateString;
+                    return dateString; // Return original if formatting fails
                 }
                 const month = (date.getUTCMonth() + 1).toString().padStart(2, '0'); // getUTCMonth is 0-indexed
                 const day = date.getUTCDate().toString().padStart(2, '0');
@@ -229,7 +229,8 @@
 
         function formatCustomerAddress(addressString) {
             if (!addressString || addressString === "N/A") return "N/A";
-            // Replace comma-space with comma-line-break, and then replace spaces with non-breaking spaces
+            // This assumes the address comes as a single string and adds line breaks for readability
+            // It replaces comma-space with comma-line-break, then also replaces spaces with non-breaking spaces
             // to keep parts of the address (like "Oklahoma City") together on one line.
             return addressString.replace(/, /g, ',<br>').replace(/ /g, '&nbsp;'); 
         }
@@ -249,8 +250,8 @@
                 const response = await fetch(`${API_BASE_URL}/jobs`, {
                     method: 'GET',
                     headers: {
-                        'Content-Type': 'application/json',
                         'Authorization': `Bearer ${authToken}`, // Send the session token
+                        'Content-Type': 'application/json',
                     },
                 });
 
@@ -287,14 +288,16 @@
             const claimedJobs = [];
 
             allJobs.sort((a, b) => {
-                // Ensure valid date strings for comparison
-                const dateAString = a.appointment_date + 'T' + (a.appointment_time && a.appointment_time !== "N/A" ? a.appointment_time : '00:00:00');
-                const dateBString = b.appointment_date + 'T' + (b.appointment_time && b.appointment_time !== "N/A" ? b.appointment_time : '00:00:00');
+                // Create robust date strings for comparison, handling N/A or null
+                const dateAString = (a.appointment_date && a.appointment_date !== "N/A" ? a.appointment_date : '1970-01-01') + 'T' + 
+                                    (a.appointment_time && a.appointment_time !== "N/A" ? a.appointment_time : '00:00:00');
+                const dateBString = (b.appointment_date && b.appointment_date !== "N/A" ? b.appointment_date : '1970-01-01') + 'T' + 
+                                    (b.appointment_time && b.appointment_time !== "N/A" ? b.appointment_time : '00:00:00');
                 
                 const dateA = new Date(dateAString);
                 const dateB = new Date(dateBString);
 
-                // Handle cases where date/time might be N/A or invalid
+                // Handle cases where date/time might still be invalid after string manipulation
                 if (isNaN(dateA.getTime()) && isNaN(dateB.getTime())) return 0; // Both invalid, treat as equal
                 if (isNaN(dateA.getTime())) return 1; // A is invalid, push to end
                 if (isNaN(dateB.getTime())) return -1; // B is invalid, push to end
@@ -309,7 +312,6 @@
                 } else if (job.status === 'accepted') {
                     claimedJobs.push(job);
                 }
-                // 'declined' jobs are filtered out by the backend and not added to lists here
             });
 
             if (openJobs.length === 0) {
@@ -419,7 +421,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}` // Send the session token
+                        'Authorization': `Bearer ${authToken}`, // Send the session token
                     },
                     body: JSON.stringify({ data: 'some_data' }), // Pass some data for robustness
                 });
