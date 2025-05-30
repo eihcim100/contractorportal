@@ -86,7 +86,7 @@
         // Base URL for your Render.com backend API
         const API_BASE_URL = 'https://michie-detailing-backend.onrender.com';
 
-        // Get references to main UI sections
+        // DOM element references
         const loginSection = document.getElementById('login-section');
         // Removed createAccountSection reference
         const jobsSection = document.getElementById('jobs-section');
@@ -96,20 +96,12 @@
         const passwordInput = document.getElementById('password');
         const loginButton = document.getElementById('login-button');
         const loginMessage = document.getElementById('login-message');
-        // Removed showCreateAccountButton reference
-
-        // Removed create account form elements references
-        // const newUsernameInput = document.getElementById('new-username');
-        // const newPasswordInput = document.getElementById('new-password');
-        // const createAccountButton = document.getElementById('create-account-button');
-        // const createAccountMessage = document.getElementById('createAccountMessage');
-        // const showLoginButton = document.getElementById('show-login-button');
+        // Removed showCreateAccountButton reference and all create account related elements
 
         // Get references to job list elements and action buttons
         const refreshJobsButtonBottom = document.getElementById('refresh-jobs-button-bottom');
         const logoutButton = document.getElementById('logout-button');
         
-        // New view management elements
         const viewOpenJobsBtn = document.getElementById('view-open-jobs-btn');
         const viewClaimedJobsBtn = document.getElementById('view-claimed-jobs-btn');
         const openJobsView = document.getElementById('open-jobs-view');
@@ -122,8 +114,9 @@
 
         // Retrieve authentication token from browser's local storage
         let authToken = localStorage.getItem('authToken');
+        console.log("FRONTEND DEBUG: Initial authToken from localStorage:", authToken);
 
-        // Store the currently active view (for sorting/filtering)
+
         let currentView = 'open'; // 'open' or 'claimed'
 
         /**
@@ -131,26 +124,22 @@
          * Fetches jobs if authenticated.
          */
         function updateUI() {
+            console.log("FRONTEND DEBUG: updateUI called. Current authToken:", authToken);
             if (authToken) {
                 loginSection.classList.add('hidden');
-                // createAccountSection.classList.add('hidden'); // Removed reference
                 jobsSection.classList.remove('hidden');
-                refreshJobsButtonBottom.classList.remove('hidden'); // Show refresh button
-                fetchJobs(); // Fetch jobs automatically on UI update (after login)
+                refreshJobsButtonBottom.classList.remove('hidden');
+                fetchJobs();
             } else {
                 loginSection.classList.remove('hidden');
-                // createAccountSection.classList.add('hidden'); // Removed reference
                 jobsSection.classList.add('hidden');
-                refreshJobsButtonBottom.classList.add('hidden'); // Hide refresh button
-                openJobsList.innerHTML = ''; // Clear job lists on logout
+                refreshJobsButtonBottom.classList.add('hidden');
+                openJobsList.innerHTML = '';
                 claimedJobsList.innerHTML = '';
             }
         }
 
-        // Event listener for the Refresh Jobs button
         refreshJobsButtonBottom.addEventListener('click', fetchJobs);
-
-        // Event listeners for view toggle buttons
         viewOpenJobsBtn.addEventListener('click', () => showJobsView('open'));
         viewClaimedJobsBtn.addEventListener('click', () => showJobsView('claimed'));
 
@@ -181,13 +170,10 @@
             }
         }
 
-
-        /**
-         * Handles the login process by sending credentials to the backend.
-         */
         loginButton.addEventListener('click', async () => {
-            const username = usernameInput.value; // This should be an email
+            const username = usernameInput.value;
             const password = passwordInput.value;
+            console.log("FRONTEND DEBUG: Login button clicked for:", username);
 
             try {
                 const response = await fetch(`${API_BASE_URL}/login`, {
@@ -199,31 +185,31 @@
                 });
 
                 const data = await response.json();
+                console.log("FRONTEND DEBUG: Login API response data:", data);
+
                 if (response.ok) {
-                    // Backend now returns the session token from PostgreSQL
-                    authToken = data.token; // Use the session token as the authToken
+                    authToken = data.token;
                     localStorage.setItem('authToken', authToken); 
-                    loginMessage.textContent = ''; // Clear any previous login messages
-                    updateUI(); // Update UI to show jobs section
+                    console.log("FRONTEND DEBUG: New authToken set in localStorage:", authToken);
+                    loginMessage.textContent = '';
+                    updateUI();
                 } else {
                     loginMessage.textContent = data.message || 'Login failed. Please check your credentials.';
                 }
             } catch (error) {
-                console.error('Login error:', error);
+                console.error('FRONTEND ERROR: Login fetch error:', error);
                 loginMessage.textContent = 'An error occurred during login.';
             }
         });
 
-        /**
-         * Handles the logout process by clearing the authentication token.
-         */
         logoutButton.addEventListener('click', () => {
-            authToken = null; // Clear the token in memory
-            localStorage.removeItem('authToken'); // Remove token from local storage
-            updateUI(); // Update UI to show login section
+            console.log("FRONTEND DEBUG: Logout button clicked. Clearing authToken.");
+            authToken = null;
+            localStorage.removeItem('authToken');
+            updateUI();
         });
 
-        // --- Removed Create Account Functionality ---
+        // --- Removed Create Account Functionality and its event listeners ---
         // showCreateAccountButton.addEventListener('click', () => { ... });
         // showLoginButton.addEventListener('click', () => { ... });
         // createAccountButton.addEventListener('click', async () => { ... });
@@ -233,28 +219,26 @@
         function formatAppointmentDate(dateString) {
             if (!dateString || dateString === "N/A") return "N/A";
             try {
-                // Pipedrive date format is YYYY-MM-DD
                 const [year, month, day] = dateString.split('-');
-                return `${month}/${day}/${year}`; // MM/DD/YYYY
+                return `${month}/${day}/${year}`;
             } catch (e) {
                 console.error("Error formatting date:", dateString, e);
-                return dateString; // Return original if formatting fails
+                return dateString;
             }
         }
 
         function formatAppointmentTime(timeString) {
             if (!timeString || timeString === "N/A") return "N/A";
             try {
-                // Pipedrive time format is HH:MM:SS (24-hour)
                 const [hours, minutes, seconds] = timeString.split(':');
                 let hour = parseInt(hours, 10);
                 const ampm = hour >= 12 ? 'PM' : 'AM';
                 hour = hour % 12;
-                hour = hour ? hour : 12; // The hour '0' should be '12'
-                return `${hour}:${minutes} ${ampm}`; // 12-hour format
+                hour = hour ? hour : 12;
+                return `${hour}:${minutes} ${ampm}`;
             } catch (e) {
                 console.error("Error formatting time:", timeString, e);
-                return timeString; // Return original if formatting fails
+                return timeString;
             }
         }
 
@@ -263,8 +247,9 @@
          * Fetches job data from the backend API.
          */
         async function fetchJobs() {
+            console.log("FRONTEND DEBUG: fetchJobs called. Current authToken for request:", authToken);
             if (!authToken) {
-                console.log('Not authenticated.');
+                console.log('FRONTEND DEBUG: Not authenticated. Cannot fetch jobs.');
                 return;
             }
 
@@ -278,17 +263,17 @@
                 });
 
                 const data = await response.json();
+                console.log("FRONTEND DEBUG: Jobs API response data:", data);
                 if (response.ok) {
-                    console.log("DEBUG: Jobs data received from backend:", data); // DEBUG LOG
                     window.lastFetchedJobs = data; // Store data for view switching
                     renderJobs(data); // Render the fetched jobs
                 } else {
-                    console.error('Failed to fetch jobs:', data.message);
+                    console.error('FRONTEND ERROR: Failed to fetch jobs:', data.message);
                     openJobsList.innerHTML = `<p class="text-red-500 text-center">${data.message || 'Error fetching jobs.'}</p>`;
                     claimedJobsList.innerHTML = ''; // Clear other list on error
                 }
             } catch (error) {
-                console.error('Fetch jobs error:', error);
+                console.error('FRONTEND ERROR: Fetch jobs fetch error:', error);
                 openJobsList.innerHTML = `<p class="text-red-500 text-center">An error occurred while fetching jobs.</p>`;
                 claimedJobsList.innerHTML = ''; // Clear other list on error
             }
@@ -299,7 +284,7 @@
          * @param {Array<Object>} allJobs - An array of all job objects received from the backend.
          */
         function renderJobs(allJobs) {
-            openJobsList.innerHTML = ''; // Clear previous listings
+            openJobsList.innerHTML = '';
             claimedJobsList.innerHTML = '';
             noOpenJobsMessage.classList.add('hidden');
             noClaimedJobsMessage.classList.add('hidden');
@@ -307,18 +292,15 @@
             const openJobs = [];
             const claimedJobs = [];
 
-            // Sort jobs before filtering and rendering
             allJobs.sort((a, b) => {
-                // Primary sort: Appointment Date (most recent first)
                 const dateA = new Date(a.appointment_date + 'T' + (a.appointment_time === "N/A" ? '00:00:00' : a.appointment_time));
                 const dateB = new Date(b.appointment_date + 'T' + (b.appointment_time === "N/A" ? '00:00:00' : b.appointment_time));
                 
-                // Handle N/A or invalid dates: push them to the end
                 if (isNaN(dateA.getTime()) && isNaN(dateB.getTime())) return 0;
                 if (isNaN(dateA.getTime())) return 1;
                 if (isNaN(dateB.getTime())) return -1;
 
-                return dateB.getTime() - dateA.getTime(); // Descending order (most recent first)
+                return dateB.getTime() - dateA.getTime();
             });
 
 
@@ -328,24 +310,20 @@
                 } else if (job.status === 'accepted') {
                     claimedJobs.push(job);
                 }
-                // 'declined' jobs are filtered out by the backend and not added to lists here
             });
 
-            // Render Open Jobs
             if (openJobs.length === 0) {
                 noOpenJobsMessage.classList.remove('hidden');
             } else {
                 openJobs.forEach(job => openJobsList.appendChild(createJobCard(job)));
             }
 
-            // Render Claimed Jobs
             if (claimedJobs.length === 0) {
                 noClaimedJobsMessage.classList.remove('hidden');
             } else {
                 claimedJobs.forEach(job => claimedJobsList.appendChild(createJobCard(job)));
             }
 
-            // Ensure the correct view is shown after rendering
             showJobsView(currentView);
         }
 
@@ -361,11 +339,9 @@
             let jobDescriptionHTML = '';
             let mainTitle = '';
 
-            // Prioritize job_title from Pipedrive deal title for the main heading
             if (job.job_title && job.job_title !== "N/A" && job.job_title !== "Untitled Job - No Pipedrive Title") {
                 mainTitle = job.job_title;
             } else {
-                // Fallback to Year, Make, Model if job_title is not available
                 if (job.year && job.year !== "N/A") {
                     mainTitle += job.year + ' ';
                 }
@@ -378,12 +354,11 @@
             }
 
             if (mainTitle.trim() === "") {
-                mainTitle = "Untitled Job"; // Final fallback title
+                mainTitle = "Untitled Job";
             }
 
             jobDescriptionHTML += `<h3 class="text-xl font-semibold text-gray-800 mb-2">${mainTitle.trim()}</h3>`;
 
-            // Display Vehicle (Year, Make, Model) - always show label, value or N/A
             let vehicleInfo = '';
             if (job.year && job.year !== "N/A") {
                 vehicleInfo += job.year + ' ';
@@ -397,19 +372,12 @@
             jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Vehicle:</strong> ${vehicleInfo.trim() || "N/A"}</p>`;
 
 
-            // Display other general job details - always show label, value or N/A
             jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Zip Code:</strong> ${job.zip_code || "N/A"}</p>`;
             jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Appointment Date:</strong> ${formatAppointmentDate(job.appointment_date)}</p>`;
             jobDescriptionHTML += `<p class="text-gray-600 mb-4"><strong>Appointment Time:</strong> ${formatAppointmentTime(job.appointment_time)}</p>`;
             
-            // Add a div for consistent spacing if the removed fields were the last ones before status
-            // jobDescriptionHTML += `<div class="mb-4"></div>`; // This is now handled by the last displayed field having mb-4
-
-
-            // Display job status
             jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-4"><strong>Status:</strong> <span class="${job.status === 'accepted' ? 'text-green-600' : job.status === 'declined' ? 'text-red-600' : 'text-yellow-600'} capitalize">${job.status}</span></p>`;
 
-            // Display customer details ONLY if the job is accepted
             if (job.status === 'accepted') {
                 let customerDetailsHTML = `
                     <p class="text-gray-600 mb-1"><strong>Customer Name:</strong> ${job.customer_name || "N/A"}</p>
@@ -423,7 +391,6 @@
                     </div>
                 `;
             } else {
-                // Show Accept/Decline buttons if job is pending
                 jobDescriptionHTML += `
                     <div class="flex space-x-2 mt-4">
                         <button data-job-id="${job.id}" class="accept-button btn btn-green w-1/2">Accept</button>
