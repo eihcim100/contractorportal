@@ -33,23 +33,7 @@
             </div>
             <button id="login-button" class="btn w-full">Login</button>
             <p id="login-message" class="text-red-500 text-xs italic mt-4 text-center"></p>
-            <button id="show-create-account-button" class="mt-4 text-blue-500 hover:text-blue-700 text-sm w-full text-center">Create New Account</button>
-        </div>
-
-        <div id="create-account-section" class="hidden">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Create New Account</h2>
-            <div class="mb-4">
-                <label for="new-username" class="input-label">Username (Email):</label>
-                <input type="email" id="new-username" class="text-input">
             </div>
-            <div class="mb-6">
-                <label for="new-password" class="input-label">Password:</label>
-                <input type="password" id="new-password" class="text-input">
-            </div>
-            <button id="create-account-button" class="btn btn-green w-full">Create Account</button>
-            <p id="create-account-message" class="text-red-500 text-xs italic mt-4 text-center"></p>
-            <button id="show-login-button" class="mt-4 text-blue-500 hover:text-blue-700 text-sm w-full text-center">Back to Login</button>
-        </div>
 
         <div id="jobs-section" class="hidden">
             <div class="flex justify-between items-center mb-6">
@@ -87,7 +71,7 @@
 
         // Get references to main UI sections
         const loginSection = document.getElementById('login-section');
-        const createAccountSection = document.getElementById('create-account-section');
+        // Removed createAccountSection reference
         const jobsSection = document.getElementById('jobs-section');
 
         // Get references to login form elements
@@ -95,14 +79,14 @@
         const passwordInput = document.getElementById('password');
         const loginButton = document.getElementById('login-button');
         const loginMessage = document.getElementById('login-message');
-        const showCreateAccountButton = document.getElementById('show-create-account-button');
+        // Removed showCreateAccountButton reference
 
-        // Get references to create account form elements
-        const newUsernameInput = document.getElementById('new-username');
-        const newPasswordInput = document.getElementById('new-password');
-        const createAccountButton = document.getElementById('create-account-button');
-        const createAccountMessage = document.getElementById('createAccountMessage');
-        const showLoginButton = document.getElementById('show-login-button');
+        // Removed create account form elements references
+        // const newUsernameInput = document.getElementById('new-username');
+        // const newPasswordInput = document.getElementById('new-password');
+        // const createAccountButton = document.getElementById('create-account-button');
+        // const createAccountMessage = document.getElementById('createAccountMessage');
+        // const showLoginButton = document.getElementById('show-login-button');
 
         // Get references to job list elements and action buttons
         const refreshJobsButtonBottom = document.getElementById('refresh-jobs-button-bottom');
@@ -132,13 +116,13 @@
         function updateUI() {
             if (authToken) {
                 loginSection.classList.add('hidden');
-                createAccountSection.classList.add('hidden'); // Ensure create account is hidden
+                // createAccountSection.classList.add('hidden'); // Removed reference
                 jobsSection.classList.remove('hidden');
                 refreshJobsButtonBottom.classList.remove('hidden'); // Show refresh button
                 fetchJobs(); // Fetch jobs automatically on UI update (after login)
             } else {
                 loginSection.classList.remove('hidden');
-                createAccountSection.classList.add('hidden'); // Ensure create account is hidden
+                // createAccountSection.classList.add('hidden'); // Removed reference
                 jobsSection.classList.add('hidden');
                 refreshJobsButtonBottom.classList.add('hidden'); // Hide refresh button
                 openJobsList.innerHTML = ''; // Clear job lists on logout
@@ -222,64 +206,11 @@
             updateUI(); // Update UI to show login section
         });
 
-        // --- Create Account Functionality ---
-        showCreateAccountButton.addEventListener('click', () => {
-            loginSection.classList.add('hidden');
-            createAccountSection.classList.remove('hidden');
-            loginMessage.textContent = ''; // Clear any login messages
-        });
+        // --- Removed Create Account Functionality ---
+        // showCreateAccountButton.addEventListener('click', () => { ... });
+        // showLoginButton.addEventListener('click', () => { ... });
+        // createAccountButton.addEventListener('click', async () => { ... });
 
-        showLoginButton.addEventListener('click', () => {
-            createAccountSection.classList.add('hidden');
-            loginSection.classList.remove('hidden');
-            createAccountMessage.textContent = ''; // Clear any create account messages
-        });
-
-        createAccountButton.addEventListener('click', async () => {
-            const newUsername = newUsernameInput.value; // Must be email format
-            const newPassword = newPasswordInput.value;
-
-            if (!newUsername || !newPassword) {
-                createAccountMessage.textContent = 'Please enter both email and password.';
-                createAccountMessage.classList.remove('text-green-500');
-                createAccountMessage.classList.add('text-red-500');
-                return;
-            }
-
-            try {
-                const response = await fetch(`${API_BASE_URL}/register`, { // Call the backend /register endpoint
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ username: newUsername, password: newPassword }),
-                });
-
-                const data = await response.json();
-                if (response.ok) {
-                    createAccountMessage.textContent = data.message || 'Account created successfully! You can now log in.';
-                    createAccountMessage.classList.remove('text-red-500');
-                    createAccountMessage.classList.add('text-green-500');
-                    // Automatically switch back to login form and pre-fill username
-                    setTimeout(() => {
-                        showLoginButton.click(); // Simulate click on "Back to Login"
-                        usernameInput.value = newUsername; // Pre-fill login username
-                        passwordInput.value = ''; // Clear password for login
-                        newUsernameInput.value = ''; // Clear registration form
-                        newPasswordInput.value = '';
-                    }, 2000);
-                } else {
-                    createAccountMessage.textContent = data.message || 'Account creation failed.';
-                    createAccountMessage.classList.remove('text-green-500');
-                    createAccountMessage.classList.add('text-red-500');
-                }
-            } catch (error) {
-                console.error('Create account error:', error);
-                createAccountMessage.textContent = 'An error occurred during account creation. Please try again.';
-                createAccountMessage.classList.remove('text-green-500');
-                createAccountMessage.classList.add('text-red-500');
-            }
-        });
 
         // --- Date and Time Formatting Functions ---
         function formatAppointmentDate(dateString) {
@@ -448,6 +379,8 @@
             }
             jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Vehicle:</strong> ${vehicleInfo.trim() || "N/A"}</p>`;
 
+
+            // Display other general job details - always show label, value or N/A
             jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Zip Code:</strong> ${job.zip_code || "N/A"}</p>`;
             jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Appointment Date:</strong> ${formatAppointmentDate(job.appointment_date)}</p>`;
             jobDescriptionHTML += `<p class="text-gray-600 mb-4"><strong>Appointment Time:</strong> ${formatAppointmentTime(job.appointment_time)}</p>`;
@@ -455,6 +388,8 @@
             // Add a div for consistent spacing if the removed fields were the last ones before status
             // jobDescriptionHTML += `<div class="mb-4"></div>`; // This is now handled by the last displayed field having mb-4
 
+
+            // Display job status
             jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-4"><strong>Status:</strong> <span class="${job.status === 'accepted' ? 'text-green-600' : job.status === 'declined' ? 'text-red-600' : 'text-yellow-600'} capitalize">${job.status}</span></p>`;
 
             // Display customer details ONLY if the job is accepted
