@@ -220,7 +220,7 @@
          */
         async function fetchJobs() {
             if (!authToken) {
-                console.log('Not authenticated. Cannot fetch jobs.');
+                console.log('Not authenticated.');
                 return;
             }
 
@@ -308,8 +308,13 @@
                 jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Zip Code:</strong> ${job.zip_code || "N/A"}</p>`;
                 jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Appointment Date:</strong> ${job.appointment_date || "N/A"}</p>`;
                 jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Appointment Time:</strong> ${job.appointment_time || "N/A"}</p>`;
-                // Removed "Date of Service" line
-                // Removed "Estimated Time" line
+                // Removed "Date of Service" and "Estimated Time" lines from here
+                // jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Date of Service:</strong> ${job.date_of_service || "N/A"}</p>`;
+                // jobDescriptionHTML += `<p class="text-gray-600 mb-4"><strong>Estimated Time:</strong> ${job.estimated_time || "N/A"}</p>`;
+
+
+                // Add a div for consistent spacing if the removed fields were the last ones before status
+                jobDescriptionHTML += `<div class="mb-4"></div>`;
 
 
                 // Display job status
