@@ -17,10 +17,14 @@
         .view-btn.inactive {
             @apply bg-blue-400;
         }
+        /* Custom style for address formatting to ensure line breaks are applied */
+        .address-display {
+            white-space: pre-wrap; /* Preserves whitespace and allows line breaks */
+        }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
-    <div id="app" class="bg-white p-8 rounded-lg shadow-lg w-full max-w-2xl">
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4">
+    <div id="app" class="bg-white p-8 rounded-lg shadow-lg w-full max-w-2xl flex-grow">
         <div id="login-section">
             <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Contractor Login</h2>
             <div class="mb-4">
@@ -38,7 +42,6 @@
         <div id="jobs-section" class="hidden">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold text-gray-800">Available Jobs</h2>
-                <button id="refresh-jobs-button" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out">Refresh Jobs</button>
                 <button id="logout-button" class="btn btn-red">Logout</button>
             </div>
 
@@ -62,6 +65,10 @@
 
     </div>
 
+    <div class="w-full max-w-2xl mt-4">
+        <button id="refresh-jobs-button-bottom" class="bg-black text-white font-bold py-1 px-3 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out mx-auto block">Refresh Jobs</button>
+    </div>
+    
     <script>
         // Base URL for your Render.com backend API
         const API_BASE_URL = 'https://michie-detailing-backend.onrender.com';
@@ -75,8 +82,7 @@
         const loginButton = document.getElementById('login-button');
         const loginMessage = document.getElementById('login-message');
 
-        // Refresh button reference (now at the top)
-        const refreshJobsButton = document.getElementById('refresh-jobs-button'); 
+        const refreshJobsButtonBottom = document.getElementById('refresh-jobs-button-bottom');
         const logoutButton = document.getElementById('logout-button');
         
         const viewOpenJobsBtn = document.getElementById('view-open-jobs-btn');
@@ -105,20 +111,18 @@
             if (authToken) {
                 loginSection.classList.add('hidden');
                 jobsSection.classList.remove('hidden');
-                // Ensure the refresh button is visible/hidden correctly
-                refreshJobsButton.classList.remove('hidden'); 
+                refreshJobsButtonBottom.classList.remove('hidden');
                 fetchJobs();
             } else {
                 loginSection.classList.remove('hidden');
                 jobsSection.classList.add('hidden');
-                refreshJobsButton.classList.add('hidden');
+                refreshJobsButtonBottom.classList.add('hidden');
                 openJobsList.innerHTML = '';
                 claimedJobsList.innerHTML = '';
             }
         }
 
-        // Event listener for the Refresh Jobs button (now at the top)
-        refreshJobsButton.addEventListener('click', fetchJobs); 
+        refreshJobsButtonBottom.addEventListener('click', fetchJobs);
         viewOpenJobsBtn.addEventListener('click', () => showJobsView('open'));
         viewClaimedJobsBtn.addEventListener('click', () => showJobsView('claimed'));
 
@@ -193,32 +197,34 @@
             if (!dateString || dateString === "N/A") return "N/A";
             try {
                 const [year, month, day] = dateString.split('-');
-                return `${month}/${day}/${year}`;
+                return `${month}/${day}/${year}`; // MM/DD/YYYY
             } catch (e) {
                 console.error("Error formatting date:", dateString, e);
-                return dateString;
+                return dateString; // Return original if formatting fails
             }
         }
 
         function formatAppointmentTime(timeString) {
             if (!timeString || timeString === "N/A") return "N/A";
             try {
-                const [hours, minutes] = timeString.split(':');
+                const [hours, minutes] = timeString.split(':'); // Split only hours and minutes
                 let hour = parseInt(hours, 10);
                 const ampm = hour >= 12 ? 'PM' : 'AM';
                 hour = hour % 12;
-                hour = hour ? hour : 12;
-                return `${hour}:${minutes} ${ampm}`;
+                hour = hour ? hour : 12; // The hour '0' (midnight) should be '12'
+                return `${hour}:${minutes} ${ampm}`; // 12-hour format without seconds
             } catch (e) {
                 console.error("Error formatting time:", timeString, e);
-                return timeString;
+                return timeString; // Return original if formatting fails
             }
         }
 
         function formatCustomerAddress(addressString) {
             if (!addressString || addressString === "N/A") return "N/A";
             // This assumes the address comes as a single string and adds line breaks for readability
-            return addressString.replace(/, /g, ',<br>'); // Replace comma-space with comma-line-break
+            // It replaces comma-space with comma-line-break, then also replaces spaces with non-breaking spaces
+            // to keep parts of the address together.
+            return addressString.replace(/, /g, ',<br>').replace(/ /g, '&nbsp;'); 
         }
 
 
@@ -247,14 +253,16 @@
                     window.lastFetchedJobs = data; // Store data for view switching
                     renderJobs(data); // Render the fetched jobs
                 } else {
+                    alert(data.message || `Failed to fetch jobs.`); // Use alert for user feedback
                     console.error('FRONTEND ERROR: Failed to fetch jobs:', data.message);
                     openJobsList.innerHTML = `<p class="text-red-500 text-center">${data.message || 'Error fetching jobs.'}</p>`;
-                    claimedJobsList.innerHTML = '';
+                    claimedJobsList.innerHTML = ''; // Clear other list on error
                 }
             } catch (error) {
+                alert(`An error occurred while fetching jobs.`); // Use alert for user feedback
                 console.error('FRONTEND ERROR: Fetch jobs fetch error:', error);
                 openJobsList.innerHTML = `<p class="text-red-500 text-center">An error occurred while fetching jobs.</p>`;
-                claimedJobsList.innerHTML = '';
+                claimedJobsList.innerHTML = ''; // Clear other list on error
             }
         }
 
