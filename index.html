@@ -133,7 +133,7 @@
 
                 const data = await response.json();
                 if (response.ok) {
-                    // Backend now returns the session token from Firestore
+                    // Backend now returns the session token from PostgreSQL
                     authToken = data.token; // Use the session token as the authToken
                     localStorage.setItem('authToken', authToken); 
                     loginMessage.textContent = ''; // Clear any previous login messages
@@ -156,7 +156,7 @@
             updateUI(); // Update UI to show login section
         });
 
-        // --- Create Account Functionality (Now functional via Firebase Backend) ---
+        // --- Create Account Functionality ---
         showCreateAccountButton.addEventListener('click', () => {
             loginSection.classList.add('hidden');
             createAccountSection.classList.remove('hidden');
@@ -170,7 +170,7 @@
         });
 
         createAccountButton.addEventListener('click', async () => {
-            const newUsername = newUsernameInput.value; // Must be email format for Firebase
+            const newUsername = newUsernameInput.value; // Must be email format
             const newPassword = newPasswordInput.value;
 
             if (!newUsername || !newPassword) {
@@ -220,7 +220,7 @@
          */
         async function fetchJobs() {
             if (!authToken) {
-                console.log('Not authenticated.');
+                console.log('Not authenticated. Cannot fetch jobs.');
                 return;
             }
 
@@ -235,7 +235,7 @@
 
                 const data = await response.json();
                 if (response.ok) {
-                    console.log("Jobs data received from backend:", data); // DEBUG LOG
+                    console.log("DEBUG: Jobs data received from backend:", data); // DEBUG LOG
                     renderJobs(data); // Render the fetched jobs
                 } else {
                     console.error('Failed to fetch jobs:', data.message);
@@ -308,8 +308,8 @@
                 jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Zip Code:</strong> ${job.zip_code || "N/A"}</p>`;
                 jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Appointment Date:</strong> ${job.appointment_date || "N/A"}</p>`;
                 jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Appointment Time:</strong> ${job.appointment_time || "N/A"}</p>`;
-                jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Date of Service:</strong> ${job.date_of_service || "N/A"}</p>`;
-                jobDescriptionHTML += `<p class="text-gray-600 mb-4"><strong>Estimated Time:</strong> ${job.estimated_time || "N/A"}</p>`;
+                // Removed "Date of Service" line
+                // Removed "Estimated Time" line
 
 
                 // Display job status
