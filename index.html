@@ -196,7 +196,15 @@
         function formatAppointmentDate(dateString) {
             if (!dateString || dateString === "N/A") return "N/A";
             try {
-                const [year, month, day] = dateString.split('-');
+                // Ensure dateString is treated as UTC to avoid timezone issues with Date constructor
+                const date = new Date(dateString + 'T00:00:00Z'); 
+                if (isNaN(date.getTime())) { // Check for invalid date
+                    console.warn("Invalid date string for formatting:", dateString);
+                    return dateString;
+                }
+                const month = (date.getUTCMonth() + 1).toString().padStart(2, '0'); // getUTCMonth is 0-indexed
+                const day = date.getUTCDate().toString().padStart(2, '0');
+                const year = date.getUTCFullYear();
                 return `${month}/${day}/${year}`; // MM/DD/YYYY
             } catch (e) {
                 console.error("Error formatting date:", dateString, e);
@@ -221,9 +229,8 @@
 
         function formatCustomerAddress(addressString) {
             if (!addressString || addressString === "N/A") return "N/A";
-            // This assumes the address comes as a single string and adds line breaks for readability
-            // It replaces comma-space with comma-line-break, then also replaces spaces with non-breaking spaces
-            // to keep parts of the address together.
+            // Replace comma-space with comma-line-break, and then replace spaces with non-breaking spaces
+            // to keep parts of the address (like "Oklahoma City") together on one line.
             return addressString.replace(/, /g, ',<br>').replace(/ /g, '&nbsp;'); 
         }
 
@@ -242,8 +249,8 @@
                 const response = await fetch(`${API_BASE_URL}/jobs`, {
                     method: 'GET',
                     headers: {
-                        'Authorization': `Bearer ${authToken}`, // Send the session token
                         'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`, // Send the session token
                     },
                 });
 
@@ -280,14 +287,19 @@
             const claimedJobs = [];
 
             allJobs.sort((a, b) => {
-                const dateA = new Date(a.appointment_date + 'T' + (a.appointment_time === "N/A" ? '00:00:00' : a.appointment_time));
-                const dateB = new Date(b.appointment_date + 'T' + (b.appointment_time === "N/A" ? '00:00:00' : b.appointment_time));
+                // Ensure valid date strings for comparison
+                const dateAString = a.appointment_date + 'T' + (a.appointment_time && a.appointment_time !== "N/A" ? a.appointment_time : '00:00:00');
+                const dateBString = b.appointment_date + 'T' + (b.appointment_time && b.appointment_time !== "N/A" ? b.appointment_time : '00:00:00');
                 
-                if (isNaN(dateA.getTime()) && isNaN(dateB.getTime())) return 0;
-                if (isNaN(dateA.getTime())) return 1;
-                if (isNaN(dateB.getTime())) return -1;
+                const dateA = new Date(dateAString);
+                const dateB = new Date(dateBString);
 
-                return dateB.getTime() - dateA.getTime();
+                // Handle cases where date/time might be N/A or invalid
+                if (isNaN(dateA.getTime()) && isNaN(dateB.getTime())) return 0; // Both invalid, treat as equal
+                if (isNaN(dateA.getTime())) return 1; // A is invalid, push to end
+                if (isNaN(dateB.getTime())) return -1; // B is invalid, push to end
+
+                return dateB.getTime() - dateA.getTime(); // Descending order (most recent first)
             });
 
 
@@ -297,6 +309,7 @@
                 } else if (job.status === 'accepted') {
                     claimedJobs.push(job);
                 }
+                // 'declined' jobs are filtered out by the backend and not added to lists here
             });
 
             if (openJobs.length === 0) {
@@ -369,7 +382,7 @@
                 let customerDetailsHTML = `
                     <p class="text-gray-600 mb-1"><strong>Customer Name:</strong> ${job.customer_name || "N/A"}</p>
                     <p class="text-gray-600 mb-1"><strong>Customer Phone:</strong> ${job.customer_phone || "N/A"}</p>
-                    <p class="text-gray-600"><strong>Customer Address:</strong> ${formatCustomerAddress(job.customer_address)}</p>
+                    <p class="text-gray-600 address-display"><strong>Customer Address:</strong> ${formatCustomerAddress(job.customer_address)}</p>
                 `;
                 jobDescriptionHTML += `
                     <div class="mt-4 border-t pt-4 border-gray-200">
