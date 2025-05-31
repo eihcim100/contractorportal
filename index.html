@@ -10,14 +10,21 @@
         body {
             font-family: 'Inter', sans-serif;
         }
+        /* Styles for active/inactive view buttons */
+        .view-btn.active {
+            @apply bg-blue-600;
+        }
+        .view-btn.inactive {
+            @apply bg-blue-400;
+        }
         /* Custom style for address formatting to ensure line breaks are applied */
         .address-display {
             white-space: pre-wrap; /* Preserves whitespace and allows line breaks */
         }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
-    <div id="app" class="bg-white p-8 rounded-lg shadow-lg w-full max-w-2xl">
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4">
+    <div id="app" class="bg-white p-8 rounded-lg shadow-lg w-full max-w-2xl flex-grow">
         <div id="login-section">
             <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Contractor Login</h2>
             <div class="mb-4">
@@ -26,81 +33,130 @@
             </div>
             <div class="mb-6">
                 <label for="password" class="block text-gray-700 text-sm font-bold mb-2">Password:</label>
-                <input type="password" id="password" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline">
+                <input type="password" id="password" class="text-input">
             </div>
             <button id="login-button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline w-full transition duration-300 ease-in-out">Login</button>
             <p id="login-message" class="text-red-500 text-xs italic mt-4 text-center"></p>
-            <button id="show-create-account-button" class="mt-4 text-blue-500 hover:text-blue-700 text-sm w-full text-center hidden">Create New Account</button>
-        </div>
-
-        <div id="create-account-section" class="hidden">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Create New Account</h2>
-            <div class="mb-4">
-                <label for="new-username" class="block text-gray-700 text-sm font-bold mb-2">Username (Email):</label>
-                <input type="email" id="new-username" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-            </div>
-            <div class="mb-6">
-                <label for="new-password" class="block text-gray-700 text-sm font-bold mb-2">Password:</label>
-                <input type="password" id="new-password" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline">
-            </div>
-            <button id="create-account-button" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline w-full transition duration-300 ease-in-out">Create Account</button>
-            <p id="create-account-message" class="text-red-500 text-xs italic mt-4 text-center"></p>
-            <button id="show-login-button" class="mt-4 text-blue-500 hover:text-blue-700 text-sm w-full text-center">Back to Login</button>
         </div>
 
         <div id="jobs-section" class="hidden">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold text-gray-800">Available Jobs</h2>
-                <button id="logout-button" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out">Logout</button>
+                <button id="logout-button" class="btn btn-red">Logout</button>
             </div>
-            <div id="jobs-list" class="space-y-4">
-                <p id="no-jobs-message" class="text-gray-600 text-center hidden">No jobs available at the moment.</p>
+
+            <div class="flex justify-around mb-4 space-x-2">
+                <button id="view-open-jobs-btn" class="view-btn btn w-1/2 active">Open Jobs</button>
+                <button id="view-claimed-jobs-btn" class="view-btn btn w-1/2 inactive">My Accepted Jobs</button>
+            </div>
+
+            <div id="open-jobs-view">
+                <div id="open-jobs-list" class="space-y-4">
+                    <p id="no-open-jobs-message" class="text-gray-600 text-center hidden">No open jobs available at the moment.</p>
+                    </div>
+            </div>
+
+            <div id="claimed-jobs-view" class="hidden">
+                <div id="claimed-jobs-list" class="space-y-4">
+                    <p id="no-claimed-jobs-message" class="text-gray-600 text-center hidden">No accepted jobs found.</p>
+                    </div>
             </div>
         </div>
+
     </div>
 
+    <div class="w-full max-w-2xl mt-4">
+        <button id="refresh-jobs-button-bottom" class="bg-black text-white font-bold py-1 px-3 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out mx-auto block">Refresh Jobs</button>
+    </div>
+    
     <script>
+        // Base URL for your Render.com backend API
         const API_BASE_URL = 'https://michie-detailing-backend.onrender.com';
 
+        // DOM element references
         const loginSection = document.getElementById('login-section');
-        const createAccountSection = document.getElementById('create-account-section');
         const jobsSection = document.getElementById('jobs-section');
 
         const usernameInput = document.getElementById('username');
         const passwordInput = document.getElementById('password');
         const loginButton = document.getElementById('login-button');
         const loginMessage = document.getElementById('login-message');
-        const showCreateAccountButton = document.getElementById('show-create-account-button');
 
-        const newUsernameInput = document.getElementById('new-username');
-        const newPasswordInput = document.getElementById('new-password');
-        const createAccountButton = document.getElementById('create-account-button');
-        const createAccountMessage = document.getElementById('create-account-message');
-        const showLoginButton = document.getElementById('show-login-button');
-
+        const refreshJobsButtonBottom = document.getElementById('refresh-jobs-button-bottom');
         const logoutButton = document.getElementById('logout-button');
-        const jobsList = document.getElementById('jobs-list');
-        const noJobsMessage = document.getElementById('no-jobs-message');
+        
+        const viewOpenJobsBtn = document.getElementById('view-open-jobs-btn');
+        const viewClaimedJobsBtn = document.getElementById('view-claimed-jobs-btn');
+        const openJobsView = document.getElementById('open-jobs-view');
+        const claimedJobsView = document.getElementById('claimed-jobs-view');
+        const openJobsList = document.getElementById('open-jobs-list');
+        const claimedJobsList = document.getElementById('claimed-jobs-list');
+        const noOpenJobsMessage = document.getElementById('no-open-jobs-message');
+        const noClaimedJobsMessage = document.getElementById('no-claimed-jobs-message');
 
+
+        // Retrieve authentication token from browser's local storage
         let authToken = localStorage.getItem('authToken');
+        console.log("FRONTEND DEBUG: Initial authToken from localStorage:", authToken);
 
+
+        let currentView = 'open'; // 'open' or 'claimed'
+
+        /**
+         * Updates the UI visibility based on whether the user is authenticated.
+         * Fetches jobs if authenticated.
+         */
         function updateUI() {
+            console.log("FRONTEND DEBUG: updateUI called. Current authToken:", authToken);
             if (authToken) {
                 loginSection.classList.add('hidden');
-                createAccountSection.classList.add('hidden');
                 jobsSection.classList.remove('hidden');
+                refreshJobsButtonBottom.classList.remove('hidden');
                 fetchJobs();
             } else {
                 loginSection.classList.remove('hidden');
-                createAccountSection.classList.add('hidden');
                 jobsSection.classList.add('hidden');
-                jobsList.innerHTML = '';
+                refreshJobsButtonBottom.classList.add('hidden');
+                openJobsList.innerHTML = '';
+                claimedJobsList.innerHTML = '';
+            }
+        }
+
+        refreshJobsButtonBottom.addEventListener('click', fetchJobs);
+        viewOpenJobsBtn.addEventListener('click', () => showJobsView('open'));
+        viewClaimedJobsBtn.addEventListener('click', () => showJobsView('claimed'));
+
+        /**
+         * Toggles between open and claimed job views.
+         * @param {string} view - 'open' or 'claimed'.
+         */
+        function showJobsView(view) {
+            currentView = view;
+            if (view === 'open') {
+                openJobsView.classList.remove('hidden');
+                claimedJobsView.classList.add('hidden');
+                viewOpenJobsBtn.classList.add('active');
+                viewOpenJobsBtn.classList.remove('inactive');
+                viewClaimedJobsBtn.classList.add('inactive');
+                viewClaimedJobsBtn.classList.remove('active');
+            } else { // view === 'claimed'
+                claimedJobsView.classList.remove('hidden');
+                openJobsView.classList.add('hidden');
+                viewClaimedJobsBtn.classList.add('active');
+                viewClaimedJobsBtn.classList.remove('inactive');
+                viewOpenJobsBtn.classList.add('inactive');
+                viewOpenJobsBtn.classList.remove('active');
+            }
+            // Re-render to ensure current view is correct (if data already loaded)
+            if (window.lastFetchedJobs) {
+                renderJobs(window.lastFetchedJobs);
             }
         }
 
         loginButton.addEventListener('click', async () => {
             const username = usernameInput.value;
             const password = passwordInput.value;
+            console.log("FRONTEND DEBUG: Login button clicked for:", username);
 
             try {
                 const response = await fetch(`${API_BASE_URL}/login`, {
@@ -112,75 +168,29 @@
                 });
 
                 const data = await response.json();
+                console.log("FRONTEND DEBUG: Login API response data:", data);
+
                 if (response.ok) {
                     authToken = data.token;
-                    localStorage.setItem('authToken', authToken);
+                    localStorage.setItem('authToken', authToken); 
+                    console.log("FRONTEND DEBUG: New authToken set in localStorage:", authToken);
                     loginMessage.textContent = '';
                     updateUI();
                 } else {
                     loginMessage.textContent = data.message || 'Login failed. Please check your credentials.';
                 }
             } catch (error) {
-                console.error('Login error:', error);
+                console.error('FRONTEND ERROR: Login fetch error:', error);
                 loginMessage.textContent = 'An error occurred during login.';
             }
         });
 
         logoutButton.addEventListener('click', () => {
+            console.log("FRONTEND DEBUG: Logout button clicked. Clearing authToken.");
             authToken = null;
             localStorage.removeItem('authToken');
             updateUI();
         });
-
-        // --- Create Account Functionality (from v2.html base) ---
-        showCreateAccountButton.addEventListener('click', () => {
-            loginSection.classList.add('hidden');
-            createAccountSection.classList.remove('hidden');
-            loginMessage.textContent = '';
-        });
-
-        createAccountButton.addEventListener('click', async () => {
-            const newUsername = newUsernameInput.value;
-            const newPassword = newPasswordInput.value;
-
-            if (!newUsername || !newPassword) {
-                createAccountMessage.textContent = 'Please enter both email and password.';
-                return;
-            }
-
-            try {
-                const response = await fetch(`${API_BASE_URL}/register`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ username: newUsername, password: newPassword }),
-                });
-
-                const data = await response.json();
-                if (response.ok) {
-                    createAccountMessage.textContent = data.message || 'Account created successfully! You can now log in.';
-                    // Optionally switch back to login form
-                    setTimeout(() => {
-                        showLoginButton.click();
-                        usernameInput.value = newUsername; // Pre-fill login username
-                        passwordInput.value = ''; // Clear password for login
-                    }, 2000);
-                } else {
-                    createAccountMessage.textContent = data.message || 'Account creation failed.';
-                }
-            } catch (error) {
-                console.error('Create account error:', error);
-                createAccountMessage.textContent = 'An error occurred during account creation.';
-            }
-        });
-
-        showLoginButton.addEventListener('click', () => {
-            createAccountSection.classList.add('hidden');
-            loginSection.classList.remove('hidden');
-            createAccountMessage.textContent = '';
-        });
-
 
         // --- Date and Time Formatting Functions ---
         function formatAppointmentDate(dateString) {
@@ -212,13 +222,47 @@
         function formatCustomerAddress(addressString) {
             if (!addressString || addressString === "N/A") return "N/A";
             // This assumes the address comes as a single string and adds line breaks for readability
+            // It replaces comma-space with comma-line-break, then also replaces spaces with non-breaking spaces
+            // to keep parts of the address together.
             return addressString.replace(/, /g, ',<br>').replace(/ /g, '&nbsp;'); 
         }
 
+        /**
+         * Determines if an accepted job should still be displayed based on the 4-hour rule.
+         * @param {string} appointmentDateString - The job's appointment date (YYYY-MM-DD).
+         * @param {string} appointmentTimeString - The job's appointment time (HH:MM:SS).
+         * @returns {boolean} - True if the job should still be displayed, false otherwise.
+         */
+        function shouldDisplayAcceptedJob(appointmentDateString, appointmentTimeString) {
+            // If date or time is missing, or invalid, assume it should still be displayed (don't hide automatically)
+            if (!appointmentDateString || appointmentDateString === "N/A" || !appointmentTimeString || appointmentTimeString === "N/A") {
+                return true;
+            }
+            try {
+                // Combine date and time for a full ISO string (YYYY-MM-DDTHH:MM:SS)
+                // Use 'T' to ensure correct parsing across different browsers/devices
+                const appointmentDateTime = new Date(`${appointmentDateString}T${appointmentTimeString}`);
+                const now = new Date();
+                const fourHours = 4 * 60 * 60 * 1000; // 4 hours in milliseconds
 
+                // If the current time is less than or equal to 4 hours past the appointment time, show it.
+                // Otherwise, hide it.
+                return (now.getTime() - appointmentDateTime.getTime()) <= fourHours;
+
+            } catch (e) {
+                console.error("Error parsing appointment time for display rule:", appointmentDateString, appointmentTimeString, e);
+                return true; // If parsing fails, default to showing the job.
+            }
+        }
+
+
+        /**
+         * Fetches job data from the backend API.
+         */
         async function fetchJobs() {
+            console.log("FRONTEND DEBUG: fetchJobs called. Current authToken for request:", authToken);
             if (!authToken) {
-                console.log('Not authenticated. Cannot fetch jobs.');
+                console.log('FRONTEND DEBUG: Not authenticated. Cannot fetch jobs.');
                 return;
             }
 
@@ -226,42 +270,95 @@
                 const response = await fetch(`${API_BASE_URL}/jobs`, {
                     method: 'GET',
                     headers: {
-                        'Authorization': `Bearer ${authToken}`,
+                        'Authorization': `Bearer ${authToken}`, // Send the session token
                         'Content-Type': 'application/json',
                     },
                 });
 
                 const data = await response.json();
+                console.log("FRONTEND DEBUG: Jobs API response data:", data);
                 if (response.ok) {
-                    renderJobs(data);
+                    window.lastFetchedJobs = data; // Store data for view switching
+                    renderJobs(data); // Render the fetched jobs
                 } else {
-                    alert(data.message || 'Failed to fetch jobs.');
-                    console.error('Failed to fetch jobs:', data.message);
+                    alert(data.message || `Failed to fetch jobs.`); // Use alert for user feedback
+                    console.error('FRONTEND ERROR: Failed to fetch jobs:', data.message);
                     jobsList.innerHTML = `<p class="text-red-500 text-center">${data.message || 'Error fetching jobs.'}</p>`;
                 }
             } catch (error) {
-                console.error('Fetch jobs error:', error);
-                alert('An error occurred while fetching jobs.');
+                alert(`An error occurred while fetching jobs.`); // Use alert for user feedback
+                console.error('FRONTEND ERROR: Fetch jobs fetch error:', error);
                 jobsList.innerHTML = `<p class="text-red-500 text-center">An error occurred while fetching jobs.</p>`;
             }
         }
 
-        function renderJobs(jobs) {
-            jobsList.innerHTML = '';
-            if (jobs.length === 0) {
-                noJobsMessage.classList.remove('hidden');
-                return;
+        /**
+         * Dynamically renders the list of jobs into the appropriate sections.
+         * @param {Array<Object>} allJobs - An array of all job objects received from the backend.
+         */
+        function renderJobs(allJobs) {
+            openJobsList.innerHTML = '';
+            claimedJobsList.innerHTML = '';
+            noOpenJobsMessage.classList.add('hidden');
+            noClaimedJobsMessage.classList.add('hidden');
+
+            const openJobs = [];
+            const claimedJobs = [];
+
+            allJobs.sort((a, b) => {
+                const dateA = new Date(a.appointment_date + 'T' + (a.appointment_time === "N/A" ? '00:00:00' : a.appointment_time));
+                const dateB = new Date(b.appointment_date + 'T' + (b.appointment_time === "N/A" ? '00:00:00' : b.appointment_time));
+                
+                if (isNaN(dateA.getTime()) && isNaN(dateB.getTime())) return 0;
+                if (isNaN(dateA.getTime())) return 1;
+                if (isNaN(dateB.getTime())) return -1;
+
+                return dateB.getTime() - dateA.getTime();
+            });
+
+
+            allJobs.forEach(job => {
+                if (job.status === 'pending') {
+                    openJobs.push(job);
+                } else if (job.status === 'accepted') {
+                    // Apply the 4-hour display rule for accepted jobs
+                    if (shouldDisplayAcceptedJob(job.appointment_date, job.appointment_time)) {
+                        claimedJobs.push(job);
+                    }
+                    // If shouldDisplayAcceptedJob returns false, the job is not added to either list.
+                }
+            });
+
+            if (openJobs.length === 0) {
+                noOpenJobsMessage.classList.remove('hidden');
             } else {
-                noJobsMessage.classList.add('hidden');
+                openJobs.forEach(job => openJobsList.appendChild(createJobCard(job)));
             }
 
-            jobs.forEach(job => {
-                const jobCard = document.createElement('div');
-                jobCard.className = 'bg-gray-50 p-6 rounded-lg shadow-md border border-gray-200';
+            if (claimedJobs.length === 0) {
+                noClaimedJobsMessage.classList.remove('hidden');
+            } else {
+                claimedJobs.forEach(job => claimedJobsList.appendChild(createJobCard(job)));
+            }
 
-                let jobDescriptionHTML = '';
-                let mainTitle = '';
+            showJobsView(currentView);
+        }
 
+        /**
+         * Creates an HTML job card element.
+         * @param {object} job - The job object to render.
+         * @returns {HTMLElement} - The created job card div.
+         */
+        function createJobCard(job) {
+            const jobCard = document.createElement('div');
+            jobCard.className = 'bg-gray-50 p-6 rounded-lg shadow-md border border-gray-200';
+
+            let jobDescriptionHTML = '';
+            let mainTitle = '';
+
+            if (job.job_title && job.job_title !== "N/A" && job.job_title !== "Untitled Job - No Pipedrive Title") {
+                mainTitle = job.job_title;
+            } else {
                 if (job.year && job.year !== "N/A") {
                     mainTitle += job.year + ' ';
                 }
@@ -271,66 +368,70 @@
                 if (job.model && job.model !== "N/A") {
                     mainTitle += job.model;
                 }
+            }
 
-                if (mainTitle.trim() === "") {
-                    mainTitle = "Untitled Job";
-                }
+            if (mainTitle.trim() === "") {
+                mainTitle = "Untitled Job";
+            }
 
-                jobDescriptionHTML += `<h3 class="text-xl font-semibold text-gray-800 mb-2">${mainTitle.trim()}</h3>`;
+            jobDescriptionHTML += `<h3 class="text-xl font-semibold text-gray-800 mb-2">${mainTitle.trim()}</h3>`;
 
-                if (job.zip_code && job.zip_code !== "N/A") {
-                    jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Zip Code:</strong> ${job.zip_code}</p>`;
-                }
-                if (job.appointment_date && job.appointment_date !== "N/A") {
-                    jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Appointment Date:</strong> ${formatAppointmentDate(job.appointment_date)}</p>`;
-                }
-                if (job.appointment_time && job.appointment_time !== "N/A") {
-                    jobDescriptionHTML += `<p class="text-gray-600 mb-4"><strong>Appointment Time:</strong> ${formatAppointmentTime(job.appointment_time)}</p>`;
-                }
+            let vehicleInfo = '';
+            if (job.year && job.year !== "N/A") {
+                vehicleInfo += job.year + ' ';
+            }
+            if (job.make && job.make !== "N/A") {
+                vehicleInfo += job.make + ' ';
+            }
+            if (job.model && job.model !== "N/A") {
+                vehicleInfo += job.model;
+            }
+            jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Vehicle:</strong> ${vehicleInfo.trim() || "N/A"}</p>`;
 
-                jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-4"><strong>Status:</strong> <span class="${job.status === 'accepted' ? 'text-green-600' : job.status === 'declined' ? 'text-red-600' : 'text-yellow-600'} capitalize">${job.status}</span></p>`;
 
-                if (job.status === 'accepted') {
-                    let customerDetails = '';
-                    if (job.customer_name && job.customer_name !== "N/A") {
-                        customerDetails += `<p class="text-gray-600 mb-1"><strong>Customer Name:</strong> ${job.customer_name}</p>`;
-                    }
-                    if (job.customer_phone && job.customer_phone !== "N/A") {
-                        customerDetails += `<p class="text-gray-600 mb-1"><strong>Customer Phone:</strong> ${job.customer_phone}</p>`;
-                    }
-                    if (job.customer_address && job.customer_address !== "N/A") {
-                        customerDetails += `<p class="text-gray-600"><strong>Customer Address:</strong> <span class="address-display">${formatCustomerAddress(job.customer_address)}</span></p>`;
-                    }
+            jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Zip Code:</strong> ${job.zip_code || "N/A"}</p>`;
+            jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Appointment Date:</strong> ${formatAppointmentDate(job.appointment_date)}</p>`;
+            jobDescriptionHTML += `<p class="text-gray-600 mb-4"><strong>Appointment Time:</strong> ${formatAppointmentTime(job.appointment_time)}</p>`;
+            
+            jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-4"><strong>Status:</strong> <span class="${job.status === 'accepted' ? 'text-green-600' : job.status === 'declined' ? 'text-red-600' : 'text-yellow-600'} capitalize">${job.status}</span></p>`;
 
-                    if (customerDetails) {
-                        jobDescriptionHTML += `
-                            <div class="mt-4 border-t pt-4 border-gray-200">
-                                <h4 class="text-lg font-semibold text-gray-700 mb-2">Customer Details:</h4>
-                                ${customerDetails}
-                            </div>
-                        `;
-                    }
-                } else {
-                    jobDescriptionHTML += `
-                        <div class="flex space-x-2 mt-4">
-                            <button data-job-id="${job.id}" class="accept-button bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out w-1/2">Accept</button>
-                            <button data-job-id="${job.id}" class="decline-button bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out w-1/2">Decline</button>
-                        </div>
+            if (job.status === 'accepted') {
+                let customerDetailsHTML = ``;
+                // Only show customer details if the 24-hour rule allows it
+                if (shouldShowCustomerDetails(job.won_time)) {
+                    customerDetailsHTML = `
+                        <p class="text-gray-600 mb-1"><strong>Customer Name:</strong> ${job.customer_name || "N/A"}</p>
+                        <p class="text-gray-600 mb-1"><strong>Customer Phone:</strong> ${job.customer_phone || "N/A"}</p>
+                        <p class="text-gray-600"><strong>Customer Address:</strong> <span class="address-display">${formatCustomerAddress(job.customer_address)}</span></p>
                     `;
+                } else {
+                    customerDetailsHTML = `<p class="text-gray-600">Customer details hidden after 24 hours.</p>`;
                 }
+                
+                jobDescriptionHTML += `
+                    <div class="mt-4 border-t pt-4 border-gray-200">
+                        <h4 class="text-lg font-semibold text-gray-700 mb-2">Customer Details:</h4>
+                        ${customerDetailsHTML}
+                    </div>
+                `;
+            } else {
+                jobDescriptionHTML += `
+                    <div class="flex space-x-2 mt-4">
+                        <button data-job-id="${job.id}" class="accept-button btn btn-green w-1/2">Accept</button>
+                        <button data-job-id="${job.id}" class="decline-button btn btn-red w-1/2">Decline</button>
+                    </div>
+                `;
+            }
 
-                jobCard.innerHTML = jobDescriptionHTML;
-                jobsList.appendChild(jobCard);
-            });
-
-            document.querySelectorAll('.accept-button').forEach(button => {
-                button.addEventListener('click', (event) => handleJobAction(event.target.dataset.jobId, 'accept'));
-            });
-            document.querySelectorAll('.decline-button').forEach(button => {
-                button.addEventListener('click', (event) => handleJobAction(event.target.dataset.jobId, 'decline'));
-            });
+            jobCard.innerHTML = jobDescriptionHTML;
+            return jobCard;
         }
 
+        /**
+         * Handles job acceptance or declination by sending a request to the backend.
+         * @param {string} jobId - The ID of the job to act on.
+         * @param {string} actionType - 'accept' or 'decline'.
+         */
         async function handleJobAction(jobId, actionType) {
             if (!authToken) {
                 console.log('Not authenticated.');
@@ -341,14 +442,15 @@
                 const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/${actionType}`, {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${authToken}`,
                         'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}` // Send the session token
                     },
+                    body: JSON.stringify({ data: 'some_data' }), // Pass some data for robustness
                 });
 
                 const data = await response.json();
                 if (response.ok) {
-                    fetchJobs();
+                    fetchJobs(); // Refresh jobs list after successful action
                 } else {
                     alert(data.message || `Failed to ${actionType} job.`);
                     console.error(`Failed to ${actionType} job:`, data.message);
@@ -359,6 +461,7 @@
             }
         }
 
+        // Initial UI update when the DOM is fully loaded
         document.addEventListener('DOMContentLoaded', updateUI);
     </script>
 </body>
