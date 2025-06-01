@@ -53,14 +53,20 @@
                 <h2 class="text-2xl font-bold text-gray-800">Available Jobs</h2>
                 <button id="logout-button" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out">Logout</button>
             </div>
+            <button id="request-notification-permission-button" class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-1 px-3 rounded-lg text-sm focus:outline-none focus:shadow-outline mb-4 transition duration-300 ease-in-out hidden">
+                Enable Notifications
+            </button>
             <div id="jobs-list" class="space-y-4">
                 <p id="no-jobs-message" class="text-gray-600 text-center hidden">No jobs available at the moment.</p>
             </div>
         </div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.min.js"></script> 
     <script>
         const API_BASE_URL = 'https://michie-detailing-backend.onrender.com';
+        // Socket.IO URL (often the same as API_BASE_URL, but can be separate)
+        const SOCKET_IO_URL = 'https://michie-detailing-backend.onrender.com'; 
 
         const loginSection = document.getElementById('login-section');
         const createAccountSection = document.getElementById('create-account-section');
@@ -82,7 +88,10 @@
         const jobsList = document.getElementById('jobs-list');
         const noJobsMessage = document.getElementById('no-jobs-message');
 
+        const requestNotificationPermissionButton = document.getElementById('request-notification-permission-button'); // NEW
+
         let authToken = localStorage.getItem('authToken');
+        let socket; // Variable to hold the Socket.IO connection
 
         function updateUI() {
             if (authToken) {
@@ -90,13 +99,91 @@
                 createAccountSection.classList.add('hidden');
                 jobsSection.classList.remove('hidden');
                 fetchJobs();
+                // Show notification button if supported and not granted
+                if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+                    requestNotificationPermissionButton.classList.remove('hidden');
+                } else {
+                    requestNotificationPermissionButton.classList.add('hidden');
+                }
+                connectSocketIO(); // Establish Socket.IO connection on login
             } else {
                 loginSection.classList.remove('hidden');
                 createAccountSection.classList.add('hidden');
                 jobsSection.classList.add('hidden');
                 jobsList.innerHTML = '';
+                requestNotificationPermissionButton.classList.add('hidden'); // Hide on logout
+                disconnectSocketIO(); // Disconnect Socket.IO on logout
             }
         }
+
+        // --- Socket.IO Connection and Event Handling ---
+        function connectSocketIO() {
+            if (!socket || !socket.connected) {
+                console.log('Attempting to connect to Socket.IO...');
+                socket = io(SOCKET_IO_URL); // Connect to your Socket.IO server
+
+                socket.on('connect', () => {
+                    console.log('Connected to Socket.IO!');
+                });
+
+                socket.on('disconnect', () => {
+                    console.log('Disconnected from Socket.IO.');
+                });
+
+                socket.on('new_job', (jobData) => {
+                    console.log('Received new job notification:', jobData);
+                    displayBrowserNotification(jobData);
+                    fetchJobs(); // Refresh job list to show the new job
+                });
+
+                socket.on('connect_error', (error) => {
+                    console.error('Socket.IO connection error:', error);
+                });
+            }
+        }
+
+        function disconnectSocketIO() {
+            if (socket && socket.connected) {
+                console.log('Disconnecting from Socket.IO...');
+                socket.disconnect();
+                socket = null; // Clear the socket instance
+            }
+        }
+
+        // --- Browser Notification Functions ---
+        requestNotificationPermissionButton.addEventListener('click', async () => {
+            if ('Notification' in window) {
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    console.log('Notification permission granted.');
+                    requestNotificationPermissionButton.classList.add('hidden'); // Hide button once granted
+                } else {
+                    console.warn('Notification permission denied or dismissed.');
+                }
+            } else {
+                alert('Your browser does not support desktop notifications.');
+            }
+        });
+
+        function displayBrowserNotification(job) {
+            if (Notification.permission === 'granted') {
+                const title = `New Job: ${job.make} ${job.model} in ${job.zip_code}`;
+                const options = {
+                    body: `Appointment: ${formatAppointmentDate(job.appointment_date)} at ${formatAppointmentTime(job.appointment_time)} (Estimated: ${job.estimated_time})`,
+                    icon: 'https://cdn-icons-png.flaticon.com/512/3745/3745674.png' // You can replace this with your business logo
+                };
+                const notification = new Notification(title, options);
+
+                // Optional: Add click behavior
+                notification.onclick = function() {
+                    window.focus(); // Bring the browser window to focus
+                    // You could also navigate to a specific part of the page or job details if implemented
+                };
+            } else {
+                console.warn('Notification permission not granted. Cannot display browser notification.');
+            }
+        }
+
 
         loginButton.addEventListener('click', async () => {
             const username = usernameInput.value;
@@ -160,11 +247,10 @@
                 const data = await response.json();
                 if (response.ok) {
                     createAccountMessage.textContent = data.message || 'Account created successfully! You can now log in.';
-                    // Optionally switch back to login form
                     setTimeout(() => {
                         showLoginButton.click();
-                        usernameInput.value = newUsername; // Pre-fill login username
-                        passwordInput.value = ''; // Clear password for login
+                        usernameInput.value = newUsername;
+                        passwordInput.value = '';
                     }, 2000);
                 } else {
                     createAccountMessage.textContent = data.message || 'Account creation failed.';
@@ -187,7 +273,7 @@
             if (!dateString || dateString === "N/A") return "N/A";
             try {
                 const [year, month, day] = dateString.split('-');
-                return `${month}-${day}-${year}`; // MM-DD-YYYY using dashes
+                return `${month}-${day}-${year}`; 
             } catch (e) {
                 console.error("Error formatting date:", dateString, e);
                 return dateString;
@@ -197,21 +283,32 @@
         function formatAppointmentTime(timeString) {
             if (!timeString || timeString === "N/A") return "N/A";
             try {
-                const [hours, minutes] = timeString.split(':'); // Split only hours and minutes
-                let hour = parseInt(hours, 10);
-                const ampm = hour >= 12 ? 'PM' : 'AM';
-                hour = hour % 12;
-                hour = hour ? hour : 12; // The hour '0' (midnight) should be '12'
-                return `${hour}:${minutes} ${ampm}`; // 12-hour format without seconds
+                // Try parsing as HH:MM AM/PM
+                if (timeString.includes('AM') || timeString.includes('PM')) {
+                    const [time, ampm] = timeString.split(' ');
+                    let [hours, minutes] = time.split(':');
+                    hours = parseInt(hours, 10);
+                    if (ampm === 'PM' && hours < 12) hours += 12;
+                    if (ampm === 'AM' && hours === 12) hours = 0; // Midnight 12 AM is 00:00
+                    return `${hours.toString().padStart(2, '0')}:${minutes} ${ampm}`;
+                } else {
+                    // Assume HH:MM (24-hour format)
+                    const [hours, minutes] = timeString.split(':');
+                    let hour = parseInt(hours, 10);
+                    const ampm = hour >= 12 ? 'PM' : 'AM';
+                    hour = hour % 12;
+                    hour = hour ? hour : 12; 
+                    return `${hour}:${minutes} ${ampm}`; 
+                }
             } catch (e) {
                 console.error("Error formatting time:", timeString, e);
                 return timeString;
             }
         }
 
+
         function formatCustomerAddress(addressString) {
             if (!addressString || addressString === "N/A") return "N/A";
-            // This assumes the address comes as a single string and adds line breaks for readability
             return addressString.replace(/, /g, ',<br>').replace(/ /g, '&nbsp;'); 
         }
 
@@ -348,7 +445,7 @@
 
                 const data = await response.json();
                 if (response.ok) {
-                    fetchJobs();
+                    fetchJobs(); 
                 } else {
                     alert(data.message || `Failed to ${actionType} job.`);
                     console.error(`Failed to ${actionType} job:`, data.message);
