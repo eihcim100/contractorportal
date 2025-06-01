@@ -88,10 +88,10 @@
         const jobsList = document.getElementById('jobs-list');
         const noJobsMessage = document.getElementById('no-jobs-message');
 
-        const requestNotificationPermissionButton = document.getElementById('request-notification-permission-button'); // NEW
+        const requestNotificationPermissionButton = document.getElementById('request-notification-permission-button');
 
         let authToken = localStorage.getItem('authToken');
-        let socket; // Variable to hold the Socket.IO connection
+        let socket; 
 
         function updateUI() {
             if (authToken) {
@@ -99,20 +99,19 @@
                 createAccountSection.classList.add('hidden');
                 jobsSection.classList.remove('hidden');
                 fetchJobs();
-                // Show notification button if supported and not granted
                 if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
                     requestNotificationPermissionButton.classList.remove('hidden');
                 } else {
                     requestNotificationPermissionButton.classList.add('hidden');
                 }
-                connectSocketIO(); // Establish Socket.IO connection on login
+                connectSocketIO();
             } else {
                 loginSection.classList.remove('hidden');
                 createAccountSection.classList.add('hidden');
                 jobsSection.classList.add('hidden');
                 jobsList.innerHTML = '';
-                requestNotificationPermissionButton.classList.add('hidden'); // Hide on logout
-                disconnectSocketIO(); // Disconnect Socket.IO on logout
+                requestNotificationPermissionButton.classList.add('hidden');
+                disconnectSocketIO();
             }
         }
 
@@ -120,7 +119,7 @@
         function connectSocketIO() {
             if (!socket || !socket.connected) {
                 console.log('Attempting to connect to Socket.IO...');
-                socket = io(SOCKET_IO_URL); // Connect to your Socket.IO server
+                socket = io(SOCKET_IO_URL);
 
                 socket.on('connect', () => {
                     console.log('Connected to Socket.IO!');
@@ -133,7 +132,7 @@
                 socket.on('new_job', (jobData) => {
                     console.log('Received new job notification:', jobData);
                     displayBrowserNotification(jobData);
-                    fetchJobs(); // Refresh job list to show the new job
+                    fetchJobs();
                 });
 
                 socket.on('connect_error', (error) => {
@@ -146,7 +145,7 @@
             if (socket && socket.connected) {
                 console.log('Disconnecting from Socket.IO...');
                 socket.disconnect();
-                socket = null; // Clear the socket instance
+                socket = null;
             }
         }
 
@@ -156,7 +155,7 @@
                 const permission = await Notification.requestPermission();
                 if (permission === 'granted') {
                     console.log('Notification permission granted.');
-                    requestNotificationPermissionButton.classList.add('hidden'); // Hide button once granted
+                    requestNotificationPermissionButton.classList.add('hidden');
                 } else {
                     console.warn('Notification permission denied or dismissed.');
                 }
@@ -170,14 +169,12 @@
                 const title = `New Job: ${job.make} ${job.model} in ${job.zip_code}`;
                 const options = {
                     body: `Appointment: ${formatAppointmentDate(job.appointment_date)} at ${formatAppointmentTime(job.appointment_time)} (Estimated: ${job.estimated_time})`,
-                    icon: 'https://cdn-icons-png.flaticon.com/512/3745/3745674.png' // You can replace this with your business logo
+                    icon: 'https://cdn-icons-png.flaticon.com/512/3745/3745674.png'
                 };
                 const notification = new Notification(title, options);
 
-                // Optional: Add click behavior
                 notification.onclick = function() {
-                    window.focus(); // Bring the browser window to focus
-                    // You could also navigate to a specific part of the page or job details if implemented
+                    window.focus();
                 };
             } else {
                 console.warn('Notification permission not granted. Cannot display browser notification.');
@@ -283,25 +280,29 @@
         function formatAppointmentTime(timeString) {
             if (!timeString || timeString === "N/A") return "N/A";
             try {
-                // Try parsing as HH:MM AM/PM
-                if (timeString.includes('AM') || timeString.includes('PM')) {
-                    const [time, ampm] = timeString.split(' ');
-                    let [hours, minutes] = time.split(':');
-                    hours = parseInt(hours, 10);
-                    if (ampm === 'PM' && hours < 12) hours += 12;
-                    if (ampm === 'AM' && hours === 12) hours = 0; // Midnight 12 AM is 00:00
-                    return `${hours.toString().padStart(2, '0')}:${minutes} ${ampm}`;
-                } else {
-                    // Assume HH:MM (24-hour format)
-                    const [hours, minutes] = timeString.split(':');
-                    let hour = parseInt(hours, 10);
-                    const ampm = hour >= 12 ? 'PM' : 'AM';
-                    hour = hour % 12;
-                    hour = hour ? hour : 12; 
-                    return `${hour}:${minutes} ${ampm}`; 
+                // Create a dummy date to parse the time string correctly.
+                // This allows parsing "HH:MM", "HH:MM:SS", "HH:MM AM/PM", "HH:MM:SS AM/PM"
+                const dummyDate = `2000-01-01 ${timeString}`; 
+                const dateObj = new Date(dummyDate);
+
+                // Check if the date object is valid after parsing
+                if (isNaN(dateObj.getTime())) {
+                    console.error("Error parsing time string with Date object (frontend):", timeString);
+                    return timeString; // Return original if parsing fails
                 }
+
+                let hours = dateObj.getHours();
+                const minutes = dateObj.getMinutes();
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+
+                hours = hours % 12;
+                hours = hours ? hours : 12; // Convert 0 (midnight) to 12
+
+                const formattedMinutes = minutes < 10 ? '0' + minutes : minutes;
+
+                return `${hours}:${formattedMinutes} ${ampm}`;
             } catch (e) {
-                console.error("Error formatting time:", timeString, e);
+                console.error("Error formatting time (frontend):", timeString, e);
                 return timeString;
             }
         }
