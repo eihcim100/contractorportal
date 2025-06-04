@@ -244,15 +244,12 @@
                 if (response.ok) {
                     renderJobs(data);
                 } else {
-                    alert(data.message || 'Failed to fetch jobs.');
-                    console.error('Failed to fetch jobs:', data.message);
                     jobsList.innerHTML = ''; // Clear existing jobs
                     noJobsMessage.textContent = data.message || 'Error fetching jobs.'; // Display error in no jobs message
                     noJobsMessage.classList.remove('hidden'); // Show the message
                 }
             } catch (error) {
                 console.error('Fetch jobs error:', error);
-                alert('An error occurred while fetching jobs.');
                 jobsList.innerHTML = ''; // Clear existing jobs
                 noJobsMessage.textContent = 'An error occurred while fetching jobs.'; // Display error in no jobs message
                 noJobsMessage.classList.remove('hidden'); // Show the message
@@ -261,81 +258,130 @@
 
         function renderJobs(jobs) {
             jobsList.innerHTML = ''; // Clear previous jobs
-            if (jobs.length === 0) {
-                noJobsMessage.textContent = "No jobs available at the moment."; // Set default message
-                noJobsMessage.classList.remove('hidden'); // Show "No jobs available"
-                return;
-            } else {
-                noJobsMessage.classList.add('hidden'); // Hide the message if jobs are present
-            }
+            let renderedJobCount = 0; // Track how many jobs are actually rendered
 
             jobs.forEach(job => {
-                const jobCard = document.createElement('div');
-                jobCard.className = 'bg-gray-50 p-6 rounded-lg shadow-md border border-gray-200';
-
-                let jobDescriptionHTML = '';
-                let mainTitle = '';
-
-                if (job.year && job.year !== "N/A") {
-                    mainTitle += job.year + ' ';
-                }
-                if (job.make && job.make !== "N/A") {
-                    mainTitle += job.make + ' ';
-                }
-                if (job.model && job.model !== "N/A") {
-                    mainTitle += job.model;
-                }
-
-                if (mainTitle.trim() === "") {
-                    mainTitle = "Untitled Job";
-                }
-
-                jobDescriptionHTML += `<h3 class="text-xl font-semibold text-gray-800 mb-2">${mainTitle.trim()}</h3>`;
-
-                if (job.zip_code && job.zip_code !== "N/A") {
-                    jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Zip Code:</strong> ${job.zip_code}</p>`;
-                }
-                if (job.appointment_date && job.appointment_date !== "N/A") {
-                    jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Appointment Date:</strong> ${formatAppointmentDate(job.appointment_date)}</p>`;
-                }
-                if (job.appointment_time && job.appointment_time !== "N/A") {
-                    jobDescriptionHTML += `<p class="text-gray-600 mb-4"><strong>Appointment Time:</strong> ${formatAppointmentTime(job.appointment_time)}</p>`;
-                }
-
-                jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-4"><strong>Status:</strong> <span class="${job.status === 'accepted' ? 'text-green-600' : job.status === 'declined' ? 'text-red-600' : 'text-yellow-600'} capitalize">${job.status}</span></p>`;
-
-                if (job.status === 'accepted') {
-                    let customerDetails = '';
-                    if (job.customer_name && job.customer_name !== "N/A") {
-                        customerDetails += `<p class="text-gray-600 mb-1"><strong>Customer Name:</strong> ${job.customer_name}</p>`;
+                // Determine if the job should be shown based on its status and contractor_id_field
+                let showJob = false;
+                if (job.status === 'pending') {
+                    showJob = true;
+                } else if (job.status === 'accepted') {
+                    // Only show accepted jobs if they were accepted by the current contractor
+                    if (job.contractor_id_field === localStorage.getItem('contractorEmail')) { // Assuming contractorEmail is stored in localStorage
+                        showJob = true;
                     }
-                    if (job.customer_phone && job.customer_phone !== "N/A") {
-                        customerDetails += `<p class="text-gray-600 mb-1"><strong>Customer Phone:</strong> ${job.customer_phone}</p>`;
+                }
+                // Note: Declined jobs are filtered out in the backend now, but this check is for robustness
+
+                // Also apply the 4-hour expiration logic on the frontend for visual consistency,
+                // even if backend also filters. This ensures immediate visual update.
+                let jobExpired = false;
+                if (job.appointment_date && job.appointment_date !== "N/A" &&
+                    job.appointment_time && job.appointment_time !== "N/A") {
+                    try {
+                        const timeFormats = ['%H:%M:%S', '%I:%M:%S %p', '%H:%M', '%I:%M %p'];
+                        let parsedTime = null;
+                        for (let fmt of timeFormats) {
+                            try {
+                                parsedTime = new Date(`2000-01-01T${job.appointment_time}`); // Use a dummy date to parse time
+                                break;
+                            } catch (e) {
+                                // Continue to next format
+                            }
+                        }
+
+                        if (parsedTime) {
+                            const [year, month, day] = job.appointment_date.split('-').map(Number);
+                            const appointmentDateTime = new Date(year, month - 1, day, parsedTime.getHours(), parsedTime.getMinutes(), parsedTime.getSeconds());
+                            
+                            const expirationTime = new Date(appointmentDateTime.getTime() + (4 * 60 * 60 * 1000)); // Add 4 hours
+                            
+                            if (new Date() >= expirationTime) {
+                                jobExpired = true;
+                            }
+                        }
+                    } catch (e) {
+                        console.error(`Frontend date/time parsing error for job ${job.id}:`, e);
                     }
-                    if (job.customer_address && job.customer_address !== "N/A") {
-                        customerDetails += `<p class="text-gray-600"><strong>Customer Address:</strong> <span class="address-display">${formatCustomerAddress(job.customer_address)}</span></p>`;
+                }
+
+                if (showJob && !jobExpired) {
+                    const jobCard = document.createElement('div');
+                    jobCard.className = 'bg-gray-50 p-6 rounded-lg shadow-md border border-gray-200';
+
+                    let jobDescriptionHTML = '';
+                    let mainTitle = '';
+
+                    if (job.year && job.year !== "N/A") {
+                        mainTitle += job.year + ' ';
+                    }
+                    if (job.make && job.make !== "N/A") {
+                        mainTitle += job.make + ' ';
+                    }
+                    if (job.model && job.model !== "N/A") {
+                        mainTitle += job.model;
                     }
 
-                    if (customerDetails) {
+                    if (mainTitle.trim() === "") {
+                        mainTitle = "Untitled Job";
+                    }
+
+                    jobDescriptionHTML += `<h3 class="text-xl font-semibold text-gray-800 mb-2">${mainTitle.trim()}</h3>`;
+
+                    if (job.zip_code && job.zip_code !== "N/A") {
+                        jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Zip Code:</strong> ${job.zip_code}</p>`;
+                    }
+                    if (job.appointment_date && job.appointment_date !== "N/A") {
+                        jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Appointment Date:</strong> ${formatAppointmentDate(job.appointment_date)}</p>`;
+                    }
+                    if (job.appointment_time && job.appointment_time !== "N/A") {
+                        jobDescriptionHTML += `<p class="text-gray-600 mb-4"><strong>Appointment Time:</strong> ${formatAppointmentTime(job.appointment_time)}</p>`;
+                    }
+
+                    jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-4"><strong>Status:</strong> <span class="${job.status === 'accepted' ? 'text-green-600' : job.status === 'declined' ? 'text-red-600' : 'text-yellow-600'} capitalize">${job.status}</span></p>`;
+
+                    if (job.status === 'accepted') {
+                        let customerDetails = '';
+                        if (job.customer_name && job.customer_name !== "N/A") {
+                            customerDetails += `<p class="text-gray-600 mb-1"><strong>Customer Name:</strong> ${job.customer_name}</p>`;
+                        }
+                        if (job.customer_phone && job.customer_phone !== "N/A") {
+                            customerDetails += `<p class="text-gray-600 mb-1"><strong>Customer Phone:</strong> ${job.customer_phone}</p>`;
+                        }
+                        if (job.customer_address && job.customer_address !== "N/A") {
+                            customerDetails += `<p class="text-gray-600"><strong>Customer Address:</strong> <span class="address-display">${formatCustomerAddress(job.customer_address)}</span></p>`;
+                        }
+
+                        if (customerDetails) {
+                            jobDescriptionHTML += `
+                                <div class="mt-4 border-t pt-4 border-gray-200">
+                                    <h4 class="text-lg font-semibold text-gray-700 mb-2">Customer Details:</h4>
+                                    ${customerDetails}
+                                </div>
+                            `;
+                        }
+                    } else {
                         jobDescriptionHTML += `
-                            <div class="mt-4 border-t pt-4 border-gray-200">
-                                <h4 class="text-lg font-semibold text-gray-700 mb-2">Customer Details:</h4>
-                                ${customerDetails}
+                            <div class="flex space-x-2 mt-4">
+                                <button data-job-id="${job.id}" class="accept-button bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out w-1/2">Accept</button>
+                                <button data-job-id="${job.id}" class="decline-button bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out w-1/2">Decline</button>
                             </div>
                         `;
                     }
-                } else {
-                    jobDescriptionHTML += `
-                        <div class="flex space-x-2 mt-4">
-                            <button data-job-id="${job.id}" class="accept-button bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out w-1/2">Accept</button>
-                            <button data-job-id="${job.id}" class="decline-button bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out w-1/2">Decline</button>
-                        </div>
-                    `;
-                }
 
-                jobCard.innerHTML = jobDescriptionHTML;
-                jobsList.appendChild(jobCard);
+                    jobCard.innerHTML = jobDescriptionHTML;
+                    jobsList.appendChild(jobCard);
+                    renderedJobCount++; // Increment count only if job is actually added to the DOM
+                }
             });
+
+            // After attempting to render all jobs, check if any were actually added
+            if (renderedJobCount === 0) {
+                noJobsMessage.textContent = "No jobs available at the moment.";
+                noJobsMessage.classList.remove('hidden'); // Show "No jobs available"
+            } else {
+                noJobsMessage.classList.add('hidden'); // Hide the message if jobs are present
+            }
 
             document.querySelectorAll('.accept-button').forEach(button => {
                 button.addEventListener('click', (event) => handleJobAction(event.target.dataset.jobId, 'accept'));
