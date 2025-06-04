@@ -14,6 +14,13 @@
         .address-display {
             white-space: pre-wrap; /* Preserves whitespace and allows line breaks */
         }
+        /* Style for the no jobs message */
+        #no-jobs-message {
+            font-size: 1.5rem; /* text-2xl */
+            color: #9ca3af; /* A lighter gray for background text */
+            margin-top: 2rem;
+            text-align: center;
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
@@ -54,6 +61,7 @@
                 <button id="logout-button" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out">Logout</button>
             </div>
             <div id="jobs-list" class="space-y-4">
+                <!-- The "No jobs available" message will be dynamically shown/hidden by JS -->
                 <p id="no-jobs-message" class="text-gray-600 text-center hidden">No jobs available at the moment.</p>
             </div>
         </div>
@@ -80,7 +88,7 @@
 
         const logoutButton = document.getElementById('logout-button');
         const jobsList = document.getElementById('jobs-list');
-        const noJobsMessage = document.getElementById('no-jobs-message');
+        const noJobsMessage = document.getElementById('no-jobs-message'); // Get reference to the no jobs message
 
         let authToken = localStorage.getItem('authToken');
 
@@ -94,7 +102,8 @@
                 loginSection.classList.remove('hidden');
                 createAccountSection.classList.add('hidden');
                 jobsSection.classList.add('hidden');
-                jobsList.innerHTML = '';
+                jobsList.innerHTML = ''; // Clear jobs list on logout
+                noJobsMessage.classList.add('hidden'); // Hide no jobs message on logout
             }
         }
 
@@ -237,22 +246,27 @@
                 } else {
                     alert(data.message || 'Failed to fetch jobs.');
                     console.error('Failed to fetch jobs:', data.message);
-                    jobsList.innerHTML = `<p class="text-red-500 text-center">${data.message || 'Error fetching jobs.'}</p>`;
+                    jobsList.innerHTML = ''; // Clear existing jobs
+                    noJobsMessage.textContent = data.message || 'Error fetching jobs.'; // Display error in no jobs message
+                    noJobsMessage.classList.remove('hidden'); // Show the message
                 }
             } catch (error) {
                 console.error('Fetch jobs error:', error);
                 alert('An error occurred while fetching jobs.');
-                jobsList.innerHTML = `<p class="text-red-500 text-center">An error occurred while fetching jobs.</p>`;
+                jobsList.innerHTML = ''; // Clear existing jobs
+                noJobsMessage.textContent = 'An error occurred while fetching jobs.'; // Display error in no jobs message
+                noJobsMessage.classList.remove('hidden'); // Show the message
             }
         }
 
         function renderJobs(jobs) {
-            jobsList.innerHTML = '';
+            jobsList.innerHTML = ''; // Clear previous jobs
             if (jobs.length === 0) {
-                noJobsMessage.classList.remove('hidden');
+                noJobsMessage.textContent = "No jobs available at the moment."; // Set default message
+                noJobsMessage.classList.remove('hidden'); // Show "No jobs available"
                 return;
             } else {
-                noJobsMessage.classList.add('hidden');
+                noJobsMessage.classList.add('hidden'); // Hide the message if jobs are present
             }
 
             jobs.forEach(job => {
