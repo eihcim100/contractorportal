@@ -60,9 +60,10 @@
                 <h2 class="text-2xl font-bold text-gray-800">Available Jobs</h2>
                 <button id="logout-button" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out">Logout</button>
             </div>
+            <!-- MOVED: The "No jobs available" message is now outside jobs-list -->
+            <p id="no-jobs-message" class="text-gray-600 text-center hidden">No jobs available at the moment.</p>
             <div id="jobs-list" class="space-y-4">
-                <!-- The "No jobs available" message will be dynamically shown/hidden by JS -->
-                <p id="no-jobs-message" class="text-gray-600 text-center hidden">No jobs available at the moment.</p>
+                <!-- Jobs will be rendered here -->
             </div>
         </div>
     </div>
@@ -103,7 +104,7 @@
                 createAccountSection.classList.add('hidden');
                 jobsSection.classList.add('hidden');
                 jobsList.innerHTML = ''; // Clear jobs list on logout
-                noJobsMessage.classList.add('hidden'); // Hide no jobs message on logout
+                noJobsMessage.classList.add('hidden'); // Ensure no jobs message is hidden on logout
             }
         }
 
@@ -267,7 +268,9 @@
                     showJob = true;
                 } else if (job.status === 'accepted') {
                     // Only show accepted jobs if they were accepted by the current contractor
-                    if (job.contractor_id_field === localStorage.getItem('contractorEmail')) { // Assuming contractorEmail is stored in localStorage
+                    // You might need to store the contractor's email in localStorage after login
+                    // For example: localStorage.setItem('contractorEmail', 'the_contractor_email@example.com');
+                    if (job.contractor_id_field === localStorage.getItem('contractorEmail')) { 
                         showJob = true;
                     }
                 }
@@ -283,7 +286,9 @@
                         let parsedTime = null;
                         for (let fmt of timeFormats) {
                             try {
-                                parsedTime = new Date(`2000-01-01T${job.appointment_time}`); // Use a dummy date to parse time
+                                // Use a dummy date to parse time, then combine with actual date
+                                const [h, m, s] = job.appointment_time.split(':').map(Number);
+                                parsedTime = new Date(2000, 0, 1, h, m, s || 0); // Year, Month, Day, Hour, Minute, Second
                                 break;
                             } catch (e) {
                                 // Continue to next format
@@ -292,6 +297,7 @@
 
                         if (parsedTime) {
                             const [year, month, day] = job.appointment_date.split('-').map(Number);
+                            // Month is 0-indexed in JavaScript Date object
                             const appointmentDateTime = new Date(year, month - 1, day, parsedTime.getHours(), parsedTime.getMinutes(), parsedTime.getSeconds());
                             
                             const expirationTime = new Date(appointmentDateTime.getTime() + (4 * 60 * 60 * 1000)); // Add 4 hours
@@ -377,7 +383,7 @@
 
             // After attempting to render all jobs, check if any were actually added
             if (renderedJobCount === 0) {
-                noJobsMessage.textContent = "No jobs available at the moment.";
+                noJobsMessage.textContent = "No jobs available at the moment."; // Ensure default message
                 noJobsMessage.classList.remove('hidden'); // Show "No jobs available"
             } else {
                 noJobsMessage.classList.add('hidden'); // Hide the message if jobs are present
