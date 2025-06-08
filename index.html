@@ -69,7 +69,6 @@
     </div>
 
     <script>
-        // Updated API_BASE_URL to use a relative path for Netlify proxy
         const API_BASE_URL = '/api'; 
 
         const loginSection = document.getElementById('login-section');
@@ -90,7 +89,7 @@
 
         const logoutButton = document.getElementById('logout-button');
         const jobsList = document.getElementById('jobs-list');
-        const noJobsMessage = document.getElementById('no-jobs-message'); // Get reference to the no jobs message
+        const noJobsMessage = document.getElementById('no-jobs-message');
 
         let authToken = localStorage.getItem('authToken');
 
@@ -126,6 +125,8 @@
                 if (response.ok) {
                     authToken = data.token;
                     localStorage.setItem('authToken', authToken);
+                    // Store the contractor's email for frontend visibility checks
+                    localStorage.setItem('contractorEmail', username); 
                     loginMessage.textContent = '';
                     updateUI();
                 } else {
@@ -140,6 +141,7 @@
         logoutButton.addEventListener('click', () => {
             authToken = null;
             localStorage.removeItem('authToken');
+            localStorage.removeItem('contractorEmail'); // Clear contractor email on logout
             updateUI();
         });
 
@@ -208,16 +210,34 @@
         function formatAppointmentTime(timeString) {
             if (!timeString || timeString === "N/A") return "N/A";
             try {
-                const [hours, minutes] = timeString.split(':'); // Split only hours and minutes
-                let hour = parseInt(hours, 10);
-                const ampm = hour >= 12 ? 'PM' : 'AM';
-                hour = hour % 12;
-                hour = hour ? hour : 12; // The hour '0' (midnight) should be '12'
-                return `${hour}:${minutes} ${ampm}`; // 12-hour format without seconds
+                // Robust parsing for various time formats (HH:MM, HH:MM:SS, HH:MM AM/PM)
+                const lowerCaseTime = timeString.toLowerCase();
+                let hour;
+                let minute;
+                let second = 0;
+
+                // Regex to match HH:MM:SS, HH:MM, HH:MM:SS AM/PM, HH:MM AM/PM
+                const timeMatch = lowerCaseTime.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?/);
+                if (timeMatch) {
+                    hour = parseInt(timeMatch[1], 10);
+                    minute = parseInt(timeMatch[2], 10);
+                    second = parseInt(timeMatch[3] || '0', 10);
+                    const ampm = timeMatch[4];
+
+                    if (ampm === 'pm' && hour < 12) {
+                        hour += 12;
+                    } else if (ampm === 'am' && hour === 12) { // Midnight 12 AM
+                        hour = 0;
+                    }
+                    // Format to 12-hour format with AM/PM
+                    const formattedHour = hour % 12 === 0 ? 12 : hour % 12;
+                    const period = hour < 12 ? 'AM' : 'PM';
+                    return `${formattedHour}:${minute.toString().padStart(2, '0')} ${period}`;
+                }
             } catch (e) {
                 console.error("Error formatting time:", timeString, e);
-                return timeString;
             }
+            return timeString; // Return original if unable to parse
         }
 
         function formatCustomerAddress(addressString) {
@@ -261,58 +281,22 @@
         function renderJobs(jobs) {
             jobsList.innerHTML = ''; // Clear previous jobs
             let renderedJobCount = 0; // Track how many jobs are actually rendered
+            const currentContractorEmail = localStorage.getItem('contractorEmail'); // Get the logged-in contractor's email
 
             jobs.forEach(job => {
-                // Determine if the job should be shown based on its status and contractor_id_field
                 let showJob = false;
                 if (job.status === 'pending') {
                     showJob = true;
                 } else if (job.status === 'accepted') {
                     // Only show accepted jobs if they were accepted by the current contractor
-                    // You might need to store the contractor's email in localStorage after login
-                    // For example: localStorage.setItem('contractorEmail', 'the_contractor_email@example.com');
-                    if (job.contractor_id_field === localStorage.getItem('contractorEmail')) { 
+                    if (job.contractor_id_field === currentContractorEmail) { 
                         showJob = true;
                     }
                 }
-                // Note: Declined jobs are filtered out in the backend now, but this check is for robustness
+                // Note: Declined jobs are filtered out in the backend now, so no frontend filter needed for them.
+                // The backend also handles the 4-hour expiration logic, so we trust the backend data.
 
-                // Also apply the 4-hour expiration logic on the frontend for visual consistency,
-                // even if backend also filters. This ensures immediate visual update.
-                let jobExpired = false;
-                if (job.appointment_date && job.appointment_date !== "N/A" &&
-                    job.appointment_time && job.appointment_time !== "N/A") {
-                    try {
-                        const timeFormats = ['%H:%M:%S', '%I:%M:%S %p', '%H:%M', '%I:%M %p'];
-                        let parsedTime = null;
-                        for (let fmt of timeFormats) {
-                            try {
-                                // Use a dummy date to parse time, then combine with actual date
-                                const [h, m, s] = job.appointment_time.split(':').map(Number);
-                                parsedTime = new Date(2000, 0, 1, h, m, s || 0); // Year, Month, Day, Hour, Minute, Second
-                                break;
-                            } catch (e) {
-                                // Continue to next format
-                            }
-                        }
-
-                        if (parsedTime) {
-                            const [year, month, day] = job.appointment_date.split('-').map(Number);
-                            // Month is 0-indexed in JavaScript Date object
-                            const appointmentDateTime = new Date(year, month - 1, day, parsedTime.getHours(), parsedTime.getMinutes(), parsedTime.getSeconds());
-                            
-                            const expirationTime = new Date(appointmentDateTime.getTime() + (4 * 60 * 60 * 1000)); // Add 4 hours
-                            
-                            if (new Date() >= expirationTime) {
-                                jobExpired = true;
-                            }
-                        }
-                    } catch (e) {
-                        console.error(`Frontend date/time parsing error for job ${job.id}:`, e);
-                    }
-                }
-
-                if (showJob && !jobExpired) {
+                if (showJob) {
                     const jobCard = document.createElement('div');
                     jobCard.className = 'bg-gray-50 p-6 rounded-lg shadow-md border border-gray-200';
 
@@ -417,7 +401,9 @@
                 if (response.ok) {
                     fetchJobs();
                 } else {
-                    alert(data.message || `Failed to ${actionType} job.`);
+                    // Using alert() is generally discouraged in modern web apps for better UX,
+                    // but keeping it as per previous code structure.
+                    alert(data.message || `Failed to ${actionType} job.`); 
                     console.error(`Failed to ${actionType} job:`, data.message);
                 }
             } catch (error) {
