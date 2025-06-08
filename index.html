@@ -87,7 +87,7 @@
 
         const logoutButton = document.getElementById('logout-button');
         const jobsList = document.getElementById('jobs-list');
-        const noJobsMessage = document.getElementById('no-jobs-message'); // Get reference to the no jobs message
+        const noJobsMessage = document.getElementById('no-jobs-message');
 
         let authToken = localStorage.getItem('authToken');
 
@@ -101,8 +101,8 @@
                 loginSection.classList.remove('hidden');
                 createAccountSection.classList.add('hidden');
                 jobsSection.classList.add('hidden');
-                jobsList.innerHTML = ''; // Clear jobs list on logout
-                noJobsMessage.classList.add('hidden'); // Ensure no jobs message is hidden on logout
+                jobsList.innerHTML = '';
+                noJobsMessage.classList.add('hidden');
             }
         }
 
@@ -140,7 +140,6 @@
             updateUI();
         });
 
-        // --- Create Account Functionality (from v2.html base) ---
         showCreateAccountButton.addEventListener('click', () => {
             loginSection.classList.add('hidden');
             createAccountSection.classList.remove('hidden');
@@ -168,11 +167,10 @@
                 const data = await response.json();
                 if (response.ok) {
                     createAccountMessage.textContent = data.message || 'Account created successfully! You can now log in.';
-                    // Optionally switch back to login form
                     setTimeout(() => {
                         showLoginButton.click();
-                        usernameInput.value = newUsername; // Pre-fill login username
-                        passwordInput.value = ''; // Clear password for login
+                        usernameInput.value = newUsername;
+                        passwordInput.value = '';
                     }, 2000);
                 } else {
                     createAccountMessage.textContent = data.message || 'Account creation failed.';
@@ -189,13 +187,11 @@
             createAccountMessage.textContent = '';
         });
 
-
-        // --- Date and Time Formatting Functions ---
         function formatAppointmentDate(dateString) {
             if (!dateString || dateString === "N/A") return "N/A";
             try {
                 const [year, month, day] = dateString.split('-');
-                return `${month}-${day}-${year}`; // MM-DD-YYYY using dashes
+                return `${month}-${day}-${year}`;
             } catch (e) {
                 console.error("Error formatting date:", dateString, e);
                 return dateString;
@@ -205,12 +201,12 @@
         function formatAppointmentTime(timeString) {
             if (!timeString || timeString === "N/A") return "N/A";
             try {
-                const [hours, minutes] = timeString.split(':'); // Split only hours and minutes
+                const [hours, minutes] = timeString.split(':');
                 let hour = parseInt(hours, 10);
                 const ampm = hour >= 12 ? 'PM' : 'AM';
                 hour = hour % 12;
-                hour = hour ? hour : 12; // The hour '0' (midnight) should be '12'
-                return `${hour}:${minutes} ${ampm}`; // 12-hour format without seconds
+                hour = hour ? hour : 12;
+                return `${hour}:${minutes} ${ampm}`;
             } catch (e) {
                 console.error("Error formatting time:", timeString, e);
                 return timeString;
@@ -219,10 +215,8 @@
 
         function formatCustomerAddress(addressString) {
             if (!addressString || addressString === "N/A") return "N/A";
-            // This assumes the address comes as a single string and adds line breaks for readability
-            return addressString.replace(/, /g, ',<br>').replace(/ /g, '&nbsp;'); 
+            return addressString.replace(/, /g, ',<br>').replace(/ /g, '&nbsp;');
         }
-
 
         async function fetchJobs() {
             if (!authToken) {
@@ -243,67 +237,89 @@
                 if (response.ok) {
                     renderJobs(data);
                 } else {
-                    jobsList.innerHTML = ''; // Clear existing jobs
-                    noJobsMessage.textContent = data.message || 'Error fetching jobs.'; // Display error in no jobs message
-                    noJobsMessage.classList.remove('hidden'); // Show the message
+                    jobsList.innerHTML = '';
+                    noJobsMessage.textContent = data.message || 'Error fetching jobs.';
+                    noJobsMessage.classList.remove('hidden');
                 }
             } catch (error) {
                 console.error('Fetch jobs error:', error);
-                jobsList.innerHTML = ''; // Clear existing jobs
-                noJobsMessage.textContent = 'An error occurred while fetching jobs.'; // Display error in no jobs message
-                noJobsMessage.classList.remove('hidden'); // Show the message
+                jobsList.innerHTML = '';
+                noJobsMessage.textContent = 'An error occurred while fetching jobs.';
+                noJobsMessage.classList.remove('hidden');
             }
         }
 
         function renderJobs(jobs) {
-            jobsList.innerHTML = ''; // Clear previous jobs
-            let renderedJobCount = 0; // Track how many jobs are actually rendered
+            jobsList.innerHTML = '';
+            let renderedJobCount = 0;
 
             jobs.forEach(job => {
-                // Determine if the job should be shown based on its status and contractor_id_field
                 let showJob = false;
-                let jobExpiredForDisplay = false; // Flag for frontend display expiration
+                let jobExpiredForDisplay = false;
 
-                // Parse appointment date and time for expiration check
+                // Parse appointment date and time to calculate expiration
                 let appointmentDateTime = null;
                 if (job.appointment_date && job.appointment_date !== "N/A" &&
                     job.appointment_time && job.appointment_time !== "N/A") {
                     try {
-                        const [year, month, day] = job.appointment_date.split('-').map(Number);
-                        const [hours, minutes] = job.appointment_time.split(':').map(Number);
-                        // Month is 0-indexed in JavaScript Date object
-                        appointmentDateTime = new Date(year, month - 1, day, hours, minutes);
+                        // Attempt to parse time in multiple formats for robustness
+                        let parsedTime = null;
+                        const timeFormats = ['%H:%M:%S', '%I:%M:%S %p', '%H:%M', '%I:%M %p'];
+                        for (let fmt of timeFormats) {
+                            try {
+                                // Create a dummy date to parse time, then get hour/minute/second
+                                const tempDate = new Date(`2000-01-01T${job.appointment_time}`);
+                                if (!isNaN(tempDate)) { // Check if parsing was successful
+                                    parsedTime = {
+                                        hours: tempDate.getHours(),
+                                        minutes: tempDate.getMinutes(),
+                                        seconds: tempDate.getSeconds() || 0 // Default to 0 if no seconds
+                                    };
+                                    break;
+                                }
+                            } catch (e) {
+                                // Continue to next format
+                            }
+                        }
+
+                        if (parsedTime) {
+                            const [year, month, day] = job.appointment_date.split('-').map(Number);
+                            // Month is 0-indexed in JavaScript Date object
+                            appointmentDateTime = new Date(year, month - 1, day, parsedTime.hours, parsedTime.minutes, parsedTime.seconds);
+                        }
                     } catch (e) {
                         console.error(`Frontend date/time parsing error for job ${job.id}:`, e);
                     }
                 }
 
-                // Expiration logic for display (4 hours after appointment time)
-                if (appointmentDateTime) {
-                    const expirationTime = new Date(appointmentDateTime.getTime() + (4 * 60 * 60 * 1000)); // Add 4 hours
-                    if (new Date() >= expirationTime) {
-                        jobExpiredForDisplay = true;
-                    }
-                }
-
-
+                // Determine job display status based on its actual status and expiration
                 if (job.status === 'pending') {
-                    // Pending jobs are always shown unless expired by appointment time
-                    // (Backend should filter these, but frontend double-check is fine)
-                    if (!jobExpiredForDisplay) { // Check if the appointment itself has passed 4 hours ago
+                    // Pending jobs are always shown if their appointment time hasn't passed by 4 hours
+                    if (appointmentDateTime) {
+                        const expirationTime = new Date(appointmentDateTime.getTime() + (4 * 60 * 60 * 1000));
+                        if (new Date() < expirationTime) {
+                            showJob = true;
+                        }
+                    } else {
+                        // If date/time not available, assume it's current and show pending
                         showJob = true;
                     }
                 } else if (job.status === 'accepted') {
-                    // Only show accepted jobs if they were accepted by the current contractor
-                    // AND are within the 4-hour display window
+                    // Accepted jobs are shown only if accepted by the current contractor
+                    // AND within the 4-hour display window from appointment time
                     if (job.contractor_id_field === localStorage.getItem('contractorEmail')) {
-                        if (!jobExpiredForDisplay) { // Job accepted and not past its 4-hour display window
+                        if (appointmentDateTime) {
+                            const displayUntilTime = new Date(appointmentDateTime.getTime() + (4 * 60 * 60 * 1000));
+                            if (new Date() < displayUntilTime) {
+                                showJob = true;
+                            }
+                        } else {
+                            // If date/time not available for an accepted job, assume it's current and show
                             showJob = true;
                         }
                     }
                 }
-                // Declined jobs are filtered out in the backend, no need to handle here for display
-
+                // Jobs with status 'declined' (or others not 'pending'/'accepted') are simply not shown here.
 
                 if (showJob) {
                     const jobCard = document.createElement('div');
@@ -342,6 +358,7 @@
 
                     if (job.status === 'accepted') {
                         let customerDetails = '';
+                        // These details are now sent from the backend for accepted jobs
                         if (job.customer_name && job.customer_name !== "N/A") {
                             customerDetails += `<p class="text-gray-600 mb-1"><strong>Customer Name:</strong> ${job.customer_name}</p>`;
                         }
@@ -371,16 +388,15 @@
 
                     jobCard.innerHTML = jobDescriptionHTML;
                     jobsList.appendChild(jobCard);
-                    renderedJobCount++; // Increment count only if job is actually added to the DOM
+                    renderedJobCount++;
                 }
             });
 
-            // After attempting to render all jobs, check if any were actually added
             if (renderedJobCount === 0) {
-                noJobsMessage.textContent = "No jobs available at the moment."; // Ensure default message
-                noJobsMessage.classList.remove('hidden'); // Show "No jobs available"
+                noJobsMessage.textContent = "No jobs available at the moment.";
+                noJobsMessage.classList.remove('hidden');
             } else {
-                noJobsMessage.classList.add('hidden'); // Hide the message if jobs are present
+                noJobsMessage.classList.add('hidden');
             }
 
             document.querySelectorAll('.accept-button').forEach(button => {
@@ -389,34 +405,6 @@
             document.querySelectorAll('.decline-button').forEach(button => {
                 button.addEventListener('click', (event) => handleJobAction(event.target.dataset.jobId, 'decline'));
             });
-        }
-
-        async function handleJobAction(jobId, actionType) {
-            if (!authToken) {
-                console.log('Not authenticated.');
-                return;
-            }
-
-            try {
-                const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/${actionType}`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`,
-                        'Content-Type': 'application/json',
-                    },
-                });
-
-                const data = await response.json();
-                if (response.ok) {
-                    fetchJobs();
-                } else {
-                    alert(data.message || `Failed to ${actionType} job.`);
-                    console.error(`Failed to ${actionType} job:`, data.message);
-                }
-            } catch (error) {
-                console.error(`Error during ${actionType} job:`, error);
-                alert(`An error occurred while trying to ${actionType} the job.`);
-            }
         }
 
         document.addEventListener('DOMContentLoaded', updateUI);
