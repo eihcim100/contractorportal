@@ -10,6 +10,17 @@
         body {
             font-family: 'Inter', sans-serif;
         }
+        /* Custom style for address formatting to ensure line breaks are applied */
+        .address-display {
+            white-space: pre-wrap; /* Preserves whitespace and allows line breaks */
+        }
+        /* Style for the no jobs message */
+        #no-jobs-message {
+            font-size: 1.5rem; /* text-2xl */
+            color: #9ca3af; /* A lighter gray for background text */
+            margin-top: 2rem;
+            text-align: center;
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
@@ -26,6 +37,22 @@
             </div>
             <button id="login-button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline w-full transition duration-300 ease-in-out">Login</button>
             <p id="login-message" class="text-red-500 text-xs italic mt-4 text-center"></p>
+            <button id="show-create-account-button" class="mt-4 text-blue-500 hover:text-blue-700 text-sm w-full text-center hidden">Create New Account</button>
+        </div>
+
+        <div id="create-account-section" class="hidden">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Create New Account</h2>
+            <div class="mb-4">
+                <label for="new-username" class="block text-gray-700 text-sm font-bold mb-2">Username (Email):</label>
+                <input type="email" id="new-username" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+            </div>
+            <div class="mb-6">
+                <label for="new-password" class="block text-gray-700 text-sm font-bold mb-2">Password:</label>
+                <input type="password" id="new-password" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline">
+            </div>
+            <button id="create-account-button" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline w-full transition duration-300 ease-in-out">Create Account</button>
+            <p id="create-account-message" class="text-red-500 text-xs italic mt-4 text-center"></p>
+            <button id="show-login-button" class="mt-4 text-blue-500 hover:text-blue-700 text-sm w-full text-center">Back to Login</button>
         </div>
 
         <div id="jobs-section" class="hidden">
@@ -33,22 +60,32 @@
                 <h2 class="text-2xl font-bold text-gray-800">Available Jobs</h2>
                 <button id="logout-button" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out">Logout</button>
             </div>
+            <!-- MOVED: The "No jobs available" message is now outside jobs-list -->
+            <p id="no-jobs-message" class="text-gray-600 text-center hidden">No jobs available at the moment.</p>
             <div id="jobs-list" class="space-y-4">
-                <p id="no-jobs-message" class="text-gray-600 text-center hidden">No jobs available at the moment.</p>
+                <!-- Jobs will be rendered here -->
             </div>
         </div>
     </div>
 
     <script>
-        const API_BASE_URL = 'https://michie-detailing-backend.onrender.com';
+        const API_BASE_URL = '/api'; 
 
         const loginSection = document.getElementById('login-section');
+        const createAccountSection = document.getElementById('create-account-section');
         const jobsSection = document.getElementById('jobs-section');
 
         const usernameInput = document.getElementById('username');
         const passwordInput = document.getElementById('password');
         const loginButton = document.getElementById('login-button');
         const loginMessage = document.getElementById('login-message');
+        const showCreateAccountButton = document.getElementById('show-create-account-button');
+
+        const newUsernameInput = document.getElementById('new-username');
+        const newPasswordInput = document.getElementById('new-password');
+        const createAccountButton = document.getElementById('create-account-button');
+        const createAccountMessage = document.getElementById('create-account-message');
+        const showLoginButton = document.getElementById('show-login-button');
 
         const logoutButton = document.getElementById('logout-button');
         const jobsList = document.getElementById('jobs-list');
@@ -59,12 +96,15 @@
         function updateUI() {
             if (authToken) {
                 loginSection.classList.add('hidden');
+                createAccountSection.classList.add('hidden');
                 jobsSection.classList.remove('hidden');
                 fetchJobs();
             } else {
                 loginSection.classList.remove('hidden');
+                createAccountSection.classList.add('hidden');
                 jobsSection.classList.add('hidden');
-                jobsList.innerHTML = '';
+                jobsList.innerHTML = ''; // Clear jobs list on logout
+                noJobsMessage.classList.add('hidden'); // Ensure no jobs message is hidden on logout
             }
         }
 
@@ -85,6 +125,8 @@
                 if (response.ok) {
                     authToken = data.token;
                     localStorage.setItem('authToken', authToken);
+                    // Store the contractor's email for frontend visibility checks
+                    localStorage.setItem('contractorEmail', username); 
                     loginMessage.textContent = '';
                     updateUI();
                 } else {
@@ -99,8 +141,111 @@
         logoutButton.addEventListener('click', () => {
             authToken = null;
             localStorage.removeItem('authToken');
+            localStorage.removeItem('contractorEmail'); // Clear contractor email on logout
             updateUI();
         });
+
+        // --- Create Account Functionality (from v2.html base) ---
+        showCreateAccountButton.addEventListener('click', () => {
+            loginSection.classList.add('hidden');
+            createAccountSection.classList.remove('hidden');
+            loginMessage.textContent = '';
+        });
+
+        createAccountButton.addEventListener('click', async () => {
+            const newUsername = newUsernameInput.value;
+            const newPassword = newPasswordInput.value;
+
+            if (!newUsername || !newPassword) {
+                createAccountMessage.textContent = 'Please enter both email and password.';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username: newUsername, password: newPassword }),
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    createAccountMessage.textContent = data.message || 'Account created successfully! You can now log in.';
+                    // Optionally switch back to login form
+                    setTimeout(() => {
+                        showLoginButton.click();
+                        usernameInput.value = newUsername; // Pre-fill login username
+                        passwordInput.value = ''; // Clear password for login
+                    }, 2000);
+                } else {
+                    createAccountMessage.textContent = data.message || 'Account creation failed.';
+                }
+            } catch (error) {
+                console.error('Create account error:', error);
+                createAccountMessage.textContent = 'An error occurred during account creation.';
+            }
+        });
+
+        showLoginButton.addEventListener('click', () => {
+            createAccountSection.classList.add('hidden');
+            loginSection.classList.remove('hidden');
+            createAccountMessage.textContent = '';
+        });
+
+
+        // --- Date and Time Formatting Functions ---
+        function formatAppointmentDate(dateString) {
+            if (!dateString || dateString === "N/A") return "N/A";
+            try {
+                const [year, month, day] = dateString.split('-');
+                return `${month}-${day}-${year}`; // MM-DD-YYYY using dashes
+            } catch (e) {
+                console.error("Error formatting date:", dateString, e);
+                return dateString;
+            }
+        }
+
+        function formatAppointmentTime(timeString) {
+            if (!timeString || timeString === "N/A") return "N/A";
+            try {
+                // Robust parsing for various time formats (HH:MM, HH:MM:SS, HH:MM AM/PM)
+                const lowerCaseTime = timeString.toLowerCase();
+                let hour;
+                let minute;
+                let second = 0;
+
+                // Regex to match HH:MM:SS, HH:MM, HH:MM:SS AM/PM, HH:MM AM/PM
+                const timeMatch = lowerCaseTime.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?/);
+                if (timeMatch) {
+                    hour = parseInt(timeMatch[1], 10);
+                    minute = parseInt(timeMatch[2], 10);
+                    second = parseInt(timeMatch[3] || '0', 10);
+                    const ampm = timeMatch[4];
+
+                    if (ampm === 'pm' && hour < 12) {
+                        hour += 12;
+                    } else if (ampm === 'am' && hour === 12) { // Midnight 12 AM
+                        hour = 0;
+                    }
+                    // Format to 12-hour format with AM/PM
+                    const formattedHour = hour % 12 === 0 ? 12 : hour % 12;
+                    const period = hour < 12 ? 'AM' : 'PM';
+                    return `${formattedHour}:${minute.toString().padStart(2, '0')} ${period}`;
+                }
+            } catch (e) {
+                console.error("Error formatting time:", timeString, e);
+            }
+            return timeString; // Return original if unable to parse
+        }
+
+        function formatCustomerAddress(addressString) {
+            if (!addressString || addressString === "N/A") return "N/A";
+            // This assumes the address comes as a single string and adds line breaks for readability
+            return addressString.replace(/, /g, ',<br>').replace(/ /g, '&nbsp;'); 
+        }
+
 
         async function fetchJobs() {
             if (!authToken) {
@@ -121,34 +266,43 @@
                 if (response.ok) {
                     renderJobs(data);
                 } else {
-                    console.error('Failed to fetch jobs:', data.message);
-                    jobsList.innerHTML = `<p class="text-red-500 text-center">${data.message || 'Error fetching jobs.'}</p>`;
+                    jobsList.innerHTML = ''; // Clear existing jobs
+                    noJobsMessage.textContent = data.message || 'Error fetching jobs.'; // Display error in no jobs message
+                    noJobsMessage.classList.remove('hidden'); // Show the message
                 }
             } catch (error) {
                 console.error('Fetch jobs error:', error);
-                jobsList.innerHTML = `<p class="text-red-500 text-center">An error occurred while fetching jobs.</p>`;
+                jobsList.innerHTML = ''; // Clear existing jobs
+                noJobsMessage.textContent = 'An error occurred while fetching jobs.'; // Display error in no jobs message
+                noJobsMessage.classList.remove('hidden'); // Show the message
             }
         }
 
         function renderJobs(jobs) {
-            jobsList.innerHTML = '';
-            if (jobs.length === 0) {
-                noJobsMessage.classList.remove('hidden');
-                return;
-            } else {
-                noJobsMessage.classList.add('hidden');
-            }
+            jobsList.innerHTML = ''; // Clear previous jobs
+            let renderedJobCount = 0; // Track how many jobs are actually rendered
+            const currentContractorEmail = localStorage.getItem('contractorEmail'); // Get the logged-in contractor's email
 
             jobs.forEach(job => {
-                const jobCard = document.createElement('div');
-                jobCard.className = 'bg-gray-50 p-6 rounded-lg shadow-md border border-gray-200';
+                let showJob = false;
+                if (job.status === 'pending') {
+                    showJob = true;
+                } else if (job.status === 'accepted') {
+                    // Only show accepted jobs if they were accepted by the current contractor
+                    if (job.contractor_id_field === currentContractorEmail) { 
+                        showJob = true;
+                    }
+                }
+                // Note: Declined jobs are filtered out in the backend now, so no frontend filter needed for them.
+                // The backend also handles the 4-hour expiration logic, so we trust the backend data.
 
-                let jobDescriptionHTML = '';
-                let mainTitle = '';
+                if (showJob) {
+                    const jobCard = document.createElement('div');
+                    jobCard.className = 'bg-gray-50 p-6 rounded-lg shadow-md border border-gray-200';
 
-                if (job.job_title && job.job_title !== "N/A") {
-                    mainTitle = job.job_title;
-                } else {
+                    let jobDescriptionHTML = '';
+                    let mainTitle = '';
+
                     if (job.year && job.year !== "N/A") {
                         mainTitle += job.year + ' ';
                     }
@@ -158,58 +312,67 @@
                     if (job.model && job.model !== "N/A") {
                         mainTitle += job.model;
                     }
-                }
 
-                if (mainTitle.trim() === "") {
-                    mainTitle = "Untitled Job";
-                }
-
-                jobDescriptionHTML += `<h3 class="text-xl font-semibold text-gray-800 mb-2">${mainTitle.trim()}</h3>`;
-
-                if (job.zip_code && job.zip_code !== "N/A") {
-                    jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Zip Code:</strong> ${job.zip_code}</p>`;
-                }
-                if (job.appointment_date && job.appointment_date !== "N/A") {
-                    jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Appointment Date:</strong> ${job.appointment_date}</p>`;
-                }
-                if (job.appointment_time && job.appointment_time !== "N/A") {
-                    jobDescriptionHTML += `<p class="text-gray-600 mb-4"><strong>Appointment Time:</strong> ${job.appointment_time}</p>`;
-                }
-
-                jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-4"><strong>Status:</strong> <span class="${job.status === 'accepted' ? 'text-green-600' : job.status === 'declined' ? 'text-red-600' : 'text-yellow-600'} capitalize">${job.status}</span></p>`;
-
-                if (job.status === 'accepted') {
-                    let customerDetails = '';
-                    if (job.customer_name && job.customer_name !== "N/A") {
-                        customerDetails += `<p class="text-gray-600 mb-1"><strong>Customer Name:</strong> ${job.customer_name}</p>`;
-                    }
-                    if (job.customer_phone && job.customer_phone !== "N/A") {
-                        customerDetails += `<p class="text-gray-600 mb-1"><strong>Customer Phone:</strong> ${job.customer_phone}</p>`;
-                    }
-                    if (job.customer_address && job.customer_address !== "N/A") {
-                        customerDetails += `<p class="text-gray-600"><strong>Customer Address:</strong> ${job.customer_address}</p>`;
+                    if (mainTitle.trim() === "") {
+                        mainTitle = "Untitled Job";
                     }
 
-                    if (customerDetails) {
+                    jobDescriptionHTML += `<h3 class="text-xl font-semibold text-gray-800 mb-2">${mainTitle.trim()}</h3>`;
+
+                    if (job.zip_code && job.zip_code !== "N/A") {
+                        jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Zip Code:</strong> ${job.zip_code}</p>`;
+                    }
+                    if (job.appointment_date && job.appointment_date !== "N/A") {
+                        jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Appointment Date:</strong> ${formatAppointmentDate(job.appointment_date)}</p>`;
+                    }
+                    if (job.appointment_time && job.appointment_time !== "N/A") {
+                        jobDescriptionHTML += `<p class="text-gray-600 mb-4"><strong>Appointment Time:</strong> ${formatAppointmentTime(job.appointment_time)}</p>`;
+                    }
+
+                    jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-4"><strong>Status:</strong> <span class="${job.status === 'accepted' ? 'text-green-600' : job.status === 'declined' ? 'text-red-600' : 'text-yellow-600'} capitalize">${job.status}</span></p>`;
+
+                    if (job.status === 'accepted') {
+                        let customerDetails = '';
+                        if (job.customer_name && job.customer_name !== "N/A") {
+                            customerDetails += `<p class="text-gray-600 mb-1"><strong>Customer Name:</strong> ${job.customer_name}</p>`;
+                        }
+                        if (job.customer_phone && job.customer_phone !== "N/A") {
+                            customerDetails += `<p class="text-gray-600 mb-1"><strong>Customer Phone:</strong> ${job.customer_phone}</p>`;
+                        }
+                        if (job.customer_address && job.customer_address !== "N/A") {
+                            customerDetails += `<p class="text-gray-600"><strong>Customer Address:</strong> <span class="address-display">${formatCustomerAddress(job.customer_address)}</span></p>`;
+                        }
+
+                        if (customerDetails) {
+                            jobDescriptionHTML += `
+                                <div class="mt-4 border-t pt-4 border-gray-200">
+                                    <h4 class="text-lg font-semibold text-gray-700 mb-2">Customer Details:</h4>
+                                    ${customerDetails}
+                                </div>
+                            `;
+                        }
+                    } else {
                         jobDescriptionHTML += `
-                            <div class="mt-4 border-t pt-4 border-gray-200">
-                                <h4 class="text-lg font-semibold text-gray-700 mb-2">Customer Details:</h4>
-                                ${customerDetails}
+                            <div class="flex space-x-2 mt-4">
+                                <button data-job-id="${job.id}" class="accept-button bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out w-1/2">Accept</button>
+                                <button data-job-id="${job.id}" class="decline-button bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out w-1/2">Decline</button>
                             </div>
                         `;
                     }
-                } else {
-                    jobDescriptionHTML += `
-                        <div class="flex space-x-2 mt-4">
-                            <button data-job-id="${job.id}" class="accept-button bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out w-1/2">Accept</button>
-                            <button data-job-id="${job.id}" class="decline-button bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out w-1/2">Decline</button>
-                        </div>
-                    `;
-                }
 
-                jobCard.innerHTML = jobDescriptionHTML;
-                jobsList.appendChild(jobCard);
+                    jobCard.innerHTML = jobDescriptionHTML;
+                    jobsList.appendChild(jobCard);
+                    renderedJobCount++; // Increment count only if job is actually added to the DOM
+                }
             });
+
+            // After attempting to render all jobs, check if any were actually added
+            if (renderedJobCount === 0) {
+                noJobsMessage.textContent = "No jobs available at the moment."; // Ensure default message
+                noJobsMessage.classList.remove('hidden'); // Show "No jobs available"
+            } else {
+                noJobsMessage.classList.add('hidden'); // Hide the message if jobs are present
+            }
 
             document.querySelectorAll('.accept-button').forEach(button => {
                 button.addEventListener('click', (event) => handleJobAction(event.target.dataset.jobId, 'accept'));
@@ -238,7 +401,9 @@
                 if (response.ok) {
                     fetchJobs();
                 } else {
-                    alert(data.message || `Failed to ${actionType} job.`);
+                    // Using alert() is generally discouraged in modern web apps for better UX,
+                    // but keeping it as per previous code structure.
+                    alert(data.message || `Failed to ${actionType} job.`); 
                     console.error(`Failed to ${actionType} job:`, data.message);
                 }
             } catch (error) {
