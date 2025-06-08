@@ -68,7 +68,7 @@
 
     <script>
         const API_BASE_URL = 'https://michie-detailing-backend.onrender.com';
-        const APP_FRONTEND_URL = 'https://jobs.michieauto.com'; // New: Define frontend URL
+        const APP_FRONTEND_URL = 'https://jobs.michieauto.com';
 
         const loginSection = document.getElementById('login-section');
         const createAccountSection = document.getElementById('create-account-section');
@@ -268,8 +268,9 @@
                         const timeFormats = ['%H:%M:%S', '%I:%M:%S %p', '%H:%M', '%I:%M %p'];
                         for (let fmt of timeFormats) {
                             try {
+                                // Attempt to parse with seconds first, then without, or using new Date() directly
                                 const tempDate = new Date(`2000-01-01T${job.appointment_time}`);
-                                if (!isNaN(tempDate)) {
+                                if (!isNaN(tempDate.getTime())) { // Use getTime() to check for valid date
                                     parsedTime = {
                                         hours: tempDate.getHours(),
                                         minutes: tempDate.getMinutes(),
@@ -311,7 +312,7 @@
                         }
                     }
                 }
-
+                
                 if (showJob) {
                     const jobCard = document.createElement('div');
                     jobCard.className = 'bg-gray-50 p-6 rounded-lg shadow-md border border-gray-200';
@@ -345,11 +346,12 @@
                         jobDescriptionHTML += `<p class="text-gray-600 mb-4"><strong>Appointment Time:</strong> ${formatAppointmentTime(job.appointment_time)}</p>`;
                     }
 
-                    // NEW: Display Pay field if it's not "Hourly + tips"
-                    if (job.pay && job.pay !== "N/A" && job.pay !== "Hourly + tips") {
+                    // UPDATED: Always display Pay field if it has a value (not "N/A")
+                    // This now includes "Hourly + tips" if it's the default or explicitly set.
+                    if (job.pay && job.pay !== "N/A") {
                         jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-1"><strong>Pay:</strong> ${job.pay}</p>`;
                     }
-                    // Always show the status, moved this to be below pay for visual order
+                    
                     jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-4"><strong>Status:</strong> <span class="${job.status === 'accepted' ? 'text-green-600' : job.status === 'declined' ? 'text-red-600' : 'text-yellow-600'} capitalize">${job.status}</span></p>`;
 
 
@@ -401,6 +403,36 @@
             document.querySelectorAll('.decline-button').forEach(button => {
                 button.addEventListener('click', (event) => handleJobAction(event.target.dataset.jobId, 'decline'));
             });
+        }
+
+        async function handleJobAction(jobId, actionType) {
+            if (!authToken) {
+                console.log('Not authenticated. Cannot proceed with job action.');
+                alert('You must be logged in to perform this action.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/${actionType}`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json',
+                    },
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    console.log(`Job ${jobId} ${actionType}ed successfully. Status: ${data.message}`);
+                    fetchJobs();
+                } else {
+                    alert(data.message || `Failed to ${actionType} job.`);
+                    console.error(`Failed to ${actionType} job:`, data.message);
+                }
+            } catch (error) {
+                console.error(`Error during ${actionType} job:`, error);
+                alert(`An error occurred while trying to ${actionType} the job.`);
+            }
         }
 
         document.addEventListener('DOMContentLoaded', updateUI);
