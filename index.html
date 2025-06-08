@@ -68,6 +68,7 @@
 
     <script>
         const API_BASE_URL = 'https://michie-detailing-backend.onrender.com';
+        const APP_FRONTEND_URL = 'https://jobs.michieauto.com'; // New: Define frontend URL
 
         const loginSection = document.getElementById('login-section');
         const createAccountSection = document.getElementById('create-account-section');
@@ -123,7 +124,6 @@
                 if (response.ok) {
                     authToken = data.token;
                     localStorage.setItem('authToken', authToken);
-                    // Crucial: Store the contractor's email for frontend filtering of accepted jobs
                     localStorage.setItem('contractorEmail', username); 
                     loginMessage.textContent = '';
                     updateUI();
@@ -139,7 +139,7 @@
         logoutButton.addEventListener('click', () => {
             authToken = null;
             localStorage.removeItem('authToken');
-            localStorage.removeItem('contractorEmail'); // Crucial: Clear contractor email on logout
+            localStorage.removeItem('contractorEmail');
             updateUI();
         });
 
@@ -255,50 +255,62 @@
         function renderJobs(jobs) {
             jobsList.innerHTML = '';
             let renderedJobCount = 0;
-            const contractorEmail = localStorage.getItem('contractorEmail'); // Get current contractor's email
+            const contractorEmail = localStorage.getItem('contractorEmail');
 
             jobs.forEach(job => {
                 let showJob = false;
 
-                // Parse appointment date and time for display expiration
                 let appointmentDateTime = null;
                 if (job.appointment_date && job.appointment_date !== "N/A" &&
                     job.appointment_time && job.appointment_time !== "N/A") {
                     try {
-                        const [year, month, day] = job.appointment_date.split('-').map(Number);
-                        const [hours, minutes] = job.appointment_time.split(':').map(Number);
-                        // Month is 0-indexed in JavaScript Date object
-                        appointmentDateTime = new Date(year, month - 1, day, hours, minutes);
+                        let parsedTime = null;
+                        const timeFormats = ['%H:%M:%S', '%I:%M:%S %p', '%H:%M', '%I:%M %p'];
+                        for (let fmt of timeFormats) {
+                            try {
+                                const tempDate = new Date(`2000-01-01T${job.appointment_time}`);
+                                if (!isNaN(tempDate)) {
+                                    parsedTime = {
+                                        hours: tempDate.getHours(),
+                                        minutes: tempDate.getMinutes(),
+                                        seconds: tempDate.getSeconds() || 0
+                                    };
+                                    break;
+                                }
+                            } catch (e) {
+                                // Continue to next format
+                            }
+                        }
+
+                        if (parsedTime) {
+                            const [year, month, day] = job.appointment_date.split('-').map(Number);
+                            appointmentDateTime = new Date(year, month - 1, day, parsedTime.hours, parsedTime.minutes, parsedTime.seconds);
+                        }
                     } catch (e) {
                         console.error(`Frontend date/time parsing error for job ${job.id}:`, e);
-                        // If parsing fails, treat it as not expired to avoid hiding
                         appointmentDateTime = null; 
                     }
                 }
 
                 let jobExpiredForDisplay = false;
                 if (appointmentDateTime) {
-                    const expirationTime = new Date(appointmentDateTime.getTime() + (4 * 60 * 60 * 1000)); // Add 4 hours
+                    const expirationTime = new Date(appointmentDateTime.getTime() + (4 * 60 * 60 * 1000));
                     if (new Date() >= expirationTime) {
                         jobExpiredForDisplay = true;
                     }
                 }
 
                 if (job.status === 'pending') {
-                    // Pending jobs are shown unless they are past their display expiration
                     if (!jobExpiredForDisplay) {
                         showJob = true;
                     }
                 } else if (job.status === 'accepted') {
-                    // Accepted jobs are shown ONLY if accepted by the current contractor
-                    // AND are within their 4-hour display window from appointment time
                     if (job.contractor_id_field === contractorEmail) {
                         if (!jobExpiredForDisplay) {
                             showJob = true;
                         }
                     }
                 }
-                // Jobs with status 'declined' (or any other status not explicitly handled) are not shown by default.
 
                 if (showJob) {
                     const jobCard = document.createElement('div');
@@ -356,7 +368,6 @@
                             `;
                         }
                     } else {
-                        // Action buttons only for pending jobs
                         jobDescriptionHTML += `
                             <div class="flex space-x-2 mt-4">
                                 <button data-job-id="${job.id}" class="accept-button bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out w-1/2">Accept</button>
@@ -378,7 +389,6 @@
                 noJobsMessage.classList.add('hidden');
             }
 
-            // Attach event listeners after all job cards are rendered
             document.querySelectorAll('.accept-button').forEach(button => {
                 button.addEventListener('click', (event) => handleJobAction(event.target.dataset.jobId, 'accept'));
             });
@@ -388,10 +398,9 @@
         }
 
         async function handleJobAction(jobId, actionType) {
-            // Check if authToken is present (user is logged in)
             if (!authToken) {
                 console.log('Not authenticated. Cannot proceed with job action.');
-                alert('You must be logged in to perform this action.');
+                alert('You must be logged in to perform this action.'); // Added alert for clearer feedback
                 return;
             }
 
@@ -407,7 +416,7 @@
                 const data = await response.json();
                 if (response.ok) {
                     console.log(`Job ${jobId} ${actionType}ed successfully. Status: ${data.message}`);
-                    fetchJobs(); // Re-fetch jobs to update the display
+                    fetchJobs();
                 } else {
                     alert(data.message || `Failed to ${actionType} job.`);
                     console.error(`Failed to ${actionType} job:`, data.message);
