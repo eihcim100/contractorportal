@@ -345,7 +345,13 @@
                         jobDescriptionHTML += `<p class="text-gray-600 mb-4"><strong>Appointment Time:</strong> ${formatAppointmentTime(job.appointment_time)}</p>`;
                     }
 
+                    // NEW: Display Pay field if it's not "Hourly + tips"
+                    if (job.pay && job.pay !== "N/A" && job.pay !== "Hourly + tips") {
+                        jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-1"><strong>Pay:</strong> ${job.pay}</p>`;
+                    }
+                    // Always show the status, moved this to be below pay for visual order
                     jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-4"><strong>Status:</strong> <span class="${job.status === 'accepted' ? 'text-green-600' : job.status === 'declined' ? 'text-red-600' : 'text-yellow-600'} capitalize">${job.status}</span></p>`;
+
 
                     if (job.status === 'accepted') {
                         let customerDetails = '';
@@ -395,36 +401,6 @@
             document.querySelectorAll('.decline-button').forEach(button => {
                 button.addEventListener('click', (event) => handleJobAction(event.target.dataset.jobId, 'decline'));
             });
-        }
-
-        async function handleJobAction(jobId, actionType) {
-            if (!authToken) {
-                console.log('Not authenticated. Cannot proceed with job action.');
-                alert('You must be logged in to perform this action.'); // Added alert for clearer feedback
-                return;
-            }
-
-            try {
-                const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/${actionType}`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`,
-                        'Content-Type': 'application/json',
-                    },
-                });
-
-                const data = await response.json();
-                if (response.ok) {
-                    console.log(`Job ${jobId} ${actionType}ed successfully. Status: ${data.message}`);
-                    fetchJobs();
-                } else {
-                    alert(data.message || `Failed to ${actionType} job.`);
-                    console.error(`Failed to ${actionType} job:`, data.message);
-                }
-            } catch (error) {
-                console.error(`Error during ${actionType} job:`, error);
-                alert(`An error occurred while trying to ${actionType} the job.`);
-            }
         }
 
         document.addEventListener('DOMContentLoaded', updateUI);
