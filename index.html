@@ -258,19 +258,10 @@
             const contractorEmail = localStorage.getItem('contractorEmail');
 
             jobs.forEach(job => {
-                // *** FIX START ***
-                // The backend already filters out expired jobs. We can trust the list of jobs
-                // we receive from the API is the correct list to display.
-                // The redundant frontend logic for checking expiration has been removed.
-
                 let showJob = false;
-
-                // SIMPLIFIED LOGIC: Determine if the job should be shown based on its status.
-                // The backend already handles filtering expired jobs.
                 if (job.status === 'pending') {
                     showJob = true;
                 } else if (job.status === 'accepted') {
-                    // Only show accepted jobs to the contractor who accepted them.
                     if (job.contractor_id_field === contractorEmail) {
                         showJob = true;
                     }
@@ -306,7 +297,16 @@
                         jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Appointment Date:</strong> ${formatAppointmentDate(job.appointment_date)}</p>`;
                     }
                     if (job.appointment_time && job.appointment_time !== "N/A") {
-                        jobDescriptionHTML += `<p class="text-gray-600 mb-4"><strong>Appointment Time:</strong> ${formatAppointmentTime(job.appointment_time)}</p>`;
+                        jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Appointment Time:</strong> ${formatAppointmentTime(job.appointment_time)}</p>`;
+                    }
+
+                    // *** FIX: ADDED CODE TO DISPLAY ESTIMATED TIME ***
+                    // This will now display the "Estimated Time to Complete" if the field is not empty.
+                    if (job.estimated_time && job.estimated_time !== "N/A") {
+                        jobDescriptionHTML += `<p class="text-gray-600 mb-4"><strong>Est. Time:</strong> ${job.estimated_time}</p>`;
+                    } else {
+                        // Add some margin-bottom if estimated_time is not present, to keep spacing consistent
+                        jobDescriptionHTML += `<div class="mb-4"></div>`;
                     }
                     
                     if (job.pay && job.pay !== "N/A") {
@@ -349,7 +349,6 @@
                     jobsList.appendChild(jobCard);
                     renderedJobCount++;
                 }
-                // *** FIX END ***
             });
 
             if (renderedJobCount === 0) {
