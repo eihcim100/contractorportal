@@ -303,7 +303,7 @@
                     // *** FIX: ADDED CODE TO DISPLAY ESTIMATED TIME ***
                     // This will now display the "Estimated Time to Complete" if the field is not empty.
                     if (job.estimated_time && job.estimated_time !== "N/A") {
-                        jobDescriptionHTML += `<p class="text-gray-600 mb-4"><strong>Est. Time:</strong> ${job.estimated_time}</p>`;
+                        jobDescriptionHTML += `<p class="text-gray-600 mb-4"><strong>Estimated Time:</strong> ${job.estimated_time}</p>`;
                     } else {
                         // Add some margin-bottom if estimated_time is not present, to keep spacing consistent
                         jobDescriptionHTML += `<div class="mb-4"></div>`;
