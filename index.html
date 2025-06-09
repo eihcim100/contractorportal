@@ -258,58 +258,21 @@
             const contractorEmail = localStorage.getItem('contractorEmail');
 
             jobs.forEach(job => {
+                // *** FIX START ***
+                // The backend already filters out expired jobs. We can trust the list of jobs
+                // we receive from the API is the correct list to display.
+                // The redundant frontend logic for checking expiration has been removed.
+
                 let showJob = false;
 
-                let appointmentDateTime = null;
-                if (job.appointment_date && job.appointment_date !== "N/A" &&
-                    job.appointment_time && job.appointment_time !== "N/A") {
-                    try {
-                        let parsedTime = null;
-                        const timeFormats = ['%H:%M:%S', '%I:%M:%S %p', '%H:%M', '%I:%M %p'];
-                        for (let fmt of timeFormats) {
-                            try {
-                                // Attempt to parse with seconds first, then without, or using new Date() directly
-                                const tempDate = new Date(`2000-01-01T${job.appointment_time}`);
-                                if (!isNaN(tempDate.getTime())) { // Use getTime() to check for valid date
-                                    parsedTime = {
-                                        hours: tempDate.getHours(),
-                                        minutes: tempDate.getMinutes(),
-                                        seconds: tempDate.getSeconds() || 0
-                                    };
-                                    break;
-                                }
-                            } catch (e) {
-                                // Continue to next format
-                            }
-                        }
-
-                        if (parsedTime) {
-                            const [year, month, day] = job.appointment_date.split('-').map(Number);
-                            appointmentDateTime = new Date(year, month - 1, day, parsedTime.hours, parsedTime.minutes, parsedTime.seconds);
-                        }
-                    } catch (e) {
-                        console.error(`Frontend date/time parsing error for job ${job.id}:`, e);
-                        appointmentDateTime = null; 
-                    }
-                }
-
-                let jobExpiredForDisplay = false;
-                if (appointmentDateTime) {
-                    const expirationTime = new Date(appointmentDateTime.getTime() + (4 * 60 * 60 * 1000));
-                    if (new Date() >= expirationTime) {
-                        jobExpiredForDisplay = true;
-                    }
-                }
-
+                // SIMPLIFIED LOGIC: Determine if the job should be shown based on its status.
+                // The backend already handles filtering expired jobs.
                 if (job.status === 'pending') {
-                    if (!jobExpiredForDisplay) {
-                        showJob = true;
-                    }
+                    showJob = true;
                 } else if (job.status === 'accepted') {
+                    // Only show accepted jobs to the contractor who accepted them.
                     if (job.contractor_id_field === contractorEmail) {
-                        if (!jobExpiredForDisplay) {
-                            showJob = true;
-                        }
+                        showJob = true;
                     }
                 }
                 
@@ -345,9 +308,7 @@
                     if (job.appointment_time && job.appointment_time !== "N/A") {
                         jobDescriptionHTML += `<p class="text-gray-600 mb-4"><strong>Appointment Time:</strong> ${formatAppointmentTime(job.appointment_time)}</p>`;
                     }
-
-                    // UPDATED: Always display Pay field if it has a value (not "N/A")
-                    // This now includes "Hourly + tips" if it's the default or explicitly set.
+                    
                     if (job.pay && job.pay !== "N/A") {
                         jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-1"><strong>Pay:</strong> ${job.pay}</p>`;
                     }
@@ -388,6 +349,7 @@
                     jobsList.appendChild(jobCard);
                     renderedJobCount++;
                 }
+                // *** FIX END ***
             });
 
             if (renderedJobCount === 0) {
