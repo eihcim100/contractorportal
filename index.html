@@ -9,6 +9,7 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
+            line-height: 1.6; /* Increased line-height for better readability */
         }
         /* Custom style for address formatting to ensure line breaks are applied */
         .address-display {
@@ -292,46 +293,47 @@
                         mainTitle = "Untitled Job";
                     }
 
-                    jobDescriptionHTML += `<h3 class="text-xl font-semibold text-gray-800 mb-2">${mainTitle.trim()}</h3>`;
+                    // Increased bottom margin for the title
+                    jobDescriptionHTML += `<h3 class="text-xl font-semibold text-gray-800 mb-4">${mainTitle.trim()}</h3>`;
 
+                    // Info block with adjusted spacing
                     if (job.zip_code && job.zip_code !== "N/A") {
-                        jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Zip Code:</strong> ${job.zip_code}</p>`;
+                        jobDescriptionHTML += `<p class="text-gray-600 mb-2"><strong>Zip Code:</strong> ${job.zip_code}</p>`;
                     }
                     if (job.appointment_date && job.appointment_date !== "N/A") {
-                        jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Appointment Date:</strong> ${formatAppointmentDate(job.appointment_date)}</p>`;
+                        jobDescriptionHTML += `<p class="text-gray-600 mb-2"><strong>Appointment Date:</strong> ${formatAppointmentDate(job.appointment_date)}</p>`;
                     }
                     if (job.appointment_time && job.appointment_time !== "N/A") {
-                        jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Appointment Time:</strong> ${formatAppointmentTime(job.appointment_time)}</p>`;
+                        jobDescriptionHTML += `<p class="text-gray-600 mb-4"><strong>Appointment Time:</strong> ${formatAppointmentTime(job.appointment_time)}</p>`;
                     }
 
                     if (job.estimated_time && job.estimated_time !== "N/A") {
                         jobDescriptionHTML += `<p class="text-gray-600 mb-4"><strong>Estimated Time:</strong> ${job.estimated_time}</p>`;
-                    } else {
-                        jobDescriptionHTML += `<div class="mb-4"></div>`;
                     }
                     
+                    // Pay and Bonus Block with adjusted spacing
                     if (job.pay && job.pay !== "N/A") {
                         let payDisplay = job.pay;
                         if (job.pay.toLowerCase() === "hourly + tips") {
                             payDisplay = "$50 Flat Rate + Tips";
                         }
-                        jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-1"><strong>Pay:</strong> ${payDisplay}</p>`;
+                        jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-2"><strong>Pay:</strong> ${payDisplay}</p>`;
                     }
 
-                    // Bonus sections
-                    jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-1"><strong>Protection Plan Opportunity:</strong> $15 Commission per plan sold</p>`;
+                    jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-2"><strong>Protection Plan Opportunity:</strong> $15 Commission per plan sold</p>`;
                     jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-4"><strong>Photo review with message on Google:</strong> $5 Bonus</p>`;
                     
+                    // Status line
                     jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-4"><strong>Status:</strong> <span class="${job.status === 'accepted' ? 'text-green-600' : job.status === 'declined' ? 'text-red-600' : 'text-yellow-600'} capitalize">${job.status}</span></p>`;
 
 
                     if (job.status === 'accepted') {
                         let customerDetails = '';
                         if (job.customer_name && job.customer_name !== "N/A") {
-                            customerDetails += `<p class="text-gray-600 mb-1"><strong>Customer Name:</strong> ${job.customer_name}</p>`;
+                            customerDetails += `<p class="text-gray-600 mb-2"><strong>Customer Name:</strong> ${job.customer_name}</p>`;
                         }
                         if (job.customer_phone && job.customer_phone !== "N/A") {
-                            customerDetails += `<p class="text-gray-600 mb-1"><strong>Customer Phone:</strong> ${job.customer_phone}</p>`;
+                            customerDetails += `<p class="text-gray-600 mb-2"><strong>Customer Phone:</strong> ${job.customer_phone}</p>`;
                         }
                         if (job.customer_address && job.customer_address !== "N/A") {
                             customerDetails += `<p class="text-gray-600"><strong>Customer Address:</strong> <span class="address-display">${formatCustomerAddress(job.customer_address)}</span></p>`;
