@@ -60,6 +60,10 @@
                 <h2 class="text-2xl font-bold text-gray-800">Available Jobs</h2>
                 <button id="logout-button" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out">Logout</button>
             </div>
+            <!-- Yellow Caution Banner -->
+            <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded-lg" role="alert">
+                <p class="font-bold">NOTE: Do not clock in on flat rate jobs</p>
+            </div>
             <p id="no-jobs-message" class="text-gray-600 text-center hidden">No jobs available at the moment.</p>
             <div id="jobs-list" class="space-y-4">
                 </div>
@@ -308,12 +312,15 @@
                     
                     if (job.pay && job.pay !== "N/A") {
                         let payDisplay = job.pay;
-                        // *** FIX: Use .toLowerCase() for a case-insensitive comparison ***
                         if (job.pay.toLowerCase() === "hourly + tips") {
-                            payDisplay = "FLAT RATE: $50 Base + Tips (DO NOT CLOCK IN)";
+                            payDisplay = "$50 Flat Rate + Tips";
                         }
                         jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-1"><strong>Pay:</strong> ${payDisplay}</p>`;
                     }
+
+                    // Bonus sections
+                    jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-1"><strong>Protection Plan Opportunity:</strong> $15 Commission per plan sold</p>`;
+                    jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-4"><strong>Photo review with message on Google:</strong> $5 Bonus</p>`;
                     
                     jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-4"><strong>Status:</strong> <span class="${job.status === 'accepted' ? 'text-green-600' : job.status === 'declined' ? 'text-red-600' : 'text-yellow-600'} capitalize">${job.status}</span></p>`;
 
