@@ -308,7 +308,8 @@
                     
                     if (job.pay && job.pay !== "N/A") {
                         let payDisplay = job.pay;
-                        if (job.pay === "Hourly + Tips") {
+                        // *** FIX: Use .toLowerCase() for a case-insensitive comparison ***
+                        if (job.pay.toLowerCase() === "hourly + tips") {
                             payDisplay = "FLAT RATE: $50 Base + Tips (DO NOT CLOCK IN)";
                         }
                         jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-1"><strong>Pay:</strong> ${payDisplay}</p>`;
