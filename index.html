@@ -224,6 +224,16 @@
             if (!addressString || addressString === "N/A") return "N/A";
             return addressString.replace(/, /g, ',<br>');
         }
+        
+        function formatPhoneNumber(phoneString) {
+            if (!phoneString || phoneString === "N/A") return "N/A";
+            const cleaned = ('' + phoneString).replace(/\D/g, '');
+            const match = cleaned.match(/^(\d{3})(\d{3})(\d{4})$/);
+            if (match) {
+                return '(' + match[1] + ') ' + match[2] + '-' + match[3];
+            }
+            return phoneString;
+        }
 
         async function fetchJobs() {
             if (!authToken) {
@@ -356,13 +366,14 @@
                         // Click-to-call phone number
                         if (job.customer_phone && job.customer_phone !== "N/A") {
                             const telLink = job.customer_phone.replace(/\D/g, '');
-                            customerDetails += `<p class="text-gray-600 mb-2"><strong>Customer Phone:</strong> <a href="tel:${telLink}" class="text-blue-500 hover:underline">${job.customer_phone}</a></p>`;
+                            const formattedPhone = formatPhoneNumber(job.customer_phone);
+                            customerDetails += `<p class="text-gray-600 mb-2"><strong>Customer Phone:</strong> <a href="tel:${telLink}" class="text-blue-500 hover:underline">${formattedPhone}</a></p>`;
                         }
                         // Google Maps link for address
                         if (job.customer_address && job.customer_address !== "N/A") {
                             const encodedAddress = encodeURIComponent(job.customer_address);
                             const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
-                            customerDetails += `<p class="text-gray-600"><strong>Customer Address:</strong> <a href="${googleMapsUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:underline"><span class="address-display">${formatCustomerAddress(job.customer_address)}</span></a></p>`;
+                            customerDetails += `<p class="text-gray-600 mb-1"><strong>Customer Address:</strong></p><a href="${googleMapsUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:underline block"><span class="address-display">${formatCustomerAddress(job.customer_address)}</span></a>`;
                         }
 
                         if (customerDetails) {
