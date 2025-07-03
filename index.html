@@ -320,31 +320,29 @@
                     let bonusBoxHTML = `
                         <div class="bg-green-50 text-green-800 p-4 rounded-lg border border-green-200 my-4">
                             <p class="font-bold mb-2">Bonus Opportunities</p>
-                            <p class="mb-1"><strong>Protection Plan:</strong> $15 Commission per plan sold</p>
-                            <p><strong>Google Review:</strong> $5 Bonus for a photo review with message</p>
-                    `;
-
-                    // Add message buttons ONLY for accepted jobs with a phone number
+                            <div>
+                                <p class="mb-1"><strong>Protection Plan:</strong> $15 Commission per plan sold</p>`;
+                    
                     if (job.status === 'accepted' && job.customer_phone && job.customer_phone !== "N/A") {
                         const telLink = job.customer_phone.replace(/\D/g, '');
-                        
                         const protectionPlanMessage = "Protect your vehicle with our protection plan which covers you for 60 days with one $0 out of pocket cost detail. Signup now at https://michieauto.com/protection";
                         const encodedProtectionPlanMessage = encodeURIComponent(protectionPlanMessage);
                         const protectionPlanSmsLink = `sms:${telLink}?&body=${encodedProtectionPlanMessage}`;
+                        bonusBoxHTML += `<a href="${protectionPlanSmsLink}" class="mt-2 inline-block bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out text-sm text-center">Send Protection Plan Message</a>`;
+                    }
 
+                    bonusBoxHTML += `</div><div class="mt-4">
+                                <p><strong>Google Review:</strong> $5 Bonus for a photo review with message</p>`;
+
+                    if (job.status === 'accepted' && job.customer_phone && job.customer_phone !== "N/A") {
+                        const telLink = job.customer_phone.replace(/\D/g, '');
                         const reviewMessage = "Michie Auto Detailing LLC would love your feedback. Post a photo review to our profile, it only takes 3 minutes! https://g.page/r/CcRJGcUyQxksEBE/review";
                         const encodedReviewMessage = encodeURIComponent(reviewMessage);
                         const reviewSmsLink = `sms:${telLink}?&body=${encodedReviewMessage}`;
-
-                        bonusBoxHTML += `
-                            <div class="flex flex-wrap gap-2 mt-3">
-                                <a href="${protectionPlanSmsLink}" class="flex-grow bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out text-sm text-center">Send Protection Plan Message</a>
-                                <a href="${reviewSmsLink}" class="flex-grow bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out text-sm text-center">Send Review Request</a>
-                            </div>
-                        `;
+                        bonusBoxHTML += `<a href="${reviewSmsLink}" class="mt-2 inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out text-sm text-center">Send Review Request</a>`;
                     }
                     
-                    bonusBoxHTML += `</div>`; // Close the green box div
+                    bonusBoxHTML += `</div></div>`; // Close the green box divs
                     jobDescriptionHTML += bonusBoxHTML; // Add the bonus box to the main HTML
                     
                     jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-4"><strong>Status:</strong> <span class="${job.status === 'accepted' ? 'text-green-600' : job.status === 'declined' ? 'text-red-600' : 'text-yellow-600'} capitalize">${job.status}</span></p>`;
