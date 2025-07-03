@@ -9,7 +9,6 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            line-height: 1.6; /* Increased line-height for better readability */
         }
         /* Custom style for address formatting to ensure line breaks are applied */
         .address-display {
@@ -293,10 +292,8 @@
                         mainTitle = "Untitled Job";
                     }
 
-                    // Increased bottom margin for the title
                     jobDescriptionHTML += `<h3 class="text-xl font-semibold text-gray-800 mb-4">${mainTitle.trim()}</h3>`;
 
-                    // Info block with adjusted spacing
                     if (job.zip_code && job.zip_code !== "N/A") {
                         jobDescriptionHTML += `<p class="text-gray-600 mb-2"><strong>Zip Code:</strong> ${job.zip_code}</p>`;
                     }
@@ -311,19 +308,23 @@
                         jobDescriptionHTML += `<p class="text-gray-600 mb-4"><strong>Estimated Time:</strong> ${job.estimated_time}</p>`;
                     }
                     
-                    // Pay and Bonus Block with adjusted spacing
                     if (job.pay && job.pay !== "N/A") {
                         let payDisplay = job.pay;
                         if (job.pay.toLowerCase() === "hourly + tips") {
                             payDisplay = "$50 Flat Rate + Tips";
                         }
-                        jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-2"><strong>Pay:</strong> ${payDisplay}</p>`;
+                        jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-4"><strong>Pay:</strong> ${payDisplay}</p>`;
                     }
 
-                    jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-2"><strong>Protection Plan Opportunity:</strong> $15 Commission per plan sold</p>`;
-                    jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-4"><strong>Photo review with message on Google:</strong> $5 Bonus</p>`;
+                    // Green box for bonus opportunities
+                    jobDescriptionHTML += `
+                        <div class="bg-green-50 text-green-800 p-4 rounded-lg border border-green-200 my-4">
+                            <p class="font-bold mb-2">Bonus Opportunities</p>
+                            <p class="mb-1"><strong>Protection Plan:</strong> $15 Commission per plan sold.</p>
+                            <p><strong>Google Review:</strong> $5 Bonus for a photo review with message.</p>
+                        </div>
+                    `;
                     
-                    // Status line
                     jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-4"><strong>Status:</strong> <span class="${job.status === 'accepted' ? 'text-green-600' : job.status === 'declined' ? 'text-red-600' : 'text-yellow-600'} capitalize">${job.status}</span></p>`;
 
 
