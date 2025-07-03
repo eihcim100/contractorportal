@@ -300,17 +300,18 @@
                         jobDescriptionHTML += `<p class="text-gray-600 mb-1"><strong>Appointment Time:</strong> ${formatAppointmentTime(job.appointment_time)}</p>`;
                     }
 
-                    // *** FIX: ADDED CODE TO DISPLAY ESTIMATED TIME ***
-                    // This will now display the "Estimated Time to Complete" if the field is not empty.
                     if (job.estimated_time && job.estimated_time !== "N/A") {
                         jobDescriptionHTML += `<p class="text-gray-600 mb-4"><strong>Estimated Time:</strong> ${job.estimated_time}</p>`;
                     } else {
-                        // Add some margin-bottom if estimated_time is not present, to keep spacing consistent
                         jobDescriptionHTML += `<div class="mb-4"></div>`;
                     }
                     
                     if (job.pay && job.pay !== "N/A") {
-                        jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-1"><strong>Pay:</strong> ${job.pay}</p>`;
+                        let payDisplay = job.pay;
+                        if (job.pay === "Hourly + Tips") {
+                            payDisplay = "FLAT RATE: $50 Base + Tips (DO NOT CLOCK IN)";
+                        }
+                        jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-1"><strong>Pay:</strong> ${payDisplay}</p>`;
                     }
                     
                     jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-4"><strong>Status:</strong> <span class="${job.status === 'accepted' ? 'text-green-600' : job.status === 'declined' ? 'text-red-600' : 'text-yellow-600'} capitalize">${job.status}</span></p>`;
