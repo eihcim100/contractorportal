@@ -304,6 +304,11 @@
 
                     jobDescriptionHTML += `<h3 class="text-xl font-semibold text-gray-800 mb-4">${mainTitle.trim()}</h3>`;
 
+                    // New: Service Level field
+                    if (job.service_level && job.service_level !== "N/A" && job.service_level.trim() !== "") {
+                        jobDescriptionHTML += `<p class="text-gray-600 mb-2"><strong>Service Level:</strong> ${job.service_level}</p>`;
+                    }
+
                     if (job.zip_code && job.zip_code !== "N/A") {
                         jobDescriptionHTML += `<p class="text-gray-600 mb-2"><strong>Zip Code:</strong> ${job.zip_code}</p>`;
                     }
