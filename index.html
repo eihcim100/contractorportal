@@ -412,18 +412,38 @@
             }
 
             document.querySelectorAll('.accept-button').forEach(button => {
-                button.addEventListener('click', (event) => handleJobAction(event.target.dataset.jobId, 'accept'));
+                button.addEventListener('click', (event) => handleJobAction(event.target.dataset.jobId, 'accept', event.target));
             });
             document.querySelectorAll('.decline-button').forEach(button => {
-                button.addEventListener('click', (event) => handleJobAction(event.target.dataset.jobId, 'decline'));
+                button.addEventListener('click', (event) => handleJobAction(event.target.dataset.jobId, 'decline', event.target));
             });
         }
 
-        async function handleJobAction(jobId, actionType) {
+        async function handleJobAction(jobId, actionType, buttonElement) {
             if (!authToken) {
                 console.log('Not authenticated. Cannot proceed with job action.');
                 alert('You must be logged in to perform this action.');
                 return;
+            }
+
+            // Find both buttons in the card to disable them and prevent double-clicks
+            const acceptButton = buttonElement.parentElement.querySelector('.accept-button');
+            const declineButton = buttonElement.parentElement.querySelector('.decline-button');
+            
+            const originalAcceptText = acceptButton.textContent;
+            const originalDeclineText = declineButton.textContent;
+
+            // Disable both buttons and add visual cues
+            acceptButton.disabled = true;
+            declineButton.disabled = true;
+            acceptButton.classList.add('opacity-50', 'cursor-not-allowed');
+            declineButton.classList.add('opacity-50', 'cursor-not-allowed');
+
+            // Change text to show processing
+            if (actionType === 'accept') {
+                acceptButton.textContent = 'Accepting...';
+            } else {
+                declineButton.textContent = 'Declining...';
             }
 
             try {
@@ -438,14 +458,29 @@
                 const data = await response.json();
                 if (response.ok) {
                     console.log(`Job ${jobId} ${actionType}ed successfully. Status: ${data.message}`);
+                    // Refresh the job list. The buttons will be removed from the DOM.
                     fetchJobs();
                 } else {
                     alert(data.message || `Failed to ${actionType} job.`);
                     console.error(`Failed to ${actionType} job:`, data.message);
+                    // If the action fails, re-enable the buttons so the user can try again.
+                    acceptButton.disabled = false;
+                    declineButton.disabled = false;
+                    acceptButton.textContent = originalAcceptText;
+                    declineButton.textContent = originalDeclineText;
+                    acceptButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                    declineButton.classList.remove('opacity-50', 'cursor-not-allowed');
                 }
             } catch (error) {
                 console.error(`Error during ${actionType} job:`, error);
                 alert(`An error occurred while trying to ${actionType} the job.`);
+                // Also re-enable on network error.
+                acceptButton.disabled = false;
+                declineButton.disabled = false;
+                acceptButton.textContent = originalAcceptText;
+                declineButton.textContent = originalDeclineText;
+                acceptButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                declineButton.classList.remove('opacity-50', 'cursor-not-allowed');
             }
         }
 
