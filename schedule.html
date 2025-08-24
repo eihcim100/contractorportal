@@ -45,7 +45,7 @@
         <!-- Calendar Section -->
         <div id="calendar-section" class="hidden">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-gray-800">Your Upcoming Jobs (Next 30 Days)</h2>
+                <h2 class="text-2xl font-bold text-gray-800">All Upcoming Accepted Jobs (Next 30 Days)</h2>
                 <div class="flex space-x-2">
                     <a href="index.html" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out">View All Jobs</a>
                     <button id="logout-button" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out">Logout</button>
@@ -56,7 +56,7 @@
             <div id="calendar-view" class="calendar-grid">
                 <!-- Calendar days will be rendered here -->
             </div>
-            <p id="no-jobs-message" class="text-gray-600 text-center mt-8 hidden">No upcoming jobs in the next 30 days.</p>
+            <p id="no-jobs-message" class="text-gray-600 text-center mt-8 hidden">No upcoming accepted jobs in the next 30 days.</p>
         </div>
     </div>
 
@@ -187,7 +187,7 @@
 
                 const data = await response.json();
                 if (response.ok) {
-                    const upcomingJobs = filterUpcomingJobs(data, contractorEmail);
+                    const upcomingJobs = filterUpcomingJobs(data);
                     renderCalendar(upcomingJobs);
                 } else {
                     loadingMessage.classList.add('hidden');
@@ -202,13 +202,14 @@
             }
         }
 
-        function filterUpcomingJobs(jobs, contractorEmail) {
+        function filterUpcomingJobs(jobs) {
             const now = new Date();
             const thirtyDaysFromNow = new Date();
             thirtyDaysFromNow.setDate(now.getDate() + 30);
             
             const upcomingJobs = jobs.filter(job => {
-                if (job.status !== 'accepted' || job.contractor_id_field !== contractorEmail) {
+                // The key change: We are no longer checking for a specific contractor email.
+                if (job.status !== 'accepted') {
                     return false;
                 }
                 const jobDate = new Date(job.appointment_date);
