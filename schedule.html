@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upcoming Jobs Calendar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .address-display {
+            white-space: pre-wrap;
+        }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        .calendar-day {
+            min-height: 150px;
+            padding: 1rem;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+    <div id="app" class="bg-white p-8 rounded-lg shadow-lg w-full max-w-7xl">
+        <!-- Login Section (reused from index.html) -->
+        <div id="login-section">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Contractor Login</h2>
+            <div class="mb-4">
+                <label for="username" class="block text-gray-700 text-sm font-bold mb-2">Username (Email):</label>
+                <input type="email" id="username" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+            </div>
+            <div class="mb-6">
+                <label for="password" class="block text-gray-700 text-sm font-bold mb-2">Password:</label>
+                <input type="password" id="password" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline">
+            </div>
+            <button id="login-button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline w-full transition duration-300 ease-in-out">Login</button>
+            <p id="login-message" class="text-red-500 text-xs italic mt-4 text-center"></p>
+        </div>
+
+        <!-- Calendar Section -->
+        <div id="calendar-section" class="hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">Your Upcoming Jobs (Next 30 Days)</h2>
+                <div class="flex space-x-2">
+                    <a href="index.html" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out">View All Jobs</a>
+                    <button id="logout-button" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out">Logout</button>
+                </div>
+            </div>
+            
+            <p id="loading-message" class="text-center text-gray-500">Loading calendar...</p>
+            <div id="calendar-view" class="calendar-grid">
+                <!-- Calendar days will be rendered here -->
+            </div>
+            <p id="no-jobs-message" class="text-gray-600 text-center mt-8 hidden">No upcoming jobs in the next 30 days.</p>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'https://michie-detailing-backend.onrender.com';
+        const loginSection = document.getElementById('login-section');
+        const calendarSection = document.getElementById('calendar-section');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const loginButton = document.getElementById('login-button');
+        const loginMessage = document.getElementById('login-message');
+        const logoutButton = document.getElementById('logout-button');
+        const calendarView = document.getElementById('calendar-view');
+        const loadingMessage = document.getElementById('loading-message');
+        const noJobsMessage = document.getElementById('no-jobs-message');
+
+        let authToken = localStorage.getItem('authToken');
+        let contractorEmail = localStorage.getItem('contractorEmail');
+
+        // --- Helper Functions (reused from index.html) ---
+        function formatAppointmentDate(dateString) {
+            if (!dateString || dateString === "N/A") return "N/A";
+            try {
+                const [year, month, day] = dateString.split('-');
+                return `${month}-${day}-${year}`;
+            } catch (e) {
+                console.error("Error formatting date:", dateString, e);
+                return dateString;
+            }
+        }
+
+        function formatAppointmentTime(timeString) {
+            if (!timeString || timeString === "N/A") return "N/A";
+            try {
+                const [hours, minutes] = timeString.split(':');
+                let hour = parseInt(hours, 10);
+                const ampm = hour >= 12 ? 'PM' : 'AM';
+                hour = hour % 12;
+                hour = hour ? hour : 12;
+                return `${hour}:${minutes} ${ampm}`;
+            } catch (e) {
+                console.error("Error formatting time:", timeString, e);
+                return timeString;
+            }
+        }
+        
+        function formatCustomerAddress(addressString) {
+            if (!addressString || addressString === "N/A") return "N/A";
+            return addressString.replace(/, /g, ',<br>');
+        }
+
+        function formatPhoneNumber(phoneString) {
+            if (!phoneString || phoneString === "N/A") return "N/A";
+            const cleaned = ('' + phoneString).replace(/\D/g, '');
+            const match = cleaned.match(/^(\d{3})(\d{3})(\d{4})$/);
+            if (match) {
+                return '(' + match[1] + ') ' + match[2] + '-' + match[3];
+            }
+            return phoneString;
+        }
+
+        // --- UI and Auth Logic (reused from index.html) ---
+        function updateUI() {
+            if (authToken) {
+                loginSection.classList.add('hidden');
+                calendarSection.classList.remove('hidden');
+                fetchAndRenderCalendar();
+            } else {
+                loginSection.classList.remove('hidden');
+                calendarSection.classList.add('hidden');
+            }
+        }
+
+        loginButton.addEventListener('click', async () => {
+            const username = usernameInput.value;
+            const password = passwordInput.value;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password }),
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    authToken = data.token;
+                    contractorEmail = username;
+                    localStorage.setItem('authToken', authToken);
+                    localStorage.setItem('contractorEmail', contractorEmail);
+                    loginMessage.textContent = '';
+                    updateUI();
+                } else {
+                    loginMessage.textContent = data.message || 'Login failed. Please check your credentials.';
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                loginMessage.textContent = 'An error occurred during login.';
+            }
+        });
+
+        logoutButton.addEventListener('click', () => {
+            authToken = null;
+            contractorEmail = null;
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('contractorEmail');
+            updateUI();
+        });
+
+        // --- New Logic for Calendar View ---
+        async function fetchAndRenderCalendar() {
+            if (!authToken) {
+                console.log('Not authenticated. Cannot fetch jobs for calendar.');
+                return;
+            }
+            loadingMessage.classList.remove('hidden');
+            calendarView.innerHTML = '';
+            noJobsMessage.classList.add('hidden');
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/jobs`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json',
+                    },
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    const upcomingJobs = filterUpcomingJobs(data, contractorEmail);
+                    renderCalendar(upcomingJobs);
+                } else {
+                    loadingMessage.classList.add('hidden');
+                    noJobsMessage.textContent = data.message || 'Error fetching jobs.';
+                    noJobsMessage.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Fetch jobs error:', error);
+                loadingMessage.classList.add('hidden');
+                noJobsMessage.textContent = 'An error occurred while fetching jobs.';
+                noJobsMessage.classList.remove('hidden');
+            }
+        }
+
+        function filterUpcomingJobs(jobs, contractorEmail) {
+            const now = new Date();
+            const thirtyDaysFromNow = new Date();
+            thirtyDaysFromNow.setDate(now.getDate() + 30);
+            
+            const upcomingJobs = jobs.filter(job => {
+                if (job.status !== 'accepted' || job.contractor_id_field !== contractorEmail) {
+                    return false;
+                }
+                const jobDate = new Date(job.appointment_date);
+                // Filter jobs that are in the next 30 days, including today
+                return jobDate >= now && jobDate <= thirtyDaysFromNow;
+            });
+
+            return upcomingJobs;
+        }
+
+        function renderCalendar(jobs) {
+            loadingMessage.classList.add('hidden');
+            calendarView.innerHTML = '';
+            
+            if (jobs.length === 0) {
+                noJobsMessage.classList.remove('hidden');
+                return;
+            }
+
+            // Create a map to group jobs by date
+            const jobsByDate = {};
+            jobs.forEach(job => {
+                const date = job.appointment_date;
+                if (!jobsByDate[date]) {
+                    jobsByDate[date] = [];
+                }
+                jobsByDate[date].push(job);
+            });
+
+            // Get a list of the next 30 days
+            const today = new Date();
+            const dateList = [];
+            for (let i = 0; i < 31; i++) {
+                const day = new Date(today);
+                day.setDate(today.getDate() + i);
+                const dateString = day.toISOString().split('T')[0];
+                dateList.push(dateString);
+            }
+
+            // Render a card for each of the next 30 days
+            dateList.forEach(dateString => {
+                const dayJobs = jobsByDate[dateString] || [];
+                
+                const calendarDayCard = document.createElement('div');
+                calendarDayCard.className = `calendar-day bg-gray-50 p-4 rounded-lg shadow-md border border-gray-200 transition-all duration-200 ease-in-out hover:shadow-xl ${dayJobs.length > 0 ? 'bg-blue-50 border-blue-200' : 'opacity-75'}`;
+
+                const dateDisplay = new Date(dateString);
+                const dayOptions = { weekday: 'short' };
+                const dayOfWeek = dateDisplay.toLocaleDateString('en-US', dayOptions);
+                const monthDay = `${dateDisplay.getMonth() + 1}/${dateDisplay.getDate()}`;
+                
+                let dayContent = `
+                    <h4 class="text-sm font-semibold text-gray-800 mb-2">${dayOfWeek}, ${monthDay}</h4>
+                `;
+
+                if (dayJobs.length > 0) {
+                    dayJobs.forEach(job => {
+                        const jobTitle = `${job.year || ''} ${job.make || ''} ${job.model || ''}`.trim() || 'Untitled Job';
+                        const formattedTime = formatAppointmentTime(job.appointment_time);
+                        dayContent += `
+                            <div class="bg-white p-3 rounded-lg shadow-sm border border-gray-100 mb-2">
+                                <p class="text-xs font-semibold text-gray-700">${jobTitle}</p>
+                                <p class="text-xs text-gray-500">${formattedTime}</p>
+                            </div>
+                        `;
+                    });
+                } else {
+                    dayContent += `<p class="text-xs text-gray-400">No jobs</p>`;
+                }
+
+                calendarDayCard.innerHTML = dayContent;
+                calendarView.appendChild(calendarDayCard);
+            });
+        }
+
+        // Initial UI update on page load
+        document.addEventListener('DOMContentLoaded', updateUI);
+    </script>
+</body>
+</html>
