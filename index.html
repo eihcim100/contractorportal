@@ -326,7 +326,7 @@
                     if (job.pay && job.pay !== "N/A") {
                         let payDisplay = job.pay;
                         if (job.pay.toLowerCase() === "hourly + tips") {
-                            payDisplay = "$60 + Tips";
+                            payDisplay = "$120 + Tips";
                         }
                         jobDescriptionHTML += `<p class="text-gray-700 font-medium mb-4"><strong>Pay:</strong> ${payDisplay}</p>`;
                     }
@@ -336,7 +336,7 @@
                         <div class="bg-green-50 text-green-800 p-4 rounded-lg border border-green-200 my-4">
                             <p class="font-bold mb-2">Bonus Opportunities</p>
                             <div>
-                                <p class="mb-1"><strong>Protection Plan:</strong> $18 Commission per plan sold</p>`;
+                                <p class="mb-1"><strong>Protection Plan:</strong> $20 Commission per plan sold</p>`;
                     
                     if (job.status === 'accepted' && job.customer_phone && job.customer_phone !== "N/A") {
                         const telLink = job.customer_phone.replace(/\D/g, '');
@@ -347,7 +347,7 @@
                     }
 
                     bonusBoxHTML += `</div><div class="mt-4">
-                                <p><strong>Google Review:</strong> $6 Bonus for a photo review with message</p>`;
+                                <p><strong>Google Review:</strong> $12 Bonus for a photo review with message</p>`;
 
                     if (job.status === 'accepted' && job.customer_phone && job.customer_phone !== "N/A") {
                         const telLink = job.customer_phone.replace(/\D/g, '');
