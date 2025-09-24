@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Our Guiding Principles</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Midnight Gold -->
+    <!-- Application Structure Plan: A centralized, dashboard-style layout. The application presents seven core values as distinct "pillars" in a responsive grid. This structure was chosen to convey a sense of high-end professionalism, order, and strength. The dark theme with gold accents reinforces the luxury and elite nature of the organization. The non-linear layout allows exploration in any order, reinforcing that each pillar is a crucial component of the foundation. -->
+    <!-- Visualization & Content Choices: 
+        - Empowerment: Report Info -> Client-focused hierarchy. Goal -> Show the new structure. Viz -> Static Pyramid Diagram. Justification -> A pyramid is a classic symbol of a strong, stable structure, styled here to look like a high-tech schematic. Method -> HTML/CSS.
+        - Generosity: Report Info -> Investment in people. Goal -> Show the concept of generous investment. Viz -> Conceptual Icon. Justification -> An icon conveys the principle of generosity without relying on specific financial data. Method -> HTML/Unicode Icon.
+        - Ownership: Report Info -> Partners take responsibility. Goal -> List key responsibilities. Viz -> Icon List. Justification -> An easily scannable list with clear icons is the most direct way to communicate duties. Method -> HTML/CSS + Unicode Icons.
+        - Honesty: Report Info -> Integrity. Goal -> Clearly state the company's ethical foundation. Viz -> Icon + Text. Justification -> A simple, strong icon combined with direct text makes this value unambiguous. Method -> HTML/Unicode Icon.
+        - Trust: Report Info -> Trust enables freedom. Goal -> Illustrate the balance of investment and reward. Viz -> Balance Scale Diagram. Justification -> The scale is a universal metaphor for balance. Method -> HTML/CSS.
+        - Growth: Report Info -> Shared success. Goal -> Show symbiotic growth trend. Viz -> Simplified Line Chart. Justification -> A line chart shows positive trends over time. Method -> Chart.js.
+        - Learn: Report Info -> Feedback loop. Goal -> Show commitment to team input. Viz -> Suggestion Box Graphic. Justification -> A visual metaphor for collecting feedback reinforces the open-door policy. Method -> HTML/CSS. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* Near Black/Slate-900 */
+            color: #d1d5db; /* Gray-300 */
+        }
+        .pillar-card {
+            background-color: #1f2937; /* Slate-800 */
+            border-radius: 0.75rem;
+            border: 1px solid #374151; /* Slate-700 */
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .pillar-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 0 25px rgba(212, 175, 55, 0.1);
+            border-color: #d4af37; /* Gold Accent */
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 300px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 150px;
+            max-height: 200px;
+        }
+        .pyramid-level {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #111827;
+            font-weight: bold;
+            text-align: center;
+            border-radius: 0.25rem;
+            padding: 0.25rem 0.75rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Section -->
+    <header class="py-16 md:py-24 text-center">
+        <div class="container mx-auto px-6">
+            <h1 class="text-4xl md:text-6xl font-extrabold text-white mb-4">Our Guiding Principles</h1>
+            <p class="max-w-3xl mx-auto text-lg text-gray-400">
+                A blueprint for an elite organization. Our business is built on seven foundational pillars that drive our success and define our partnership.
+            </p>
+        </div>
+    </header>
+
+    <!-- Pillars Section -->
+    <main class="container mx-auto px-6 pb-24">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+
+            <!-- Pillar 1: Empowerment -->
+            <div class="pillar-card">
+                <div class="p-6 flex-grow">
+                    <div class="text-5xl text-center mb-4 text-amber-400">🚀</div>
+                    <h3 class="text-2xl font-bold text-white text-center mb-3">Empowerment</h3>
+                    <p class="text-sm leading-relaxed text-center text-gray-400">We don't manage employees; we partner with elite professionals. Our structure is built to serve our clients with maximum efficiency and skill.</p>
+                </div>
+                <div class="p-4 border-t border-gray-700 mt-auto">
+                    <div class="flex flex-col items-center justify-center min-h-[150px] bg-gray-900 rounded-lg p-4 space-y-2">
+                        <div class="pyramid-level bg-amber-400 w-2/4 text-xs">Client</div>
+                        <div class="pyramid-level bg-amber-300 w-3/4 text-xs">Digital Contractor Support Team</div>
+                        <div class="pyramid-level bg-amber-200 w-full text-xs">Auto Detailer</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pillar 2: Radical Generosity -->
+            <div class="pillar-card">
+                <div class="p-6 flex-grow">
+                    <div class="text-5xl text-center mb-4 text-amber-400">💰</div>
+                    <h3 class="text-2xl font-bold text-white text-center mb-3">Radical Generosity</h3>
+                    <p class="text-sm leading-relaxed text-center text-gray-400">Our pay structure is a strategic investment. By investing generously in our team, they deliver the elite quality and accountability that makes us thrive.</p>
+                </div>
+                 <div class="p-4 border-t border-gray-700 mt-auto flex items-center justify-center min-h-[166px]">
+                    <div class="text-7xl text-amber-400">🤝</div>
+                </div>
+            </div>
+
+            <!-- Pillar 3: Total Ownership -->
+            <div class="pillar-card">
+                 <div class="p-6 flex-grow">
+                    <div class="text-5xl text-center mb-4 text-amber-400">🛡️</div>
+                    <h3 class="text-2xl font-bold text-white text-center mb-3">Total Ownership</h3>
+                    <p class="text-sm leading-relaxed text-center text-gray-400">With the highest pay comes the highest responsibility. Our partners take full ownership of their work, creating a self-policing system built on professional pride.</p>
+                </div>
+                <div class="p-4 border-t border-gray-700 mt-auto">
+                    <div class="bg-gray-900 p-4 rounded-lg space-y-3">
+                        <div class="flex items-center text-sm"><span class="text-lg mr-3 text-amber-400">🛠️</span><span>Provide Own Supplies</span></div>
+                        <div class="flex items-center text-sm"><span class="text-lg mr-3 text-amber-400">⭐</span><span>Guarantee Flawless Results</span></div>
+                        <div class="flex items-center text-sm"><span class="text-lg mr-3 text-amber-400">🔄</span><span>Accountable for All Fixes</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pillar 4: Honesty -->
+            <div class="pillar-card">
+                 <div class="p-6 flex-grow">
+                    <div class="text-5xl text-center mb-4 text-amber-400">⚖️</div>
+                    <h3 class="text-2xl font-bold text-white text-center mb-3">Honesty</h3>
+                    <p class="text-sm leading-relaxed text-center text-gray-400">We don't steal or cheat our clients out of the services they rightfully deserve. If we find valuables in the vehicle, we turn it in. We do the right thing, even if no one is watching.</p>
+                </div>
+                 <div class="p-4 border-t border-gray-700 mt-auto flex items-center justify-center min-h-[120px]">
+                    <div class="text-center">
+                        <p class="text-3xl text-gray-300 font-semibold tracking-wider">"The right thing, always."</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pillar 5: Freedom Through Trust -->
+            <div class="pillar-card">
+                <div class="p-6 flex-grow">
+                    <div class="text-5xl text-center mb-4 text-amber-400">🕊️</div>
+                    <h3 class="text-2xl font-bold text-white text-center mb-3">Freedom Through Trust</h3>
+                    <p class="text-sm leading-relaxed text-center text-gray-400">The ultimate goal is freedom for all—earned through a system of mutual trust. Our investment in the team is balanced by the autonomy it creates.</p>
+                </div>
+                <div class="p-4 border-t border-gray-700 mt-auto">
+                    <div class="flex flex-col items-center justify-center min-h-[120px]">
+                        <div class="flex justify-around items-end w-full max-w-xs">
+                            <div class="flex flex-col items-center w-2/5">
+                                <div class="bg-gray-200 text-gray-900 text-center text-xs font-semibold p-3 rounded-md shadow-md w-full h-16 flex items-center justify-center">Investment (Trust & Pay)</div>
+                                <div class="bg-gray-600 w-1.5 h-3"></div>
+                            </div>
+                            <div class="flex flex-col items-center w-2/5">
+                                <div class="bg-amber-400 text-gray-900 text-center text-xs font-semibold p-3 rounded-md shadow-md w-full h-16 flex items-center justify-center">Freedom (Autonomy)</div>
+                                <div class="bg-gray-600 w-1.5 h-3"></div>
+                            </div>
+                        </div>
+                        <div class="w-full max-w-xs h-1.5 bg-gray-600 rounded-full"></div>
+                        <div class="w-8 h-6 bg-gray-600" style="clip-path: polygon(50% 100%, 0 0, 100% 0);"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pillar 6: Partnership in Growth -->
+            <div class="pillar-card">
+                <div class="p-6 flex-grow">
+                    <div class="text-5xl text-center mb-4 text-amber-400">📈</div>
+                    <h3 class="text-2xl font-bold text-white text-center mb-3">Partnership in Growth</h3>
+                    <p class="text-sm leading-relaxed text-center text-gray-400">We are a team, not a hierarchy. The owner brings the work, the team executes it flawlessly. As the business grows, everyone benefits and succeeds together.</p>
+                </div>
+                <div class="p-4 border-t border-gray-700 mt-auto">
+                    <div class="chart-container">
+                         <canvas id="growthChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Pillar 7: Learn From Our People -->
+             <div class="pillar-card md:col-span-2 lg:col-span-1">
+                <div class="p-6 flex-grow">
+                    <div class="text-5xl text-center mb-4 text-amber-400">💡</div>
+                    <h3 class="text-2xl font-bold text-white text-center mb-3">Learn From Our People</h3>
+                    <p class="text-sm leading-relaxed text-center text-gray-400">We always learn from the feedback of our detailers and our team. We are always working to improve the company, and our team's input and feedback makes our systems and operations better. Have a suggestion? Let us know.</p>
+                </div>
+                <div class="p-4 border-t border-gray-700 mt-auto">
+                     <div class="flex flex-col items-center justify-center min-h-[120px] bg-gray-900 rounded-lg p-4">
+                        <div class="w-24 h-4 bg-gray-300 rounded-t-lg relative">
+                             <div class="absolute top-1/2 left-1/2 w-8 h-1 bg-gray-800 -translate-x-1/2 -translate-y-1/2 rounded"></div>
+                        </div>
+                        <div class="w-32 h-20 bg-gray-600 rounded-b-lg p-2 flex items-center justify-center">
+                            <p class="text-white text-xs text-center font-semibold">SUGGESTIONS</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // --- Growth Chart ---
+            const growthCtx = document.getElementById('growthChart').getContext('2d');
+            Chart.defaults.color = '#9ca3af'; // gray-400 for text
+            Chart.defaults.borderColor = '#4b5563'; // gray-600 for lines
+
+            new Chart(growthCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Start', 'Year 1', 'Year 2'],
+                    datasets: [{
+                        label: 'Business Revenue',
+                        data: [15, 30, 45],
+                        borderColor: '#0ea5e9', // Sky Blue
+                        backgroundColor: 'rgba(14, 165, 233, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }, {
+                        label: 'Team Earnings',
+                        data: [7, 14, 21],
+                        borderColor: '#facc15', // Gold/Yellow
+                        backgroundColor: 'rgba(250, 204, 21, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { 
+                            beginAtZero: true, 
+                            ticks: { display: false },
+                            grid: {
+                                drawBorder: false,
+                            }
+                        },
+                        x: { 
+                            ticks: { font: { size: 10 } },
+                            grid: {
+                                display: false,
+                                drawBorder: false,
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+
+</body>
+</html>
