@@ -72,6 +72,7 @@
 
     <script>
         const API_BASE_URL = 'https://michie-detailing-backend.onrender.com';
+        const API_URL_SMS = 'https://client-notifications.onrender.com/send-sms';
         const APP_FRONTEND_URL = 'https://jobs.michieauto.com';
 
         const loginSection = document.getElementById('login-section');
@@ -95,6 +96,83 @@
         const noJobsMessage = document.getElementById('no-jobs-message');
 
         let authToken = localStorage.getItem('authToken');
+        let currentMessageBox = null;
+
+        function showCustomMessage(message, type = 'info') {
+            if (currentMessageBox && document.body.contains(currentMessageBox)) {
+                document.body.removeChild(currentMessageBox);
+                currentMessageBox = null;
+            }
+            const messageBox = document.createElement('div');
+            messageBox.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50';
+            let bgColor = type === 'success' ? 'bg-green-100' : type === 'error' ? 'bg-red-100' : 'bg-blue-100';
+            let textColor = type === 'success' ? 'text-green-800' : type === 'error' ? 'text-red-800' : 'text-blue-800';
+            let btnStyle = 'bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg';
+
+            messageBox.innerHTML = `
+                <div class="${bgColor} p-6 rounded-lg shadow-xl max-w-sm w-full text-center">
+                    <p class="text-lg font-semibold ${textColor} mb-4">${message}</p>
+                    <button id="message-box-ok" class="${btnStyle}">OK</button>
+                </div>
+            `;
+            document.body.appendChild(messageBox);
+            currentMessageBox = messageBox;
+            document.getElementById('message-box-ok').addEventListener('click', () => {
+                if (currentMessageBox && document.body.contains(currentMessageBox)) {
+                    document.body.removeChild(currentMessageBox);
+                    currentMessageBox = null;
+                }
+            });
+        }
+
+        async function sendAutoSMS(phoneNumber, messageContent, buttonElement) {
+            const originalText = buttonElement.textContent;
+            buttonElement.disabled = true;
+            buttonElement.textContent = 'Sending...';
+            buttonElement.classList.add('opacity-50', 'cursor-not-allowed');
+
+            const digitsOnly = phoneNumber.replace(/\D/g, '');
+            const formattedPhoneNumber = digitsOnly.length === 10 ? `+1${digitsOnly}` : `+${digitsOnly}`;
+
+            if (!formattedPhoneNumber || !/^\+\d{11,15}$/.test(formattedPhoneNumber)) {
+                showCustomMessage('Error: Invalid phone number format for SMS.', 'error');
+                buttonElement.disabled = false;
+                buttonElement.textContent = originalText;
+                buttonElement.classList.remove('opacity-50', 'cursor-not-allowed');
+                return;
+            }
+            if (!messageContent) {
+                showCustomMessage("Error: No message content to send SMS.", 'error');
+                buttonElement.disabled = false;
+                buttonElement.textContent = originalText;
+                buttonElement.classList.remove('opacity-50', 'cursor-not-allowed');
+                return;
+            }
+
+            try {
+                const response = await fetch(API_URL_SMS, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ to: formattedPhoneNumber, message_body: messageContent }),
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    showCustomMessage(result.message || 'SMS sent successfully!', 'success');
+                    buttonElement.textContent = 'Sent!';
+                } else {
+                    showCustomMessage(result.error || 'Failed to send SMS.', 'error');
+                    buttonElement.disabled = false;
+                    buttonElement.textContent = originalText;
+                    buttonElement.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            } catch (error) {
+                console.error('SMS Sending Error:', error);
+                showCustomMessage(`An error occurred while sending SMS: ${error.message}`, 'error');
+                buttonElement.disabled = false;
+                buttonElement.textContent = originalText;
+                buttonElement.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
 
         function updateUI() {
             if (authToken) {
@@ -339,22 +417,14 @@
                                 <p class="mb-1"><strong>Protection Plan:</strong> $20 Commission per plan sold</p>`;
                     
                     if (job.status === 'accepted' && job.customer_phone && job.customer_phone !== "N/A") {
-                        const telLink = job.customer_phone.replace(/\D/g, '');
-                        const protectionPlanMessage = "Protect your vehicle with our protection plan which covers you for 60 days with one $0 out of pocket cost detail. Signup now at https://michieauto.com/protection";
-                        const encodedProtectionPlanMessage = encodeURIComponent(protectionPlanMessage);
-                        const protectionPlanSmsLink = `sms:${telLink}?&body=${encodedProtectionPlanMessage}`;
-                        bonusBoxHTML += `<a href="${protectionPlanSmsLink}" class="mt-2 inline-block bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out text-sm text-center">Send Protection Plan Message</a>`;
+                         bonusBoxHTML += `<button data-phone="${job.customer_phone}" data-sms-type="protection" class="send-sms-button mt-2 inline-block bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out text-sm text-center">Send Protection Plan Message</button>`;
                     }
 
                     bonusBoxHTML += `</div><div class="mt-4">
                                 <p><strong>Google Review:</strong> $12 Bonus for a photo review with message</p>`;
 
                     if (job.status === 'accepted' && job.customer_phone && job.customer_phone !== "N/A") {
-                        const telLink = job.customer_phone.replace(/\D/g, '');
-                        const reviewMessage = "Michie Auto Detailing LLC would love your feedback. Post a photo review to our profile, it only takes 3 minutes! https://g.page/r/CcRJGcUyQxksEBE/review";
-                        const encodedReviewMessage = encodeURIComponent(reviewMessage);
-                        const reviewSmsLink = `sms:${telLink}?&body=${encodedReviewMessage}`;
-                        bonusBoxHTML += `<a href="${reviewSmsLink}" class="mt-2 inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out text-sm text-center">Send Review Request</a>`;
+                        bonusBoxHTML += `<button data-phone="${job.customer_phone}" data-sms-type="review" class="send-sms-button mt-2 inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out text-sm text-center">Send Review Request</button>`;
                     }
                     
                     bonusBoxHTML += `</div></div>`; // Close the green box divs
@@ -416,6 +486,27 @@
             });
             document.querySelectorAll('.decline-button').forEach(button => {
                 button.addEventListener('click', (event) => handleJobAction(event.target.dataset.jobId, 'decline', event.target));
+            });
+            
+            document.querySelectorAll('.send-sms-button').forEach(button => {
+                button.addEventListener('click', (event) => {
+                    const btn = event.currentTarget;
+                    const phone = btn.dataset.phone;
+                    const smsType = btn.dataset.smsType;
+                    
+                    const messages = {
+                        protection: "Protect your vehicle with our protection plan which covers you for 60 days with one $0 out of pocket cost detail. Signup now at https://michieauto.com/protection",
+                        review: "Michie Auto Detailing LLC would love your feedback. Post a photo review to our profile, it only takes 3 minutes! https://g.page/r/CcRJGcUyQxksEBE/review"
+                    };
+
+                    const message = messages[smsType];
+                    
+                    if (phone && message) {
+                        sendAutoSMS(phone, message, btn);
+                    } else {
+                        showCustomMessage('Error: Missing phone number or message type.', 'error');
+                    }
+                });
             });
         }
 
