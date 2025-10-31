@@ -171,24 +171,24 @@
                 buttonElement.classList.remove('opacity-50', 'cursor-not-allowed');
             }
         }
-
-        // UI Update Logic (Simplified)
+        
+        // --- (MODIFIED) updateUI Function ---
+        // Simplified to remove createAccountSection logic
         function updateUI() {
             if (authToken) {
                 loginSection.classList.add('hidden');
-                // createAccountSection removed
                 jobsSection.classList.remove('hidden');
                 fetchJobs();
             } else {
                 loginSection.classList.remove('hidden');
-                // createAccountSection removed
                 jobsSection.classList.add('hidden');
                 jobsList.innerHTML = '';
                 noJobsMessage.classList.add('hidden');
             }
         }
 
-        // Login Logic (Unchanged)
+        // --- (MODIFIED) loginButton event listener ---
+        // Removed createAccountSection logic
         loginButton.addEventListener('click', async () => {
             const username = usernameInput.value;
             const password = passwordInput.value;
@@ -218,7 +218,8 @@
             }
         });
 
-        // Logout Logic (Unchanged)
+        // --- (MODIFIED) logoutButton event listener ---
+        // Removed createAccountSection logic
         logoutButton.addEventListener('click', () => {
             authToken = null;
             localStorage.removeItem('authToken');
@@ -226,7 +227,7 @@
             updateUI();
         });
 
-        // Removed all create account event listeners
+        // --- (REMOVED) Create Account button listeners ---
 
         // --- Formatting Functions (Unchanged) ---
         function formatAppointmentDate(dateString) {
@@ -270,71 +271,58 @@
             return phoneString;
         }
 
-        // --- NEW Helper Function for iCalendar Links ---
-        /**
-         * Formats date, time, and duration for an iCalendar (.ics) file.
-         * Returns start and end times in 'YYYYMMDDTHHMMSS' format (floating local time).
-         */
-        function formatICalDateTime(date, time, durationStr) {
-            // Helper to format a Date object into iCal string
-            const toICalString = (dateObj) => {
-                const pad = (num) => num.toString().padStart(2, '0');
-                return `${dateObj.getFullYear()}${pad(dateObj.getMonth() + 1)}${pad(dateObj.getDate())}T${pad(dateObj.getHours())}${pad(dateObj.getMinutes())}00`;
-            };
+        // --- (NEW) Helper function for iCalendar ---
+        function formatICalDateTime(dateStr, timeStr, durationHoursStr) {
+            let startDateTime = new Date(); // Default
+            
+            if (dateStr && dateStr !== "N/A") {
+                startDateTime = new Date(dateStr);
+            }
+            
+            if (timeStr && timeStr !== "N/A") {
+                const [hours, minutes] = timeStr.split(':').map(Number);
+                if (!isNaN(hours) && !isNaN(minutes)) {
+                    startDateTime.setHours(hours, minutes, 0, 0); // Set time, reset seconds/ms
+                }
+            } else {
+                startDateTime.setHours(9, 0, 0, 0); // Default to 9:00 AM if no time
+            }
 
-            // Default to 2 hours if duration is invalid
-            let durationHours = 2; 
-            if (durationStr && durationStr !== "N/A") {
-                const parsedDuration = parseFloat(durationStr);
+            // Calculate end time
+            let durationHours = 2; // Default duration
+            if (durationHoursStr && durationHoursStr !== "N/A") {
+                const parsedDuration = parseFloat(durationHoursStr);
                 if (!isNaN(parsedDuration)) {
                     durationHours = parsedDuration;
                 }
             }
+            
+            const endDateTime = new Date(startDateTime.getTime() + durationHours * 60 * 60 * 1000);
 
-            // Guard against invalid date/time
-            if (!date || date === "N/A" || !time || time === "N/A") {
-                console.warn("Cannot generate iCal time, missing date or time.");
-                // Return a default or handle error appropriately
-                const now = new Date();
-                const later = new Date(now.getTime() + durationHours * 60 * 60 * 1000);
-                return { start: toICalString(now), end: toICalString(later) };
-            }
+            // Format to 'YYYYMMDDTHHmmss' (UTC)
+            const toICalString = (date) => {
+                return date.toISOString().replace(/[:-]/g, '').split('.')[0] + '';
+            };
 
-            try {
-                const [year, month, day] = date.split('-').map(Number);
-                const [hour, minute] = time.split(':').map(Number);
-                
-                // Create date in local time
-                const startDate = new Date(year, month - 1, day, hour, minute); 
-                const endDate = new Date(startDate.getTime() + durationHours * 60 * 60 * 1000);
-
-                return {
-                    start: toICalString(startDate),
-                    end: toICalString(endDate)
-                };
-            } catch (e) {
-                console.error("Error formatting iCal date:", e);
-                // Fallback
-                const now = new Date();
-                const later = new Date(now.getTime() + durationHours * 60 * 60 * 1000);
-                return { start: toICalString(now), end: toICalString(later) };
-            }
+            return {
+                start: toICalString(startDateTime),
+                end: toICalString(endDateTime)
+            };
         }
 
 
-        // Fetch Jobs (Unchanged)
+        // --- (MODIFIED) fetchJobs Function ---
+        // Added loading indicator
         async function fetchJobs() {
             if (!authToken) {
                 console.log('Not authenticated. Cannot fetch jobs.');
                 return;
             }
 
-            // --- ADDED LOADING STATE ---
-            // Clear list, then show a loading message immediately.
-            jobsList.innerHTML = ''; 
+            // --- (NEW) Show loading message immediately ---
+            jobsList.innerHTML = ''; // Clear old jobs
             noJobsMessage.textContent = 'Loading available jobs...';
             noJobsMessage.classList.remove('hidden');
-            // --- END LOADING STATE ---
 
             try {
                 const response = await fetch(`${API_BASE_URL}/jobs`, {
@@ -347,8 +335,6 @@
 
                 const data = await response.json();
                 if (response.ok) {
-                    // renderJobs will automatically hide the "Loading..." message
-                    // if jobs are found, or update it if no jobs are available.
                     renderJobs(data);
                 } else {
                     jobsList.innerHTML = '';
@@ -356,7 +342,8 @@
                     noJobsMessage.classList.remove('hidden');
                 }
             } catch (error) {
-                console.error('Fetch jobs error:', error);
+                // --- (MODIFIED) Added console.error(error) ---
+                console.error('Fetch jobs error:', error); // This will log the *real* error
                 jobsList.innerHTML = '';
                 noJobsMessage.textContent = 'An error occurred while fetching jobs.';
                 noJobsMessage.classList.remove('hidden');
@@ -669,12 +656,32 @@
         // --- (MODIFIED) handleJobAction Function ---
         // Replaced alert() with showCustomMessage()
         // Simplified to only handle 'accept' action
+        // --- (FIXED) Added missing 'try' block and fixed 'if (!card)' logic ---
         async function handleJobAction(jobId, actionType, buttonElement) {
             if (!authToken) {
                 console.log('Not authenticated. Cannot proceed with job action.');
                 showCustomMessage('You must be logged in to perform this action.', 'error');
                 return;
             }
+
+            // --- Find card first ---
+            let card = buttonElement.closest('.bg-gray-50'); // Find the action bar
+            if (!card) {
+                console.error('Could not find parent card for action buttons.');
+                // Fallback to closest card element if needed
+                const cardFallback = buttonElement.closest('.bg-white');
+                if(cardFallback) {
+                    console.warn('Using fallback to find buttons');
+                    card = cardFallback; // This is now valid
+                } else {
+                    // If no card, log error and STOP.
+                    console.error('Could not find parent card for action buttons at all.');
+                    showCustomMessage('A UI error occurred. Could not find job card.', 'error');
+                    return; 
+                }
+            }
+            
+            // --- Now, wrap the action in try/catch ---
 
             // Since we only accept, 'buttonElement' is the accept button.
             const originalAcceptText = buttonElement.textContent;
@@ -683,10 +690,8 @@
             buttonElement.disabled = true;
             buttonElement.classList.add('opacity-50', 'cursor-not-allowed');
             buttonElement.textContent = 'Accepting...';
-            
-            // NOTE: actionType is still passed as 'accept' from the listener, so we can use it.
 
-            try {
+            try { 
                 const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/${actionType}`, {
                     method: 'POST',
                     headers: {
@@ -709,7 +714,7 @@
                     buttonElement.textContent = originalAcceptText;
                     buttonElement.classList.remove('opacity-50', 'cursor-not-allowed');
                 }
-            } catch (error) {
+            } catch (error) { 
                 console.error(`Error during ${actionType} job:`, error);
                 // Replaced alert()
                 showCustomMessage(`An error occurred while trying to ${actionType} the job.`, 'error');
@@ -725,6 +730,4 @@
     </script>
 </body>
 </html>
-
-
 
