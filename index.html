@@ -56,7 +56,7 @@
             <!-- New Green Improvement Banner -->
             <div class="bg-green-100 border-l-4 border-green-500 text-green-800 p-4 mb-6 rounded-lg flex flex-col md:flex-row justify-between items-center" role="alert">
                 <p class="font-medium mb-2 md:mb-0 md:mr-4">We've made some improvements to the job portal. Having issues viewing or accepting jobs?</p>
-                <a href="https://jobs.michieauto.com/index.html" target="_blank" rel="noopener noreferrer" class="flex-shrink-0 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out text-sm">
+                <a href="https://jobs.michieauto.com/v1.html" target="_blank" rel="noopener noreferrer" class="flex-shrink-0 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out text-sm">
                     Try the Old Job Portal
                 </a>
             </div>
@@ -233,7 +233,8 @@
         function formatAppointmentDate(dateString) {
             if (!dateString || dateString === "N/A") return "N/A";
             try {
-                const [year, month, day] = dateString.split('-');
+                // Ensure it's a string before splitting
+                const [year, month, day] = String(dateString).split('-');
                 return `${month}-${day}-${year}`;
             } catch (e) {
                 console.error("Error formatting date:", dateString, e);
@@ -244,7 +245,8 @@
         function formatAppointmentTime(timeString) {
             if (!timeString || timeString === "N/A") return "N/A";
             try {
-                const [hours, minutes] = timeString.split(':');
+                // Ensure it's a string before splitting
+                const [hours, minutes] = String(timeString).split(':');
                 let hour = parseInt(hours, 10);
                 const ampm = hour >= 12 ? 'PM' : 'AM';
                 hour = hour % 12;
@@ -271,19 +273,24 @@
             return phoneString;
         }
 
-        // --- (MODIFIED) Helper function for iCalendar ---
-        // Made more robust to handle N/A or invalid dates
+        // --- (FIXED) Helper function for iCalendar ---
+        // Made robust with try...catch and String() conversion
         function formatICalDateTime(dateStr, timeStr, durationHoursStr) {
             let startDateTime; // Default
             
-            // --- (FIX) Robust date parsing ---
-            if (dateStr && dateStr !== "N/A") {
-                // Parse YYYY-MM-DD to avoid timezone issues with new Date(string)
-                const parts = dateStr.split('-');
-                if (parts.length === 3) {
-                    // new Date(year, monthIndex, day) - this is local timezone
-                    startDateTime = new Date(parts[0], parts[1] - 1, parts[2]);
+            // --- (FIX) Robust date parsing with try...catch ---
+            try {
+                if (dateStr && dateStr !== "N/A") {
+                    // Ensure it's a string before splitting
+                    const dateParts = String(dateStr).split('-');
+                    if (dateParts.length === 3) {
+                        // new Date(year, monthIndex, day)
+                        startDateTime = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+                    }
                 }
+            } catch (e) {
+                console.error("Error parsing iCal date:", dateStr, e);
+                // startDateTime remains undefined, will be handled below
             }
             
             // If date was invalid or N/A, fallback to today
@@ -291,14 +298,25 @@
                 startDateTime = new Date();
             }
             
-            if (timeStr && timeStr !== "N/A") {
-                const [hours, minutes] = timeStr.split(':').map(Number);
-                if (!isNaN(hours) && !isNaN(minutes)) {
-                    startDateTime.setHours(hours, minutes, 0, 0); // Set time, reset seconds/ms
+            // --- (FIX) Robust time parsing with try...catch ---
+            try {
+                if (timeStr && timeStr !== "N/A") {
+                    // Ensure it's a string before splitting
+                    const timeParts = String(timeStr).split(':').map(Number);
+                    if (timeParts.length >= 2 && !isNaN(timeParts[0]) && !isNaN(timeParts[1])) {
+                        startDateTime.setHours(timeParts[0], timeParts[1], 0, 0); // Set time, reset seconds/ms
+                    } else {
+                        // Time was invalid, use default
+                        startDateTime.setHours(9, 0, 0, 0);
+                    }
+                } else {
+                    startDateTime.setHours(9, 0, 0, 0); // Default to 9:00 AM if no time
                 }
-            } else {
-                startDateTime.setHours(9, 0, 0, 0); // Default to 9:00 AM if no time
+            } catch (e) {
+                console.error("Error parsing iCal time:", timeStr, e);
+                startDateTime.setHours(9, 0, 0, 0); // Default on error
             }
+
 
             // Calculate end time
             let durationHours = 2; // Default duration
@@ -313,6 +331,11 @@
 
             // Format to 'YYYYMMDDTHHmmss' (UTC)
             const toICalString = (date) => {
+                // Check for invalid date just in case
+                if (!date || isNaN(date.getTime())) {
+                    console.error("Invalid date passed to toICalString");
+                    return new Date().toISOString().replace(/[:-]/g, '').split('.')[0] + '';
+                }
                 return date.toISOString().replace(/[:-]/g, '').split('.')[0] + '';
             };
 
@@ -368,6 +391,14 @@
             jobsList.innerHTML = '';
             let renderedJobCount = 0;
             const contractorEmail = localStorage.getItem('contractorEmail');
+
+            // --- (FIX) Add check to ensure jobs is an array ---
+            if (!Array.isArray(jobs)) {
+                console.error("Received non-array data for jobs:", jobs);
+                noJobsMessage.textContent = "Error: Invalid data received from server.";
+                noJobsMessage.classList.remove('hidden');
+                return;
+            }
 
             jobs.forEach(job => {
                 let showJob = false;
@@ -743,4 +774,3 @@
     </script>
 </body>
 </html>
-
