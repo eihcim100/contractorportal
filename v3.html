@@ -457,8 +457,8 @@
                                 ${payDisplay}
                             </div>`;
                         
-                        const declineButton = `<button data-job-id="${job.id}" class="decline-button flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out">Decline</button>`;
-                        const acceptButton = `<button data-job-id="${job.id}" class="accept-button flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out">Accept Job</button>`;
+                        // const declineButton = ... (REMOVED)
+                        const acceptButton = `<button data-job-id="${job.id}" class="accept-button w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out">Accept Job</button>`;
 
                         jobDescriptionHTML = `
                             <div class="p-5">
@@ -473,10 +473,10 @@
                             <!-- (MODIFIED) This is the new, cleaner layout -->
                             <div class="bg-gray-50 px-5 py-4 border-t border-gray-100 space-y-3">
                                 ${payButton}
-                                <div class="flex space-x-3">
-                                    ${declineButton}
+                                <!-- <div class="flex space-x-3"> (REMOVED) -->
+                                    <!-- ${declineButton} (REMOVED) -->
                                     ${acceptButton}
-                                </div>
+                                <!-- </div> (REMOVED) -->
                             </div>
                         `;
                         jobCard.innerHTML = jobDescriptionHTML;
@@ -635,9 +635,8 @@
             document.querySelectorAll('.accept-button').forEach(button => {
                 button.addEventListener('click', (event) => handleJobAction(event.target.dataset.jobId, 'accept', event.target));
             });
-            document.querySelectorAll('.decline-button').forEach(button => {
-                button.addEventListener('click', (event) => handleJobAction(event.target.dataset.jobId, 'decline', event.target));
-            });
+            // document.querySelectorAll('.decline-button').forEach(button => { (REMOVED)
+            // }); (REMOVED)
             
             document.querySelectorAll('.send-sms-button').forEach(button => {
                 button.addEventListener('click', (event) => {
@@ -663,6 +662,7 @@
 
         // --- (MODIFIED) handleJobAction Function ---
         // Replaced alert() with showCustomMessage()
+        // Simplified to only handle 'accept' action
         async function handleJobAction(jobId, actionType, buttonElement) {
             if (!authToken) {
                 console.log('Not authenticated. Cannot proceed with job action.');
@@ -670,43 +670,15 @@
                 return;
             }
 
-            // --- (FIX) Find parent card for action buttons ---
-            const card = buttonElement.closest('.bg-gray-50'); // Find the action bar
-            if (!card) {
-                console.error('Could not find parent card for action buttons.');
-                // Fallback to closest card element if needed
-                const cardFallback = buttonElement.closest('.bg-white');
-                if(cardFallback) {
-                    console.warn('Using fallback to find buttons');
-                    card = cardFallback;
-                } else {
-                    console.error('Could not find parent card for action buttons at all.');
-                    return;
-                }
-            }
-            const acceptButton = card.querySelector('.accept-button');
-            const declineButton = card.querySelector('.decline-button');
+            // Since we only accept, 'buttonElement' is the accept button.
+            const originalAcceptText = buttonElement.textContent;
+
+            // Disable button
+            buttonElement.disabled = true;
+            buttonElement.classList.add('opacity-50', 'cursor-not-allowed');
+            buttonElement.textContent = 'Accepting...';
             
-            if (!acceptButton || !declineButton) {
-                console.error('Could not find accept/decline buttons.');
-                return;
-            }
-
-            const originalAcceptText = acceptButton.textContent;
-            const originalDeclineText = declineButton.textContent;
-
-            // Disable both buttons and add visual cues
-            acceptButton.disabled = true;
-            declineButton.disabled = true;
-            acceptButton.classList.add('opacity-50', 'cursor-not-allowed');
-            declineButton.classList.add('opacity-50', 'cursor-not-allowed');
-
-            // Change text to show processing
-            if (actionType === 'accept') {
-                acceptButton.textContent = 'Accepting...';
-            } else {
-                declineButton.textContent = 'Declining...';
-            }
+            // NOTE: actionType is still passed as 'accept' from the listener, so we can use it.
 
             try {
                 const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/${actionType}`, {
@@ -727,24 +699,18 @@
                     showCustomMessage(data.message || `Failed to ${actionType} job.`, 'error');
                     console.error(`Failed to ${actionType} job:`, data.message);
                     // If the action fails, re-enable the buttons so the user can try again.
-                    acceptButton.disabled = false;
-                    declineButton.disabled = false;
-                    acceptButton.textContent = originalAcceptText;
-                    declineButton.textContent = originalDeclineText;
-                    acceptButton.classList.remove('opacity-50', 'cursor-not-allowed');
-                    declineButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                    buttonElement.disabled = false;
+                    buttonElement.textContent = originalAcceptText;
+                    buttonElement.classList.remove('opacity-50', 'cursor-not-allowed');
                 }
             } catch (error) {
                 console.error(`Error during ${actionType} job:`, error);
                 // Replaced alert()
                 showCustomMessage(`An error occurred while trying to ${actionType} the job.`, 'error');
                 // Also re-enable on network error.
-                acceptButton.disabled = false;
-                declineButton.disabled = false;
-                acceptButton.textContent = originalAcceptText;
-                declineButton.textContent = originalDeclineText;
-                acceptButton.classList.remove('opacity-50', 'cursor-not-allowed');
-                declineButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                buttonElement.disabled = false;
+                buttonElement.textContent = originalAcceptText;
+                buttonElement.classList.remove('opacity-50', 'cursor-not-allowed');
             }
         }
 
@@ -753,4 +719,5 @@
     </script>
 </body>
 </html>
+
 
