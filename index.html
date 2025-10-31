@@ -429,23 +429,13 @@
                     if (jobModel && jobModel !== "N/A") mainTitle += jobModel;
                     mainTitle = mainTitle.trim() || "Untitled Job";
 
-                    // --- Pay Logic ---
-                    let payDisplay = '$120 + Tips'; 
+                    // --- NEW PAY LOGIC: Show custom pay if present, otherwise default ---
+                    let payDisplay = '$120 + TIPS'; 
                     let payClass = "bg-green-600 text-white"; 
                     
                     if (payString && payString !== "N/A") {
-                        const payLowerCase = payString.toLowerCase();
-                        if (payLowerCase === "hourly + tips") {
-                            payDisplay = "$120 + Tips";
-                        } else {
-                            const payNumber = parseFloat(payString.replace('$', ''));
-                            if (!isNaN(payNumber)) {
-                                payDisplay = `$${payNumber.toFixed(2)} + TIPS`;
-                            } else {
-                                payDisplay = payString;
-                                payClass = "bg-gray-100 text-gray-700"; 
-                            }
-                        }
+                        // If any data is present, use it exactly as is, and use the default color
+                        payDisplay = payString;
                     }
                     
                     let jobDescriptionHTML = '';
@@ -473,7 +463,7 @@
                             </div>
                             <div class="bg-gray-50 px-5 py-4 border-t border-gray-100 space-y-3">
                                 ${payButton}
-                                ${acceptButton}
+                                <button data-job-id="${job.id}" class="decline-button bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out w-full">Decline</button>
                             </div>
                         `;
                         jobCard.innerHTML = jobDescriptionHTML;
@@ -627,6 +617,9 @@
             document.querySelectorAll('.accept-button').forEach(button => {
                 button.addEventListener('click', (event) => handleJobAction(event.target.dataset.jobId, 'accept', event.target));
             });
+            document.querySelectorAll('.decline-button').forEach(button => {
+                button.addEventListener('click', (event) => handleJobAction(event.target.dataset.jobId, 'decline', event.target));
+            });
             
             document.querySelectorAll('.send-sms-button').forEach(button => {
                 button.addEventListener('click', (event) => {
@@ -658,21 +651,46 @@
                 return;
             }
 
-            let card = buttonElement.closest('.bg-gray-50');
-            if (!card) {
-                card = buttonElement.closest('.bg-white-66'); // Changed to look for the new class
-                if (!card) {
+            // --- Find button container for pending jobs ---
+            let cardFooter = buttonElement.closest('.bg-gray-50');
+
+            if (!cardFooter) {
+                // If not found in pending card footer, try finding the main card container (for accepted jobs logic, though actionType will be "accept" or "decline" here)
+                cardFooter = buttonElement.closest('.bg-white-66'); 
+                if (!cardFooter) {
                     console.error('Could not find parent card for action buttons.');
                     showCustomMessage('A UI error occurred. Could not find job card.', 'error');
                     return;
                 }
             }
             
-            const originalAcceptText = buttonElement.textContent;
+            // Find both action buttons within the card footer
+            const acceptButton = cardFooter.querySelector('.accept-button');
+            const declineButton = cardFooter.querySelector('.decline-button');
+            
+            // Safety check for button existence
+            if (!acceptButton || !declineButton) {
+                console.error('Could not find both action buttons.');
+                showCustomMessage('A UI error occurred. Missing action buttons.', 'error');
+                return;
+            }
 
-            buttonElement.disabled = true;
-            buttonElement.classList.add('opacity-50', 'cursor-not-allowed');
-            buttonElement.textContent = 'Accepting...';
+            const originalAcceptText = acceptButton.textContent;
+            const originalDeclineText = declineButton.textContent;
+
+            // Disable all action buttons in the footer
+            acceptButton.disabled = true;
+            declineButton.disabled = true;
+            acceptButton.classList.add('opacity-50', 'cursor-not-allowed');
+            declineButton.classList.add('opacity-50', 'cursor-not-allowed');
+
+            // Set the appropriate loading text
+            if (actionType === 'accept') {
+                acceptButton.textContent = 'Accepting...';
+            } else {
+                declineButton.textContent = 'Declining...';
+            }
+
 
             try { 
                 const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/${actionType}`, {
@@ -690,16 +708,26 @@
                 } else {
                     showCustomMessage(data.message || `Failed to ${actionType} job.`, 'error');
                     console.error(`Failed to ${actionType} job:`, data.message);
-                    buttonElement.disabled = false;
-                    buttonElement.textContent = originalAcceptText;
-                    buttonElement.classList.remove('opacity-50', 'cursor-not-allowed');
+                    
+                    // Re-enable buttons on failure
+                    acceptButton.disabled = false;
+                    declineButton.disabled = false;
+                    acceptButton.textContent = originalAcceptText;
+                    declineButton.textContent = originalDeclineText;
+                    acceptButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                    declineButton.classList.remove('opacity-50', 'cursor-not-allowed');
                 }
             } catch (error) { 
                 console.error(`Error during ${actionType} job:`, error);
                 showCustomMessage(`An error occurred while trying to ${actionType} the job.`, 'error');
-                buttonElement.disabled = false;
-                buttonElement.textContent = originalAcceptText;
-                buttonElement.classList.remove('opacity-50', 'cursor-not-allowed');
+                
+                // Re-enable buttons on failure
+                acceptButton.disabled = false;
+                declineButton.disabled = false;
+                acceptButton.textContent = originalAcceptText;
+                declineButton.textContent = originalDeclineText;
+                acceptButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                declineButton.classList.remove('opacity-50', 'cursor-not-allowed');
             }
         }
 
