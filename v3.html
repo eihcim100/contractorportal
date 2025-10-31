@@ -264,6 +264,58 @@
             return phoneString;
         }
 
+        // --- NEW Helper Function for iCalendar Links ---
+        /**
+         * Formats date, time, and duration for an iCalendar (.ics) file.
+         * Returns start and end times in 'YYYYMMDDTHHMMSS' format (floating local time).
+         */
+        function formatICalDateTime(date, time, durationStr) {
+            // Helper to format a Date object into iCal string
+            const toICalString = (dateObj) => {
+                const pad = (num) => num.toString().padStart(2, '0');
+                return `${dateObj.getFullYear()}${pad(dateObj.getMonth() + 1)}${pad(dateObj.getDate())}T${pad(dateObj.getHours())}${pad(dateObj.getMinutes())}00`;
+            };
+
+            // Default to 2 hours if duration is invalid
+            let durationHours = 2; 
+            if (durationStr && durationStr !== "N/A") {
+                const parsedDuration = parseFloat(durationStr);
+                if (!isNaN(parsedDuration)) {
+                    durationHours = parsedDuration;
+                }
+            }
+
+            // Guard against invalid date/time
+            if (!date || date === "N/A" || !time || time === "N/A") {
+                console.warn("Cannot generate iCal time, missing date or time.");
+                // Return a default or handle error appropriately
+                const now = new Date();
+                const later = new Date(now.getTime() + durationHours * 60 * 60 * 1000);
+                return { start: toICalString(now), end: toICalString(later) };
+            }
+
+            try {
+                const [year, month, day] = date.split('-').map(Number);
+                const [hour, minute] = time.split(':').map(Number);
+                
+                // Create date in local time
+                const startDate = new Date(year, month - 1, day, hour, minute); 
+                const endDate = new Date(startDate.getTime() + durationHours * 60 * 60 * 1000);
+
+                return {
+                    start: toICalString(startDate),
+                    end: toICalString(endDate)
+                };
+            } catch (e) {
+                console.error("Error formatting iCal date:", e);
+                // Fallback
+                const now = new Date();
+                const later = new Date(now.getTime() + durationHours * 60 * 60 * 1000);
+                return { start: toICalString(now), end: toICalString(later) };
+            }
+        }
+
+
         // Fetch Jobs (Unchanged)
         async function fetchJobs() {
             if (!authToken) {
@@ -423,6 +475,48 @@
                             customerDetails += `<div class="flex items-start mt-2"><svg class="w-4 h-4 mr-2 mt-1 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg> <a href="${googleMapsUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:underline"><span class="address-display">${formatCustomerAddress(job.customer_address)}</span></a></div>`;
                         }
 
+                        // --- (MODIFIED) "When & Where" section for larger text ---
+                        let largeAppointmentInfo = '';
+                        if (job.appointment_date && job.appointment_date !== "N/A") {
+                            largeAppointmentInfo = `<div class="flex items-center text-base text-gray-800 font-medium"><svg class="w-5 h-5 mr-2 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg> <span>${formatAppointmentDate(job.appointment_date)}`;
+                            if (job.appointment_time && job.appointment_time !== "N/A") {
+                                largeAppointmentInfo += ` at ${formatAppointmentTime(job.appointment_time)}`;
+                            }
+                            largeAppointmentInfo += '</span></div>';
+                        } else if (job.appointment_time && job.appointment_time !== "N/A") {
+                            largeAppointmentInfo = `<div class="flex items-center text-base text-gray-800 font-medium"><svg class="w-5 h-5 mr-2 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> <span>${formatAppointmentTime(job.appointment_time)}</span></div>`;
+                        }
+
+                        let largeZipInfo = '';
+                        if (job.zip_code && job.zip_code !== "N/A") {
+                            largeZipInfo = `<div class="flex items-center mt-2 text-base text-gray-800 font-medium"><svg class="w-5 h-5 mr-2 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg> <span>${job.zip_code}</span></div>`;
+                        }
+
+                        // --- NEW: Generate iCalendar (.ics) link ---
+                        const iCalTimes = formatICalDateTime(job.appointment_date, job.appointment_time, job.estimated_time);
+                        const eventTitle = `${mainTitle} Car Detail for ${job.customer_name || 'Client'}`;
+                        // Clean up address for iCal (remove <br> tags)
+                        const eventLocation = (job.customer_address && job.customer_address !== "N/A") ? job.customer_address.replace(/, <br>/g, ', ').replace(/<br>/g, ', ') : '';
+                        const eventDescription = `Job Details:\\nVehicle: ${mainTitle}\\nCustomer: ${job.customer_name || 'N/A'}\\nPhone: ${job.customer_phone || 'N/A'}\\nAddress: ${eventLocation}`;
+
+                        const icsData = [
+                            'BEGIN:VCALENDAR',
+                            'VERSION:2.0',
+                            'BEGIN:VEVENT',
+                            `DTSTART:${iCalTimes.start}`,
+                            `DTEND:${iCalTimes.end}`,
+                            `SUMMARY:${eventTitle}`,
+                            `LOCATION:${eventLocation}`,
+                            `DESCRIPTION:${eventDescription.replace(/\n/g, '\\n')}`, // Escape newlines
+                            'END:VEVENT',
+                            'END:VCALENDAR'
+                        ].join('\n');
+                        
+                        // Use download attribute to suggest a filename
+                        const icsUri = `data:text/calendar;charset=utf8,${encodeURIComponent(icsData)}`;
+                        const icsButton = `<a href="${icsUri}" download="${eventTitle}.ics" class="inline-block w-full bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-3 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out text-sm text-center mt-4">Add to Calendar</a>`;
+
+
                         // --- Bonus Box (with full-width buttons) ---
                         let bonusBoxHTML = `
                             <div class="bg-green-50 text-green-800 p-4 rounded-lg border border-green-200 my-4">
@@ -461,11 +555,12 @@
                                 <!-- When & Where Section (added border) -->
                                 <div class="mt-4 border-t pt-4 border-gray-200">
                                     <h4 class="text-xs uppercase text-gray-500 font-semibold mb-2">When & Where</h4>
-                                    <div class="text-sm text-gray-700 space-y-2">
-                                        ${appointmentInfo}
-                                        ${zipInfo}
-                                        ${estTimeInfo}
+                                    <div class="text-gray-700 space-y-2">
+                                        ${largeAppointmentInfo}
+                                        ${largeZipInfo}
+                                        ${estTimeInfo} <!-- This one remains the original smaller size -->
                                     </div>
+                                    ${icsButton} <!-- NEW CALENDAR BUTTON -->
                                     ${serviceInfo}
                                 </div>
                                 
@@ -617,4 +712,5 @@
     </script>
 </body>
 </html>
+
 
