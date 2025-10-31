@@ -9,11 +9,30 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
+            position: relative; /* Needed for the ::before element */
+            z-index: 1; /* Ensure content is above the pseudo-element */
+        }
+        /* --- NEW PSEUDO-ELEMENT FOR OPACITY --- */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             background-image: url('https://res.cloudinary.com/dvrljjtdr/image/upload/v1761924402/Gemini_Generated_Image_gma1skgma1skgma1_pfgo1r.png');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
+            opacity: 0.66; /* Set opacity to 66% */
+            z-index: -1; /* Place behind all content */
         }
+        /* --- CUSTOM CLASS FOR SEMI-TRANSPARENT WHITE BACKGROUND --- */
+        .bg-white-66 {
+            /* White with 66% opacity */
+            background-color: rgba(255, 255, 255, 0.66);
+        }
+
         /* Custom style for address formatting to ensure line breaks are applied */
         .address-display {
             white-space: pre-wrap; /* Preserves whitespace and allows line breaks */
@@ -30,11 +49,10 @@
 <body class="min-h-screen">
     <!-- Main App Container -->
     <!-- Full-screen on mobile, centered card on desktop -->
-    <!-- Removed bg-white from the #app container to show the body background on mobile -->
     <div id="app" class="w-full max-w-3xl mx-auto p-4 md:my-8">
         
-        <!-- Login Section -->
-        <div id="login-section" class="bg-white rounded-2xl shadow-xl p-6 md:p-10">
+        <!-- Login Section: NOW USING bg-white-66 -->
+        <div id="login-section" class="bg-white-66 rounded-2xl shadow-xl p-6 md:p-10">
             <img src="https://res.cloudinary.com/dvrljjtdr/image/upload/v1761924705/Gemini_Generated_Image_bov797bov797bov7_ooqpjf.png" alt="Company Logo" class="w-80 mx-auto mb-6">
             <h2 class="text-3xl font-bold text-gray-800 mb-8 text-center">Contractor Login</h2>
             <div class="mb-4">
@@ -47,14 +65,10 @@
             </div>
             <button id="login-button" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline w-full transition duration-300 ease-in-out text-lg">Login</button>
             <p id="login-message" class="text-red-500 text-xs italic mt-4 text-center"></p>
-            <!-- Removed "Create New Account" button -->
         </div>
 
-        <!-- Create Account Section (REMOVED) -->
-        
-        <!-- Jobs Section -->
-        <!-- Added bg-white to jobs section for desktop visibility -->
-        <div id="jobs-section" class="hidden p-4 md:p-8 md:bg-white md:rounded-2xl md:shadow-xl">
+        <!-- Jobs Section: NOW USING bg-white-66 on desktop and for accepted cards -->
+        <div id="jobs-section" class="hidden p-4 md:p-8 md:bg-white-66 md:rounded-2xl md:shadow-xl">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-3xl font-bold text-gray-800">Available Jobs</h2>
                 <button id="logout-button" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out text-sm">Logout</button>
@@ -63,7 +77,6 @@
             <!-- New Green Improvement Banner -->
             <div class="bg-green-100 border-l-4 border-green-500 text-green-800 p-4 mb-6 rounded-lg flex flex-col md:flex-row justify-between items-center" role="alert">
                 <p class="font-medium mb-2 md:mb-0 md:mr-4">We've made some improvements to the job portal. Having issues viewing or accepting jobs?</p>
-                <!-- (FIXED) Updated link to v1.html -->
                 <a href="https://jobs.michieauto.com/v1.html" target="_blank" rel="noopener noreferrer" class="flex-shrink-0 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out text-sm">
                     Try the Old Job Portal
                 </a>
@@ -83,16 +96,12 @@
         const APP_FRONTEND_URL = 'https://jobs.michieauto.com';
 
         const loginSection = document.getElementById('login-section');
-        // Removed createAccountSection
         const jobsSection = document.getElementById('jobs-section');
 
         const usernameInput = document.getElementById('username');
         const passwordInput = document.getElementById('password');
         const loginButton = document.getElementById('login-button');
         const loginMessage = document.getElementById('login-message');
-        // Removed showCreateAccountButton
-
-        // Removed create account-related constants
         
         const logoutButton = document.getElementById('logout-button');
         const jobsList = document.getElementById('jobs-list');
@@ -108,7 +117,6 @@
                 currentMessageBox = null;
             }
             const messageBox = document.createElement('div');
-            // Added z-50 to ensure it's on top
             messageBox.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4';
             let bgColor = type === 'success' ? 'bg-green-100' : type === 'error' ? 'bg-red-100' : 'bg-blue-100';
             let textColor = type === 'success' ? 'text-green-800' : type === 'error' ? 'text-red-800' : 'text-blue-800';
@@ -180,8 +188,7 @@
             }
         }
         
-        // --- (MODIFIED) updateUI Function ---
-        // Simplified to remove createAccountSection logic
+        // --- updateUI Function ---
         function updateUI() {
             if (authToken) {
                 loginSection.classList.add('hidden');
@@ -195,8 +202,7 @@
             }
         }
 
-        // --- (MODIFIED) loginButton event listener ---
-        // Removed createAccountSection logic
+        // --- loginButton event listener ---
         loginButton.addEventListener('click', async () => {
             const username = usernameInput.value;
             const password = passwordInput.value;
@@ -226,8 +232,7 @@
             }
         });
 
-        // --- (MODIFIED) logoutButton event listener ---
-        // Removed createAccountSection logic
+        // --- logoutButton event listener ---
         logoutButton.addEventListener('click', () => {
             authToken = null;
             localStorage.removeItem('authToken');
@@ -235,13 +240,10 @@
             updateUI();
         });
 
-        // --- (REMOVED) Create Account button listeners ---
-
-        // --- Formatting Functions (Unchanged) ---
+        // --- Formatting Functions ---
         function formatAppointmentDate(dateString) {
             if (!dateString || dateString === "N/A") return "N/A";
             try {
-                // Ensure it's a string before splitting
                 const [year, month, day] = String(dateString).split('-');
                 return `${month}-${day}-${year}`;
             } catch (e) {
@@ -253,7 +255,6 @@
         function formatAppointmentTime(timeString) {
             if (!timeString || timeString === "N/A") return "N/A";
             try {
-                // Ensure it's a string before splitting
                 const [hours, minutes] = String(timeString).split(':');
                 let hour = parseInt(hours, 10);
                 const ampm = hour >= 12 ? 'PM' : 'AM';
@@ -281,12 +282,10 @@
             return phoneString;
         }
 
-        // --- (FINAL FIX) Helper function for iCalendar ---
-        // Fixed duration to 5 hours, fixed timezone to CST (UTC-6)
+        // --- iCalendar Helper (CST time, 5 hour duration) ---
         function formatICalDateTime(dateStr, timeStr) {
             let validDateString;
             
-            // 1. Validate and format dateStr (YYYY-MM-DD)
             try {
                 if (dateStr && dateStr !== "N/A") {
                     const dateParts = String(dateStr).split('-');
@@ -303,14 +302,12 @@
                 console.error("Error parsing iCal date:", dateStr, e);
             }
             
-            // Fallback to today if date is invalid
             if (!validDateString) { 
                 const today = new Date();
                 validDateString = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
             }
             
             let validTimeString = "09:00"; // Default time
-            // 2. Validate and format timeStr (HH:MM)
             try {
                 if (timeStr && timeStr !== "N/A") {
                     const timeParts = String(timeStr).split(':').map(Number);
@@ -324,17 +321,16 @@
                 console.error("Error parsing iCal time:", timeStr, e);
             }
 
-            // 3. Construct ISO string assuming CST (UTC-6)
+            // Construct ISO string assuming CST (UTC-6)
             const isoStringCST = `${validDateString}T${validTimeString}:00-06:00`;
             
-            // Create startDateTime from the CST string (This correctly determines the universal time)
             const startDateTime = new Date(isoStringCST);
 
-            // 4. Calculate end time (5 hours later)
+            // Calculate end time (5 hours later)
             const durationHours = 5; 
             const endDateTime = new Date(startDateTime.getTime() + durationHours * 60 * 60 * 1000);
 
-            // 5. Format to 'YYYYMMDDTHHmmssZ' (UTC TIME)
+            // Format to 'YYYYMMDDTHHmmssZ' (UTC TIME)
             const toICalString = (date) => {
                 if (!date || isNaN(date.getTime())) {
                     date = new Date(); 
@@ -350,16 +346,14 @@
         }
 
 
-        // --- (MODIFIED) fetchJobs Function ---
-        // Added loading indicator
+        // --- fetchJobs Function ---
         async function fetchJobs() {
             if (!authToken) {
                 console.log('Not authenticated. Cannot fetch jobs.');
                 return;
             }
 
-            // --- (NEW) Show loading message immediately ---
-            jobsList.innerHTML = ''; // Clear old jobs
+            jobsList.innerHTML = ''; 
             noJobsMessage.textContent = 'Loading available jobs...';
             noJobsMessage.classList.remove('hidden');
 
@@ -381,22 +375,19 @@
                     noJobsMessage.classList.remove('hidden');
                 }
             } catch (error) {
-                // --- (MODIFIED) Added console.error(error) ---
-                console.error('Fetch jobs error:', error); // This will log the *real* error
+                console.error('Fetch jobs error:', error);
                 jobsList.innerHTML = '';
                 noJobsMessage.textContent = 'An error occurred while fetching jobs.';
                 noJobsMessage.classList.remove('hidden');
             }
         }
 
-        // --- (MODIFIED) renderJobs Function ---
-        // This function contains the new "Dasher" layout
+        // --- renderJobs Function (Simplified for Stability) ---
         function renderJobs(jobs) {
             jobsList.innerHTML = '';
             let renderedJobCount = 0;
             const contractorEmail = localStorage.getItem('contractorEmail');
 
-            // --- (FIX) Add check to ensure jobs is an array ---
             if (!Array.isArray(jobs)) {
                 console.error("Received non-array data for jobs:", jobs);
                 noJobsMessage.textContent = "Error: Invalid data received from server.";
@@ -405,10 +396,8 @@
             }
 
             jobs.forEach(job => {
-                // --- (FIX) Add a check for null or invalid job objects ---
                 if (!job || !job.status) {
-                    console.warn("Skipping invalid job object:", job);
-                    return; // Safely skip this job and continue the loop
+                    return; // Skip invalid job objects
                 }
                 
                 let showJob = false;
@@ -420,116 +409,71 @@
                     }
                 }
                 
-                // --- (FIX) Logic restructured. All rendering happens INSIDE this block ---
                 if (showJob) {
                     const jobCard = document.createElement('div');
-                    // New Card Style: White bg, rounded, shadow, flexible column layout
-                    jobCard.className = 'bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden flex flex-col';
+                    // Styling maintained from new design: NOW USING bg-white-66
+                    jobCard.className = 'bg-white-66 rounded-xl shadow-lg border border-gray-200 overflow-hidden flex flex-col';
 
-                    let jobDescriptionHTML = '';
-
-                    // --- (FIX) Re-added common info builders ---
                     let mainTitle = '';
-                    if (job.year && job.year !== "N/A") mainTitle += job.year + ' ';
-                    if (job.make && job.make !== "N/A") mainTitle += job.make + ' ';
-                    if (job.model && job.model !== "N/A") mainTitle += job.model;
-                    mainTitle = mainTitle.trim();
-                    if (mainTitle === "") mainTitle = "Untitled Job";
+                    // Use robust String conversion for all fields to prevent crashes
+                    const jobYear = String(job.year || '').trim();
+                    const jobMake = String(job.make || '').trim();
+                    const jobModel = String(job.model || '').trim();
+                    const serviceLevelStr = String(job.service_level || '').trim();
+                    const estTimeStr = String(job.estimated_time || '').trim();
+                    const payString = String(job.pay || '').trim();
 
-                    let appointmentInfo = '';
-                    if (job.appointment_date && job.appointment_date !== "N/A") {
-                        appointmentInfo += `<div class="flex items-center text-base"><svg class="w-4 h-4 mr-2 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg> <span>${formatAppointmentDate(job.appointment_date)}`;
-                        if (job.appointment_time && job.appointment_time !== "N/A") {
-                            appointmentInfo += ` at ${formatAppointmentTime(job.appointment_time)}`;
-                        }
-                        appointmentInfo += '</span></div>';
-                    } else if (job.appointment_time && job.appointment_time !== "N/A") {
-                        appointmentInfo += `<div class="flex items-center text-base"><svg class="w-4 h-4 mr-2 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> <span>${formatAppointmentTime(job.appointment_time)}</span></div>`;
-                    }
 
-                    let zipInfo = '';
-                    if (job.zip_code && job.zip_code !== "N/A") {
-                        zipInfo = `<div class="flex items-center text-base"><svg class="w-4 h-4 mr-2 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg> <span>${job.zip_code}</span></div>`;
-                    }
+                    if (jobYear && jobYear !== "N/A") mainTitle += jobYear + ' ';
+                    if (jobMake && jobMake !== "N/A") mainTitle += jobMake + ' ';
+                    if (jobModel && jobModel !== "N/A") mainTitle += jobModel;
+                    mainTitle = mainTitle.trim() || "Untitled Job";
 
-                    let serviceInfo = '';
-                    // --- (FIX) Cast to string FIRST to prevent .trim() on non-string data ---
-                    const serviceLevelStr = String(job.service_level || ''); 
-                    if (serviceLevelStr && serviceLevelStr !== "N/A" && serviceLevelStr.trim() !== "") {
-                        serviceInfo = `<div class="flex items-center text-base text-gray-800 font-medium"><svg class="w-4 h-4 mr-2 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg> <span>${serviceLevelStr.trim()}</span></div>`;
-                    }
+                    // --- Pay Logic ---
+                    let payDisplay = '$120 + Tips'; 
+                    let payClass = "bg-green-600 text-white"; 
                     
-                    let estTimeInfo = '';
-                    if (job.estimated_time && job.estimated_time !== "N/A") {
-                        estTimeInfo = `<p class="text-sm text-gray-500 mt-3"><svg class="w-4 h-4 mr-1.5 inline-block -mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>Est. Time: ${job.estimated_time} hours</p>`;
-                    }
-                    // --- End of re-added info builders ---
-
-
-                    // --- (FIX) Unified Pay Logic with Default ---
-                    let payDisplay = '$120 + Tips'; // <-- This is now the default
-                    let payClass = "bg-green-600 text-white"; // Default to green
-                    
-                    const payString = String(job.pay || "").trim(); // Ensure it's a string
-
                     if (payString && payString !== "N/A") {
                         const payLowerCase = payString.toLowerCase();
-                        
                         if (payLowerCase === "hourly + tips") {
                             payDisplay = "$120 + Tips";
-                            payClass = "bg-green-600 text-white";
                         } else {
                             const payNumber = parseFloat(payString.replace('$', ''));
-                            
                             if (!isNaN(payNumber)) {
-                                // It's a valid number
                                 payDisplay = `$${payNumber.toFixed(2)} + TIPS`;
-                                payClass = "bg-green-600 text-white";
                             } else {
-                                // It's some other string (e.g., "By Quote"), just display it
                                 payDisplay = payString;
-                                // Use a different style if it's not the default or a number
                                 payClass = "bg-gray-100 text-gray-700"; 
                             }
                         }
-                    } else {
-                        // If payString is empty or "N/A", it uses the default "$120 + Tips"
-                        payDisplay = "$120 + Tips";
-                        payClass = "bg-green-600 text-white";
                     }
-                    // --- End of Pay Logic FIX ---
-
-
-                    // --- (FIX) Branching logic for card type ---
+                    
+                    let jobDescriptionHTML = '';
+                    
                     if (job.status === 'pending') {
-                        // --- PENDING JOB CARD ---
+                        // --- PENDING JOB CARD (Simplified Structure) ---
                         
-                        // payButton for pending card
                         const payButton = `
                             <div class="w-full ${payClass} font-bold py-3 px-4 rounded-lg text-center text-lg">
                                 ${payDisplay}
                             </div>`;
                         
-                        // const declineButton = ... (REMOVED)
                         const acceptButton = `<button data-job-id="${job.id}" class="accept-button w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out">Accept Job</button>`;
 
                         jobDescriptionHTML = `
                             <div class="p-5">
-                                <h3 class="text-xl font-semibold text-gray-900 mb-3">${mainTitle.trim()}</h3>
-                                <div class="space-y-2 mb-4">
-                                    ${appointmentInfo}
-                                    ${zipInfo}
-                                    ${serviceInfo}
+                                <h3 class="text-xl font-semibold text-gray-900 mb-3">${mainTitle}</h3>
+                                <div class="space-y-2 mb-4 text-gray-700">
+                                    ${serviceLevelStr && serviceLevelStr !== "N/A" ? `<p><strong>Service:</strong> ${serviceLevelStr}</p>` : ''}
+                                    ${job.zip_code && job.zip_code !== "N/A" ? `<p><strong>Zip:</strong> ${job.zip_code}</p>` : ''}
+                                    ${job.appointment_date && job.appointment_date !== "N/A" ? `<p><strong>Date:</strong> ${formatAppointmentDate(job.appointment_date)}</p>` : ''}
+                                    ${job.appointment_time && job.appointment_time !== "N/A" ? `<p><strong>Time:</strong> ${formatAppointmentTime(job.appointment_time)}</p>` : ''}
                                 </div>
-                                ${estTimeInfo}
+                                ${estTimeStr && estTimeStr !== "N/A" ? `<p class="text-sm text-gray-500 mt-3">Est. Time: ${estTimeStr} hours</p>` : ''}
                             </div>
-                            <!-- (MODIFIED) This is the new, cleaner layout -->
                             <div class="bg-gray-50 px-5 py-4 border-t border-gray-100 space-y-3">
                                 ${payButton}
-                                <!-- <div class="flex space-x-3"> (REMOVED) -->
-                                    <!-- ${declineButton} (REMOVED) -->
-                                    ${acceptButton}
-                                <!-- </div> (REMOVED) -->
+                                ${acceptButton}
                             </div>
                         `;
                         jobCard.innerHTML = jobDescriptionHTML;
@@ -537,9 +481,9 @@
                         renderedJobCount++;
 
                     } else if (job.status === 'accepted') {
-                        // --- ACCEPTED JOB CARD ---
+                        // --- ACCEPTED JOB CARD (Retained Enhanced Structure) ---
                         
-                        // --- Customer Details (with icons) ---
+                        // --- Customer Details ---
                         let customerDetails = '';
                         if (job.customer_name && job.customer_name !== "N/A") {
                             customerDetails += `<div class="flex items-center"><svg class="w-4 h-4 mr-2 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg> <span>${job.customer_name}</span></div>`;
@@ -555,7 +499,7 @@
                             customerDetails += `<div class="flex items-start mt-2"><svg class="w-4 h-4 mr-2 mt-1 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg> <a href="${googleMapsUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:underline"><span class="address-display">${formatCustomerAddress(job.customer_address)}</span></a></div>`;
                         }
 
-                        // --- (MODIFIED) "When & Where" section for larger text ---
+                        // --- When & Where section ---
                         let largeAppointmentInfo = '';
                         if (job.appointment_date && job.appointment_date !== "N/A") {
                             largeAppointmentInfo = `<div class="flex items-center text-base text-gray-800 font-medium"><svg class="w-5 h-5 mr-2 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg> <span>${formatAppointmentDate(job.appointment_date)}`;
@@ -572,113 +516,77 @@
                             largeZipInfo = `<div class="flex items-center mt-2 text-base text-gray-800 font-medium"><svg class="w-5 h-5 mr-2 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg> <span>${job.zip_code}</span></div>`;
                         }
 
-                        // --- NEW: Generate iCalendar (.ics) link ---
+                        // --- iCalendar Link Generation ---
                         const iCalTimes = formatICalDateTime(job.appointment_date, job.appointment_time);
                         const eventTitle = `${mainTitle} Car Detail for ${job.customer_name || 'Client'}`;
-                        
-                        // --- MODIFIED FOR SECURITY ---
-                        // Set empty location for security
                         const eventLocation = ''; 
-                        // Removed Phone and Address from description
                         const eventDescription = `Job Details:\\nVehicle: ${mainTitle}\\nCustomer: ${job.customer_name || 'N/A'}`; 
 
                         const alarms = [
-                            'BEGIN:VALARM',
-                            'ACTION:DISPLAY',
-                            'DESCRIPTION:Reminder',
-                            'TRIGGER:-PT30M', // 30 minutes before
-                            'END:VALARM',
-                            'BEGIN:VALARM',
-                            'ACTION:DISPLAY',
-                            'DESCRIPTION:Reminder',
-                            'TRIGGER:-PT1H', // 60 minutes before
-                            'END:VALARM',
-                            'BEGIN:VALARM',
-                            'ACTION:DISPLAY',
-                            'DESCRIPTION:Reminder',
-                            'TRIGGER:-PT1H30M', // 90 minutes before
-                            'END:VALARM',
-                            'BEGIN:VALARM',
-                            'ACTION:DISPLAY',
-                            'DESCRIPTION:Reminder',
-                            'TRIGGER:-PT2H', // 120 minutes before
-                            'END:VALARM',
-                            'BEGIN:VALARM',
-                            'ACTION:DISPLAY',
-                            'DESCRIPTION:Reminder',
-                            'TRIGGER:-PT3H', // 180 minutes before
-                            'END:VALARM',
-                            'BEGIN:VALARM',
-                            'ACTION:DISPLAY',
-                            'DESCRIPTION:Reminder',
-                            'TRIGGER:-P1D', // 24 hours before
-                            'END:VALARM'
+                            'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Reminder', 'TRIGGER:-PT30M', 'END:VALARM',
+                            'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Reminder', 'TRIGGER:-PT1H', 'END:VALARM',
+                            'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Reminder', 'TRIGGER:-PT1H30M', 'END:VALARM',
+                            'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Reminder', 'TRIGGER:-PT2H', 'END:VALARM',
+                            'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Reminder', 'TRIGGER:-PT3H', 'END:VALARM',
+                            'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Reminder', 'TRIGGER:-P1D', 'END:VALARM'
                         ];
 
                         const icsData = [
-                            'BEGIN:VCALENDAR',
-                            'VERSION:2.0',
-                            'BEGIN:VEVENT',
+                            'BEGIN:VCALENDAR', 'VERSION:2.0', 'BEGIN:VEVENT',
                             `DTSTART:${iCalTimes.start}`,
                             `DTEND:${iCalTimes.end}`,
                             `SUMMARY:${eventTitle}`,
-                            `LOCATION:${eventLocation}`, // Will be empty
-                            `DESCRIPTION:${eventDescription.replace(/\n/g, '\\n')}`, // Escape newlines
-                            ...alarms, // Add all the alarms here
-                            'END:VEVENT',
-                            'END:VCALENDAR'
+                            `LOCATION:${eventLocation}`, 
+                            `DESCRIPTION:${eventDescription.replace(/\n/g, '\\n')}`,
+                            ...alarms,
+                            'END:VEVENT', 'END:VCALENDAR'
                         ].join('\n');
                         
-                        // Use download attribute to suggest a filename
                         const icsUri = `data:text/calendar;charset=utf8,${encodeURIComponent(icsData)}`;
                         const icsButton = `<a href="${icsUri}" download="${eventTitle}.ics" class="inline-block w-full bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-3 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out text-sm text-center mt-4">Add to Calendar</a>`;
 
 
-                        // --- Bonus Box (with full-width buttons) ---
+                        // --- Bonus Box ---
                         let bonusBoxHTML = `
                             <div class="bg-green-50 text-green-800 p-4 rounded-lg border border-green-200 my-4">
                                 <p class="font-bold mb-3">Bonus Opportunities</p>
                                 <div class="mb-4">
                                     <p class="mb-2"><strong>Protection Plan:</strong> $20 Commission per plan sold</p>`;
                         if (job.customer_phone && job.customer_phone !== "N/A") {
-                            // --- MODIFIED BUTTON COLOR ---
                             bonusBoxHTML += `<button data-phone="${job.customer_phone}" data-sms-type="protection" class="send-sms-button w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-3 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out text-sm text-center">Send Protection Plan Message</button>`;
                         }
                         bonusBoxHTML += `</div><div>
                                     <p class="mb-2"><strong>Google Review:</strong> $12 Bonus for a photo review</p>`;
                         if (job.customer_phone && job.customer_phone !== "N/A") {
-                            // --- MODIFIED BUTTON COLOR ---
                             bonusBoxHTML += `<button data-phone="${job.customer_phone}" data-sms-type="review" class="send-sms-button w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-3 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out text-sm text-center">Send Review Request</button>`;
                         }
-                        bonusBoxHTML += `</div></div>`; // Close the green box divs
+                        bonusBoxHTML += `</div></div>`;
 
                         // --- Build Accepted Card HTML ---
                         jobDescriptionHTML = `
                             <!-- Top Header: Accepted -->
                             <div class="p-4 bg-green-50 border-b border-green-200">
                                 <h3 class="text-lg font-bold text-green-800">Job Accepted!</h3>
-                                <!-- Removed mainTitle from here -->
                             </div>
 
                             <!-- Main Content Area -->
                             <div class="p-5 flex-grow">
                                 
-                                <!-- NEW Vehicle Section -->
+                                <!-- Vehicle Section -->
                                 <div>
                                     <h4 class="text-xs uppercase text-gray-500 font-semibold mb-1">Vehicle</h4>
                                     <p class="text-2xl font-bold text-gray-800">${mainTitle}</p>
                                 </div>
-                                <!-- (MODIFIED) When & Where Section (added border) -->
+                                <!-- When & Where Section -->
                                 <div class="mt-4 border-t pt-4 border-gray-200">
                                     <h4 class="text-xs uppercase text-gray-500 font-semibold mb-2">When & Where</h4>
                                     <div class="text-gray-700 space-y-2">
                                         ${largeAppointmentInfo}
                                         ${largeZipInfo}
-                                        ${serviceInfo} <!-- MOVED HERE -->
-                                        ${estTimeInfo} <!-- This one remains the original smaller size -->
+                                        ${serviceLevelStr && serviceLevelStr !== "N/A" ? `<div class="flex items-center text-base text-gray-800 font-medium"><svg class="w-5 h-5 mr-2 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg> <span>${serviceLevelStr}</span></div>` : ''}
+                                        ${estTimeStr && estTimeStr !== "N/A" ? `<p class="text-sm text-gray-500 mt-3"><svg class="w-4 h-4 mr-1.5 inline-block -mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>Est. Time: ${estTimeStr} hours</p>` : ''}
                                     </div>
-                                    ${icsButton} <!-- NEW CALENDAR BUTTON -->
-                                    <!-- ${serviceInfo} REMOVED FROM HERE -->
+                                    ${icsButton} 
                                 </div>
                                 
                                 <div class="mt-4 border-t pt-4 border-gray-200">
@@ -705,10 +613,7 @@
                         jobsList.appendChild(jobCard);
                         renderedJobCount++;
                     }
-                    // --- (FIX) End of branching logic ---
-                    
                 }
-                // --- (FIX) Removed broken 'else if' block that was here ---
             });
 
             if (renderedJobCount === 0) {
@@ -722,8 +627,6 @@
             document.querySelectorAll('.accept-button').forEach(button => {
                 button.addEventListener('click', (event) => handleJobAction(event.target.dataset.jobId, 'accept', event.target));
             });
-            // document.querySelectorAll('.decline-button').forEach(button => { (REMOVED)
-            // }); (REMOVED)
             
             document.querySelectorAll('.send-sms-button').forEach(button => {
                 button.addEventListener('click', (event) => {
@@ -747,10 +650,7 @@
             });
         }
 
-        // --- (MODIFIED) handleJobAction Function ---
-        // Replaced alert() with showCustomMessage()
-        // Simplified to only handle 'accept' action
-        // --- (FIXED) Added missing 'try' block and fixed 'if (!card)' logic ---
+        // --- handleJobAction Function ---
         async function handleJobAction(jobId, actionType, buttonElement) {
             if (!authToken) {
                 console.log('Not authenticated. Cannot proceed with job action.');
@@ -758,12 +658,9 @@
                 return;
             }
 
-            // --- Find card first ---
-            // This now finds the container for the buttons
             let card = buttonElement.closest('.bg-gray-50');
             if (!card) {
-                // Fallback for safety, though it shouldn't be needed with the new structure
-                card = buttonElement.closest('.bg-white');
+                card = buttonElement.closest('.bg-white-66'); // Changed to look for the new class
                 if (!card) {
                     console.error('Could not find parent card for action buttons.');
                     showCustomMessage('A UI error occurred. Could not find job card.', 'error');
@@ -771,12 +668,8 @@
                 }
             }
             
-            // --- Now, wrap the action in try/catch ---
-
-            // Since we only accept, 'buttonElement' is the accept button.
             const originalAcceptText = buttonElement.textContent;
 
-            // Disable button
             buttonElement.disabled = true;
             buttonElement.classList.add('opacity-50', 'cursor-not-allowed');
             buttonElement.textContent = 'Accepting...';
@@ -793,22 +686,17 @@
                 const data = await response.json();
                 if (response.ok) {
                     console.log(`Job ${jobId} ${actionType}ed successfully. Status: ${data.message}`);
-                    // Refresh the job list. The buttons will be removed from the DOM.
                     fetchJobs();
                 } else {
-                    // Replaced alert()
                     showCustomMessage(data.message || `Failed to ${actionType} job.`, 'error');
                     console.error(`Failed to ${actionType} job:`, data.message);
-                    // If the action fails, re-enable the buttons so the user can try again.
                     buttonElement.disabled = false;
                     buttonElement.textContent = originalAcceptText;
                     buttonElement.classList.remove('opacity-50', 'cursor-not-allowed');
                 }
             } catch (error) { 
                 console.error(`Error during ${actionType} job:`, error);
-                // Replaced alert()
                 showCustomMessage(`An error occurred while trying to ${actionType} the job.`, 'error');
-                // Also re-enable on network error.
                 buttonElement.disabled = false;
                 buttonElement.textContent = originalAcceptText;
                 buttonElement.classList.remove('opacity-50', 'cursor-not-allowed');
