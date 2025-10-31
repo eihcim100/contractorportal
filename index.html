@@ -301,26 +301,31 @@
             // If date was invalid or N/A, fallback to today
             if (!startDateTime || isNaN(startDateTime.getTime())) { 
                 startDateTime = new Date();
+                startDateTime.setHours(9, 0, 0, 0); // Default to 9:00 AM
             }
             
+            let timeString = "09:00"; // Default time
             // --- (FIX) Robust time parsing with try...catch ---
             try {
                 if (timeStr && timeStr !== "N/A") {
                     // Ensure it's a string before splitting
                     const timeParts = String(timeStr).split(':').map(Number);
                     if (timeParts.length >= 2 && !isNaN(timeParts[0]) && !isNaN(timeParts[1])) {
-                        startDateTime.setHours(timeParts[0], timeParts[1], 0, 0); // Set time, reset seconds/ms
-                    } else {
-                        // Time was invalid, use default
-                        startDateTime.setHours(9, 0, 0, 0);
+                        timeString = `${String(timeParts[0]).padStart(2, '0')}:${String(timeParts[1]).padStart(2, '0')}`;
                     }
-                } else {
-                    startDateTime.setHours(9, 0, 0, 0); // Default to 9:00 AM if no time
                 }
             } catch (e) {
                 console.error("Error parsing iCal time:", timeStr, e);
-                startDateTime.setHours(9, 0, 0, 0); // Default on error
+                // timeString remains "09:00"
             }
+
+            // --- (NEW) Construct ISO string assuming CST (UTC-6) ---
+            const dateString = startDateTime.getFullYear() + '-' + String(startDateTime.getMonth() + 1).padStart(2, '0') + '-' + String(startDateTime.getDate()).padStart(2, '0');
+            const isoStringCST = `${dateString}T${timeString}:00-06:00`;
+            
+            // Re-create startDateTime from the CST string
+            // This object now holds the correct UTC-based timestamp
+            startDateTime = new Date(isoStringCST);
 
 
             // Calculate end time
@@ -334,7 +339,7 @@
             
             const endDateTime = new Date(startDateTime.getTime() + durationHours * 60 * 60 * 1000);
 
-            // --- (FIX) Format to 'YYYYMMDDTHHmmss' (LOCAL TIME) ---
+            // --- (FIX) Format to 'YYYYMMDDTHHmmssZ' (UTC TIME) ---
             const toICalString = (date) => {
                 // Check for invalid date just in case
                 if (!date || isNaN(date.getTime())) {
@@ -342,17 +347,9 @@
                     date = new Date(); // Fallback to now
                 }
                 
-                // Helper for zero-padding
-                const pad = (num) => String(num).padStart(2, '0');
-
-                const Y = date.getFullYear();
-                const M = pad(date.getMonth() + 1); // getMonth() is 0-indexed
-                const D = pad(date.getDate());
-                const h = pad(date.getHours());
-                const m = pad(date.getMinutes());
-                const s = pad(0); // Set seconds to 00
-
-                return `${Y}${M}${D}T${h}${m}${s}`;
+                // .toISOString() returns format like: 2025-10-31T20:00:00.000Z
+                // We want: 20251031T200000Z
+                return date.toISOString().replace(/[.:-]/g, '').slice(0, 15) + 'Z';
             };
 
             return {
@@ -824,6 +821,7 @@
     </script>
 </body>
 </html>
+
 
 
 
