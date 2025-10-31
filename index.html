@@ -334,14 +334,25 @@
             
             const endDateTime = new Date(startDateTime.getTime() + durationHours * 60 * 60 * 1000);
 
-            // Format to 'YYYYMMDDTHHmmss' (UTC)
+            // --- (FIX) Format to 'YYYYMMDDTHHmmss' (LOCAL TIME) ---
             const toICalString = (date) => {
                 // Check for invalid date just in case
                 if (!date || isNaN(date.getTime())) {
                     console.error("Invalid date passed to toICalString");
-                    return new Date().toISOString().replace(/[:-]/g, '').split('.')[0] + '';
+                    date = new Date(); // Fallback to now
                 }
-                return date.toISOString().replace(/[:-]/g, '').split('.')[0] + '';
+                
+                // Helper for zero-padding
+                const pad = (num) => String(num).padStart(2, '0');
+
+                const Y = date.getFullYear();
+                const M = pad(date.getMonth() + 1); // getMonth() is 0-indexed
+                const D = pad(date.getDate());
+                const h = pad(date.getHours());
+                const m = pad(date.getMinutes());
+                const s = pad(0); // Set seconds to 00
+
+                return `${Y}${M}${D}T${h}${m}${s}`;
             };
 
             return {
@@ -813,5 +824,6 @@
     </script>
 </body>
 </html>
+
 
 
