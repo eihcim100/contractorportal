@@ -30,10 +30,11 @@
 <body class="min-h-screen">
     <!-- Main App Container -->
     <!-- Full-screen on mobile, centered card on desktop -->
-    <div id="app" class="bg-white w-full max-w-3xl mx-auto md:my-8 md:rounded-2xl md:shadow-xl min-h-screen md:min-h-0">
+    <!-- Removed bg-white from the #app container to show the body background on mobile -->
+    <div id="app" class="w-full max-w-3xl mx-auto p-4 md:my-8">
         
         <!-- Login Section -->
-        <div id="login-section" class="p-6 md:p-10">
+        <div id="login-section" class="bg-white rounded-2xl shadow-xl p-6 md:p-10">
             <img src="https://res.cloudinary.com/dvrljjtdr/image/upload/v1761924705/Gemini_Generated_Image_bov797bov797bov7_ooqpjf.png" alt="Company Logo" class="w-80 mx-auto mb-6">
             <h2 class="text-3xl font-bold text-gray-800 mb-8 text-center">Contractor Login</h2>
             <div class="mb-4">
@@ -52,7 +53,8 @@
         <!-- Create Account Section (REMOVED) -->
         
         <!-- Jobs Section -->
-        <div id="jobs-section" class="hidden p-4 md:p-8">
+        <!-- Added bg-white to jobs section for desktop visibility -->
+        <div id="jobs-section" class="hidden p-4 md:p-8 md:bg-white md:rounded-2xl md:shadow-xl">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-3xl font-bold text-gray-800">Available Jobs</h2>
                 <button id="logout-button" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out text-sm">Logout</button>
@@ -61,6 +63,7 @@
             <!-- New Green Improvement Banner -->
             <div class="bg-green-100 border-l-4 border-green-500 text-green-800 p-4 mb-6 rounded-lg flex flex-col md:flex-row justify-between items-center" role="alert">
                 <p class="font-medium mb-2 md:mb-0 md:mr-4">We've made some improvements to the job portal. Having issues viewing or accepting jobs?</p>
+                <!-- (FIXED) Updated link to v1.html -->
                 <a href="https://jobs.michieauto.com/v1.html" target="_blank" rel="noopener noreferrer" class="flex-shrink-0 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out text-sm">
                     Try the Old Job Portal
                 </a>
@@ -278,18 +281,18 @@
             return phoneString;
         }
 
-        // --- (FIXED) Helper function for iCalendar ---
-        // Simplified logic, fixed 5-hour duration, and robust parsing
-        function formatICalDateTime(dateStr, timeStr, durationHoursStr) {
+        // --- (FINAL FIX) Helper function for iCalendar ---
+        // Fixed duration to 5 hours, fixed timezone to CST (UTC-6)
+        function formatICalDateTime(dateStr, timeStr) {
             let validDateString;
             
-            // --- (FIX) Validate dateStr ---
+            // 1. Validate and format dateStr (YYYY-MM-DD)
             try {
                 if (dateStr && dateStr !== "N/A") {
                     const dateParts = String(dateStr).split('-');
                     if (dateParts.length === 3) {
                         const year = parseInt(dateParts[0]);
-                        const month = parseInt(dateParts[1]); // 1-indexed
+                        const month = parseInt(dateParts[1]);
                         const day = parseInt(dateParts[2]);
                         if (year > 2000 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
                             validDateString = `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -300,14 +303,14 @@
                 console.error("Error parsing iCal date:", dateStr, e);
             }
             
-            // If date was invalid or N/A, fallback to today
+            // Fallback to today if date is invalid
             if (!validDateString) { 
                 const today = new Date();
                 validDateString = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
             }
             
             let validTimeString = "09:00"; // Default time
-            // --- (FIX) Validate timeStr ---
+            // 2. Validate and format timeStr (HH:MM)
             try {
                 if (timeStr && timeStr !== "N/A") {
                     const timeParts = String(timeStr).split(':').map(Number);
@@ -319,32 +322,24 @@
                 }
             } catch (e) {
                 console.error("Error parsing iCal time:", timeStr, e);
-                // validTimeString remains "09:00"
             }
 
-            // --- (SIMPLIFIED) Construct ISO string assuming CST (UTC-6) ---
+            // 3. Construct ISO string assuming CST (UTC-6)
             const isoStringCST = `${validDateString}T${validTimeString}:00-06:00`;
             
-            // Create startDateTime from the CST string
+            // Create startDateTime from the CST string (This correctly determines the universal time)
             const startDateTime = new Date(isoStringCST);
 
-
-            // --- (FIX) Calculate end time ---
-            // User requested a fixed 5-hour duration for all calendar events
+            // 4. Calculate end time (5 hours later)
             const durationHours = 5; 
-            
             const endDateTime = new Date(startDateTime.getTime() + durationHours * 60 * 60 * 1000);
 
-            // --- (FIX) Format to 'YYYYMMDDTHHmmssZ' (UTC TIME) ---
+            // 5. Format to 'YYYYMMDDTHHmmssZ' (UTC TIME)
             const toICalString = (date) => {
-                // Check for invalid date just in case
                 if (!date || isNaN(date.getTime())) {
-                    console.error("Invalid date passed to toICalString");
-                    date = new Date(); // Fallback to now
+                    date = new Date(); 
                 }
-                
-                // .toISOString() returns format like: 2025-10-31T20:00:00.000Z
-                // We want: 20251031T200000Z
+                // Convert to UTC ISO string, remove separators, and add final 'Z'
                 return date.toISOString().replace(/[.:-]/g, '').slice(0, 15) + 'Z';
             };
 
@@ -410,6 +405,12 @@
             }
 
             jobs.forEach(job => {
+                // --- (FIX) Add a check for null or invalid job objects ---
+                if (!job || !job.status) {
+                    console.warn("Skipping invalid job object:", job);
+                    return; // Safely skip this job and continue the loop
+                }
+                
                 let showJob = false;
                 if (job.status === 'pending') {
                     showJob = true;
@@ -452,8 +453,10 @@
                     }
 
                     let serviceInfo = '';
-                    if (job.service_level && job.service_level !== "N/A" && job.service_level.trim() !== "") {
-                        serviceInfo = `<div class="flex items-center text-base text-gray-800 font-medium"><svg class="w-4 h-4 mr-2 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg> <span>${job.service_level}</span></div>`;
+                    // --- (FIX) Cast to string FIRST to prevent .trim() on non-string data ---
+                    const serviceLevelStr = String(job.service_level || ''); 
+                    if (serviceLevelStr && serviceLevelStr !== "N/A" && serviceLevelStr.trim() !== "") {
+                        serviceInfo = `<div class="flex items-center text-base text-gray-800 font-medium"><svg class="w-4 h-4 mr-2 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg> <span>${serviceLevelStr.trim()}</span></div>`;
                     }
                     
                     let estTimeInfo = '';
@@ -570,7 +573,7 @@
                         }
 
                         // --- NEW: Generate iCalendar (.ics) link ---
-                        const iCalTimes = formatICalDateTime(job.appointment_date, job.appointment_time, job.estimated_time);
+                        const iCalTimes = formatICalDateTime(job.appointment_date, job.appointment_time);
                         const eventTitle = `${mainTitle} Car Detail for ${job.customer_name || 'Client'}`;
                         
                         // --- MODIFIED FOR SECURITY ---
@@ -817,9 +820,3 @@
     </script>
 </body>
 </html>
-
-
-
-
-
-
