@@ -374,6 +374,7 @@
                     }
                 }
                 
+                // --- (FIX) Logic restructured. All rendering happens INSIDE this block ---
                 if (showJob) {
                     const jobCard = document.createElement('div');
                     // New Card Style: White bg, rounded, shadow, flexible column layout
@@ -381,108 +382,110 @@
 
                     let jobDescriptionHTML = '';
 
-                    // --- Pay Display Logic ---
-                    let payDisplay = "N/A";
-                    // New: Default is a lighter gray for N/A, prominent green for actual pay
-                    let payClass = "bg-gray-100 text-gray-700"; 
-                    if (job.pay && job.pay !== "N/A") {
-                        payDisplay = job.pay;
-                        if (job.pay.toLowerCase() === "hourly + tips") {
-                            payDisplay = "$120 + Tips";
-                        }
-                        // This is the key change: make it green and big
-                        payClass = "bg-green-600 text-white";
-                    }
-
-                    // --- Main Title (Vehicle) ---
+                    // --- (FIX) Re-added common info builders ---
                     let mainTitle = '';
                     if (job.year && job.year !== "N/A") mainTitle += job.year + ' ';
                     if (job.make && job.make !== "N/A") mainTitle += job.make + ' ';
                     if (job.model && job.model !== "N/A") mainTitle += job.model;
-                    if (mainTitle.trim() === "") mainTitle = "Untitled Job";
                     mainTitle = mainTitle.trim();
+                    if (mainTitle === "") mainTitle = "Untitled Job";
 
-                    // --- (MODIFIED) Appointment Info (with icon) ---
                     let appointmentInfo = '';
                     if (job.appointment_date && job.appointment_date !== "N/A") {
-                        // ADDED text-base
                         appointmentInfo += `<div class="flex items-center text-base"><svg class="w-4 h-4 mr-2 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg> <span>${formatAppointmentDate(job.appointment_date)}`;
                         if (job.appointment_time && job.appointment_time !== "N/A") {
                             appointmentInfo += ` at ${formatAppointmentTime(job.appointment_time)}`;
                         }
                         appointmentInfo += '</span></div>';
                     } else if (job.appointment_time && job.appointment_time !== "N/A") {
-                        // ADDED text-base
                         appointmentInfo += `<div class="flex items-center text-base"><svg class="w-4 h-4 mr-2 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> <span>${formatAppointmentTime(job.appointment_time)}</span></div>`;
                     }
 
-                    // --- (MODIFIED) Location (Zip, with icon) ---
                     let zipInfo = '';
                     if (job.zip_code && job.zip_code !== "N/A") {
-                        // ADDED text-base, REMOVED mt-2
                         zipInfo = `<div class="flex items-center text-base"><svg class="w-4 h-4 mr-2 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg> <span>${job.zip_code}</span></div>`;
                     }
 
-                    // --- Estimated Time (with icon) ---
-                    let estTimeInfo = '';
-                    let estTimeInfoShort = ''; // For the header
-                    if (job.estimated_time && job.estimated_time !== "N/A") {
-                        estTimeInfo = `<div class="flex items-center mt-2"><svg class="w-4 h-4 mr-2 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> <span>${job.estimated_time}</span></div>`;
-                        estTimeInfoShort = `<div class="flex items-center text-sm text-gray-600"><svg class="w-4 h-4 mr-1 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> <span>${job.estimated_time}</span></div>`;
-                    }
-
-                    // --- (MODIFIED) Service Level ---
                     let serviceInfo = '';
                     if (job.service_level && job.service_level !== "N/A" && job.service_level.trim() !== "") {
-                        // NEW: Make it larger, semi-bold, and give it an icon
                         serviceInfo = `<div class="flex items-center text-base text-gray-800 font-medium"><svg class="w-4 h-4 mr-2 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg> <span>${job.service_level}</span></div>`;
                     }
-
-                    // --- PENDING JOB CARD ---
-                if (job.status === 'pending') {
-                    // ... (mainTitle, serviceInfo, appointmentInfo, zipInfo, estTimeInfo) ...
-
-                    // --- Pay button ---
-                    let payDisplay = '$0.00';
-                    if (job.pay && job.pay !== "N/A") {
-                        payDisplay = (job.pay.toLowerCase() === "hourly + tips") ? "$120 + Tips" : `$${parseFloat(job.pay).toFixed(2)} + TIPS`;
-                    }
                     
-                    // (MODIFIED) Pay button is now full width, no flex-1
-                    const payButton = `
-                        <div class="w-full bg-green-500 text-white font-bold py-3 px-4 rounded-lg text-center text-lg">
-                            ${payDisplay}
-                        </div>`;
+                    let estTimeInfo = '';
+                    if (job.estimated_time && job.estimated_time !== "N/A") {
+                        estTimeInfo = `<p class="text-sm text-gray-500 mt-3"><svg class="w-4 h-4 mr-1.5 inline-block -mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>Est. Time: ${job.estimated_time} hours</p>`;
+                    }
+                    // --- End of re-added info builders ---
 
-                    // --- Action buttons ---
-                    // (MODIFIED) Kept flex-1 so they split the row they share
-                    const declineButton = `<button data-job-id="${job.id}" class="decline-button flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out">Decline</button>`;
-                    const acceptButton = `<button data-job-id="${job.id}" class="accept-button flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out">Accept Job</button>`;
 
-                    jobCard.innerHTML = `
-                        <div class="p-5">
-                            <h3 class="text-xl font-semibold text-gray-900 mb-3">${mainTitle.trim()}</h3>
-                            <div class="space-y-2 mb-4">
-                                ${appointmentInfo}
-                                ${zipInfo}
-                                ${serviceInfo}
+                    // --- (FIX) Unified Pay Logic ---
+                    // This logic is used by BOTH pending and accepted cards
+                    let payDisplay = 'Pay N/A';
+                    let payClass = "bg-gray-100 text-gray-700"; // For accepted card display
+                    
+                    if (job.pay && job.pay !== "N/A" && job.pay.trim() !== "") {
+                        const payLowerCase = job.pay.toLowerCase();
+                        
+                        if (payLowerCase === "hourly + tips") {
+                            payDisplay = "$120 + Tips";
+                            payClass = "bg-green-600 text-white";
+                        } else {
+                            // Try to parse the number. This will handle strings like "135" or "135.00" or "$135"
+                            const payNumber = parseFloat(job.pay.replace('$', '')); // Remove dollar sign just in case
+                            
+                            if (!isNaN(payNumber)) {
+                                // It's a valid number, format it
+                                payDisplay = `$${payNumber.toFixed(2)} + TIPS`;
+                                payClass = "bg-green-600 text-white";
+                            } else {
+                                // It's some other string (e.g., "By Quote"), just display it as-is
+                                payDisplay = job.pay;
+                                // Keep payClass gray if it's not a clear number, but green for pending button
+                            }
+                        }
+                    }
+                    // --- End of Pay Logic FIX ---
+
+
+                    // --- (FIX) Branching logic for card type ---
+                    if (job.status === 'pending') {
+                        // --- PENDING JOB CARD ---
+                        
+                        // payButton for pending card
+                        const payButton = `
+                            <div class="w-full bg-green-500 text-white font-bold py-3 px-4 rounded-lg text-center text-lg">
+                                ${payDisplay}
+                            </div>`;
+                        
+                        const declineButton = `<button data-job-id="${job.id}" class="decline-button flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out">Decline</button>`;
+                        const acceptButton = `<button data-job-id="${job.id}" class="accept-button flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out">Accept Job</button>`;
+
+                        jobDescriptionHTML = `
+                            <div class="p-5">
+                                <h3 class="text-xl font-semibold text-gray-900 mb-3">${mainTitle.trim()}</h3>
+                                <div class="space-y-2 mb-4">
+                                    ${appointmentInfo}
+                                    ${zipInfo}
+                                    ${serviceInfo}
+                                </div>
+                                ${estTimeInfo}
                             </div>
-                            ${estTimeInfo}
-                        </div>
-                        <!-- (MODIFIED) This is the new, cleaner layout -->
-                        <div class="bg-gray-50 px-5 py-4 border-t border-gray-100 space-y-3">
-                            ${payButton}
-                            <div class="flex space-x-3">
-                                ${declineButton}
-                                ${acceptButton}
+                            <!-- (MODIFIED) This is the new, cleaner layout -->
+                            <div class="bg-gray-50 px-5 py-4 border-t border-gray-100 space-y-3">
+                                ${payButton}
+                                <div class="flex space-x-3">
+                                    ${declineButton}
+                                    ${acceptButton}
+                                </div>
                             </div>
-                        </div>
-                    `;
-                    jobsList.appendChild(jobCard);
-                    renderedJobCount++;
-                } 
-                // --- ACCEPTED JOB CARD ---
-                else if (job.status === 'accepted') {
+                        `;
+                        jobCard.innerHTML = jobDescriptionHTML;
+                        jobsList.appendChild(jobCard);
+                        renderedJobCount++;
+
+                    } else if (job.status === 'accepted') {
+                        // --- ACCEPTED JOB CARD ---
+                        
                         // --- Customer Details (with icons) ---
                         let customerDetails = '';
                         if (job.customer_name && job.customer_name !== "N/A") {
@@ -611,19 +614,14 @@
                             </div>
                         `;
 
-                        // --- (MOVED INSIDE) This logic now only applies to ACCEPTED jobs ---
                         jobCard.innerHTML = jobDescriptionHTML;
                         jobsList.appendChild(jobCard);
                         renderedJobCount++;
-                        // --- End of moved logic ---
                     }
-
-                    // --- (REMOVED) These lines were causing the bug ---
-                    // jobCard.innerHTML = jobDescriptionHTML; 
-                    // jobsList.appendChild(jobCard);
-                    // renderedJobCount++;
-                    // --- End of removed lines ---
+                    // --- (FIX) End of branching logic ---
+                    
                 }
+                // --- (FIX) Removed broken 'else if' block that was here ---
             });
 
             if (renderedJobCount === 0) {
@@ -672,11 +670,19 @@
                 return;
             }
 
-            // Find both buttons in the card to disable them and prevent double-clicks
+            // --- (FIX) Find parent card for action buttons ---
             const card = buttonElement.closest('.bg-gray-50'); // Find the action bar
             if (!card) {
                 console.error('Could not find parent card for action buttons.');
-                return;
+                // Fallback to closest card element if needed
+                const cardFallback = buttonElement.closest('.bg-white');
+                if(cardFallback) {
+                    console.warn('Using fallback to find buttons');
+                    card = cardFallback;
+                } else {
+                    console.error('Could not find parent card for action buttons at all.');
+                    return;
+                }
             }
             const acceptButton = card.querySelector('.accept-button');
             const declineButton = card.querySelector('.decline-button');
@@ -747,10 +753,4 @@
     </script>
 </body>
 </html>
-
-
-
-
-
-
 
