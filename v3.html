@@ -610,11 +610,19 @@
                                 ${bonusBoxHTML}
                             </div>
                         `;
+
+                        // --- (MOVED INSIDE) This logic now only applies to ACCEPTED jobs ---
+                        jobCard.innerHTML = jobDescriptionHTML;
+                        jobsList.appendChild(jobCard);
+                        renderedJobCount++;
+                        // --- End of moved logic ---
                     }
 
-                    jobCard.innerHTML = jobDescriptionHTML;
-                    jobsList.appendChild(jobCard);
-                    renderedJobCount++;
+                    // --- (REMOVED) These lines were causing the bug ---
+                    // jobCard.innerHTML = jobDescriptionHTML; 
+                    // jobsList.appendChild(jobCard);
+                    // renderedJobCount++;
+                    // --- End of removed lines ---
                 }
             });
 
@@ -739,6 +747,7 @@
     </script>
 </body>
 </html>
+
 
 
 
