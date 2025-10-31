@@ -41,35 +41,20 @@
             </div>
             <button id="login-button" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline w-full transition duration-300 ease-in-out text-lg">Login</button>
             <p id="login-message" class="text-red-500 text-xs italic mt-4 text-center"></p>
-            <button id="show-create-account-button" class="mt-6 text-center w-full text-sm text-gray-500 hover:text-gray-700 font-medium">Create New Account</button>
+            <!-- Removed "Create New Account" button -->
         </div>
 
-        <!-- Create Account Section -->
-        <div id="create-account-section" class="hidden p-6 md:p-10">
-            <h2 class="text-3xl font-bold text-gray-800 mb-8 text-center">Create New Account</h2>
-            <div class="mb-4">
-                <label for="new-username" class="block text-gray-700 text-sm font-bold mb-2">Username (Email):</label>
-                <input type="email" id="new-username" class="shadow-sm appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent">
-            </div>
-            <div class="mb-6">
-                <label for="new-password" class="block text-gray-700 text-sm font-bold mb-2">Password:</label>
-                <input type="password" id="new-password" class="shadow-sm appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 mb-3 leading-tight focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent">
-            </div>
-            <button id="create-account-button" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline w-full transition duration-300 ease-in-out text-lg">Create Account</button>
-            <p id="create-account-message" class="text-red-500 text-xs italic mt-4 text-center"></p>
-            <button id="show-login-button" class="mt-6 text-center w-full text-sm text-gray-500 hover:text-gray-700 font-medium">Back to Login</button>
-        </div>
-
+        <!-- Create Account Section (REMOVED) -->
+        
         <!-- Jobs Section -->
         <div id="jobs-section" class="hidden p-4 md:p-8">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-3xl font-bold text-gray-800">Available Jobs</h2>
                 <button id="logout-button" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out text-sm">Logout</button>
             </div>
-            <!-- Yellow Caution Banner -->
-            <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded-lg" role="alert">
-                <p class="font-bold">NOTE: Pay listed below is for contractors with their own supplies. If you are using the supplies from the closet, you will be charged a 50% supplies fee.</p>
-            </div>
+            
+            <!-- Yellow Caution Banner (REMOVED) -->
+            
             <p id="no-jobs-message" class="text-gray-600 text-center hidden">No jobs available at the moment.</p>
             <!-- Jobs list now has more spacing -->
             <div id="jobs-list" class="space-y-6">
@@ -84,21 +69,17 @@
         const APP_FRONTEND_URL = 'https://jobs.michieauto.com';
 
         const loginSection = document.getElementById('login-section');
-        const createAccountSection = document.getElementById('create-account-section');
+        // Removed createAccountSection
         const jobsSection = document.getElementById('jobs-section');
 
         const usernameInput = document.getElementById('username');
         const passwordInput = document.getElementById('password');
         const loginButton = document.getElementById('login-button');
         const loginMessage = document.getElementById('login-message');
-        const showCreateAccountButton = document.getElementById('show-create-account-button');
+        // Removed showCreateAccountButton
 
-        const newUsernameInput = document.getElementById('new-username');
-        const newPasswordInput = document.getElementById('new-password');
-        const createAccountButton = document.getElementById('create-account-button');
-        const createAccountMessage = document.getElementById('create-account-message');
-        const showLoginButton = document.getElementById('show-login-button');
-
+        // Removed create account-related constants
+        
         const logoutButton = document.getElementById('logout-button');
         const jobsList = document.getElementById('jobs-list');
         const noJobsMessage = document.getElementById('no-jobs-message');
@@ -185,16 +166,16 @@
             }
         }
 
-        // UI Update Logic (Unchanged)
+        // UI Update Logic (Simplified)
         function updateUI() {
             if (authToken) {
                 loginSection.classList.add('hidden');
-                createAccountSection.classList.add('hidden');
+                // createAccountSection removed
                 jobsSection.classList.remove('hidden');
                 fetchJobs();
             } else {
                 loginSection.classList.remove('hidden');
-                createAccountSection.classList.add('hidden');
+                // createAccountSection removed
                 jobsSection.classList.add('hidden');
                 jobsList.innerHTML = '';
                 noJobsMessage.classList.add('hidden');
@@ -239,55 +220,7 @@
             updateUI();
         });
 
-        // Create Account Toggle (Unchanged)
-        showCreateAccountButton.addEventListener('click', () => {
-            loginSection.classList.add('hidden');
-            createAccountSection.classList.remove('hidden');
-            loginMessage.textContent = '';
-        });
-
-        // Create Account Logic (Unchanged)
-        createAccountButton.addEventListener('click', async () => {
-            const newUsername = newUsernameInput.value;
-            const newPassword = newPasswordInput.value;
-
-            if (!newUsername || !newPassword) {
-                createAccountMessage.textContent = 'Please enter both email and password.';
-                return;
-            }
-
-            try {
-                const response = await fetch(`${API_BASE_URL}/register`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ username: newUsername, password: newPassword }),
-                });
-
-                const data = await response.json();
-                if (response.ok) {
-                    createAccountMessage.textContent = data.message || 'Account created successfully! You can now log in.';
-                    setTimeout(() => {
-                        showLoginButton.click();
-                        usernameInput.value = newUsername;
-                        passwordInput.value = '';
-                    }, 2000);
-                } else {
-                    createAccountMessage.textContent = data.message || 'Account creation failed.';
-                }
-            } catch (error) {
-                console.error('Create account error:', error);
-                createAccountMessage.textContent = 'An error occurred during account creation.';
-            }
-        });
-
-        // Login Toggle (Unchanged)
-        showLoginButton.addEventListener('click', () => {
-            createAccountSection.classList.add('hidden');
-            loginSection.classList.remove('hidden');
-            createAccountMessage.textContent = '';
-        });
+        // Removed all create account event listeners
 
         // --- Formatting Functions (Unchanged) ---
         function formatAppointmentDate(dateString) {
@@ -497,12 +430,14 @@
                                 <div class="mb-4">
                                     <p class="mb-2"><strong>Protection Plan:</strong> $20 Commission per plan sold</p>`;
                         if (job.customer_phone && job.customer_phone !== "N/A") {
-                            bonusBoxHTML += `<button data-phone="${job.customer_phone}" data-sms-type="protection" class="send-sms-button w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-3 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out text-sm text-center">Send Protection Plan Message</button>`;
+                            // --- MODIFIED BUTTON COLOR ---
+                            bonusBoxHTML += `<button data-phone="${job.customer_phone}" data-sms-type="protection" class="send-sms-button w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-3 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out text-sm text-center">Send Protection Plan Message</button>`;
                         }
                         bonusBoxHTML += `</div><div>
                                     <p class="mb-2"><strong>Google Review:</strong> $12 Bonus for a photo review</p>`;
                         if (job.customer_phone && job.customer_phone !== "N/A") {
-                            bonusBoxHTML += `<button data-phone="${job.customer_phone}" data-sms-type="review" class="send-sms-button w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-3 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out text-sm text-center">Send Review Request</button>`;
+                            // --- MODIFIED BUTTON COLOR ---
+                            bonusBoxHTML += `<button data-phone="${job.customer_phone}" data-sms-type="review" class="send-sms-button w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-3 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out text-sm text-center">Send Review Request</button>`;
                         }
                         bonusBoxHTML += `</div></div>`; // Close the green box divs
 
@@ -511,12 +446,20 @@
                             <!-- Top Header: Accepted -->
                             <div class="p-4 bg-green-50 border-b border-green-200">
                                 <h3 class="text-lg font-bold text-green-800">Job Accepted!</h3>
-                                <p class="text-sm text-green-700">${mainTitle}</p>
+                                <!-- Removed mainTitle from here -->
                             </div>
 
                             <!-- Main Content Area -->
                             <div class="p-5 flex-grow">
-                                <div class="mb-4">
+                                
+                                <!-- NEW Vehicle Section -->
+                                <div>
+                                    <h4 class="text-xs uppercase text-gray-500 font-semibold mb-1">Vehicle</h4>
+                                    <p class="text-2xl font-bold text-gray-800">${mainTitle}</p>
+                                </div>
+
+                                <!-- When & Where Section (added border) -->
+                                <div class="mt-4 border-t pt-4 border-gray-200">
                                     <h4 class="text-xs uppercase text-gray-500 font-semibold mb-2">When & Where</h4>
                                     <div class="text-sm text-gray-700 space-y-2">
                                         ${appointmentInfo}
@@ -601,9 +544,18 @@
 
             // Find both buttons in the card to disable them and prevent double-clicks
             const card = buttonElement.closest('.bg-gray-50'); // Find the action bar
+            if (!card) {
+                console.error('Could not find parent card for action buttons.');
+                return;
+            }
             const acceptButton = card.querySelector('.accept-button');
             const declineButton = card.querySelector('.decline-button');
             
+            if (!acceptButton || !declineButton) {
+                console.error('Could not find accept/decline buttons.');
+                return;
+            }
+
             const originalAcceptText = acceptButton.textContent;
             const originalDeclineText = declineButton.textContent;
 
@@ -665,3 +617,4 @@
     </script>
 </body>
 </html>
+
