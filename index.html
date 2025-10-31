@@ -61,7 +61,7 @@
             <!-- New Green Improvement Banner -->
             <div class="bg-green-100 border-l-4 border-green-500 text-green-800 p-4 mb-6 rounded-lg flex flex-col md:flex-row justify-between items-center" role="alert">
                 <p class="font-medium mb-2 md:mb-0 md:mr-4">We've made some improvements to the job portal. Having issues viewing or accepting jobs?</p>
-                <a href="https://jobs.michieauto.com/v1.html" target="_blank" rel="noopener noreferrer" class="flex-shrink-0 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out text-sm">
+                <a href="https://jobs.michieauto.com/index.html" target="_blank" rel="noopener noreferrer" class="flex-shrink-0 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out text-sm">
                     Try the Old Job Portal
                 </a>
             </div>
@@ -279,63 +279,59 @@
         }
 
         // --- (FIXED) Helper function for iCalendar ---
-        // Made robust with try...catch and String() conversion
+        // Simplified logic, fixed 5-hour duration, and robust parsing
         function formatICalDateTime(dateStr, timeStr, durationHoursStr) {
-            let startDateTime; // Default
+            let validDateString;
             
-            // --- (FIX) Robust date parsing with try...catch ---
+            // --- (FIX) Validate dateStr ---
             try {
                 if (dateStr && dateStr !== "N/A") {
-                    // Ensure it's a string before splitting
                     const dateParts = String(dateStr).split('-');
                     if (dateParts.length === 3) {
-                        // new Date(year, monthIndex, day)
-                        startDateTime = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+                        const year = parseInt(dateParts[0]);
+                        const month = parseInt(dateParts[1]); // 1-indexed
+                        const day = parseInt(dateParts[2]);
+                        if (year > 2000 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+                            validDateString = `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                        }
                     }
                 }
             } catch (e) {
                 console.error("Error parsing iCal date:", dateStr, e);
-                // startDateTime remains undefined, will be handled below
             }
             
             // If date was invalid or N/A, fallback to today
-            if (!startDateTime || isNaN(startDateTime.getTime())) { 
-                startDateTime = new Date();
-                startDateTime.setHours(9, 0, 0, 0); // Default to 9:00 AM
+            if (!validDateString) { 
+                const today = new Date();
+                validDateString = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
             }
             
-            let timeString = "09:00"; // Default time
-            // --- (FIX) Robust time parsing with try...catch ---
+            let validTimeString = "09:00"; // Default time
+            // --- (FIX) Validate timeStr ---
             try {
                 if (timeStr && timeStr !== "N/A") {
-                    // Ensure it's a string before splitting
                     const timeParts = String(timeStr).split(':').map(Number);
                     if (timeParts.length >= 2 && !isNaN(timeParts[0]) && !isNaN(timeParts[1])) {
-                        timeString = `${String(timeParts[0]).padStart(2, '0')}:${String(timeParts[1]).padStart(2, '0')}`;
+                        if (timeParts[0] >= 0 && timeParts[0] <= 23 && timeParts[1] >= 0 && timeParts[1] <= 59) {
+                            validTimeString = `${String(timeParts[0]).padStart(2, '0')}:${String(timeParts[1]).padStart(2, '0')}`;
+                        }
                     }
                 }
             } catch (e) {
                 console.error("Error parsing iCal time:", timeStr, e);
-                // timeString remains "09:00"
+                // validTimeString remains "09:00"
             }
 
-            // --- (NEW) Construct ISO string assuming CST (UTC-6) ---
-            const dateString = startDateTime.getFullYear() + '-' + String(startDateTime.getMonth() + 1).padStart(2, '0') + '-' + String(startDateTime.getDate()).padStart(2, '0');
-            const isoStringCST = `${dateString}T${timeString}:00-06:00`;
+            // --- (SIMPLIFIED) Construct ISO string assuming CST (UTC-6) ---
+            const isoStringCST = `${validDateString}T${validTimeString}:00-06:00`;
             
-            // Re-create startDateTime from the CST string
-            // This object now holds the correct UTC-based timestamp
-            startDateTime = new Date(isoStringCST);
+            // Create startDateTime from the CST string
+            const startDateTime = new Date(isoStringCST);
 
 
-            // Calculate end time
-            let durationHours = 2; // Default duration
-            if (durationHoursStr && durationHoursStr !== "N/A") {
-                const parsedDuration = parseFloat(durationHoursStr);
-                if (!isNaN(parsedDuration)) {
-                    durationHours = parsedDuration;
-                }
-            }
+            // --- (FIX) Calculate end time ---
+            // User requested a fixed 5-hour duration for all calendar events
+            const durationHours = 5; 
             
             const endDateTime = new Date(startDateTime.getTime() + durationHours * 60 * 60 * 1000);
 
@@ -821,6 +817,7 @@
     </script>
 </body>
 </html>
+
 
 
 
