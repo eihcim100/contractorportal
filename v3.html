@@ -495,9 +495,12 @@
                         // --- NEW: Generate iCalendar (.ics) link ---
                         const iCalTimes = formatICalDateTime(job.appointment_date, job.appointment_time, job.estimated_time);
                         const eventTitle = `${mainTitle} Car Detail for ${job.customer_name || 'Client'}`;
-                        // Clean up address for iCal (remove <br> tags)
-                        const eventLocation = (job.customer_address && job.customer_address !== "N/A") ? job.customer_address.replace(/, <br>/g, ', ').replace(/<br>/g, ', ') : '';
-                        const eventDescription = `Job Details:\\nVehicle: ${mainTitle}\\nCustomer: ${job.customer_name || 'N/A'}\\nPhone: ${job.customer_phone || 'N/A'}\\nAddress: ${eventLocation}`;
+                        
+                        // --- MODIFIED FOR SECURITY ---
+                        // Set empty location for security
+                        const eventLocation = ''; 
+                        // Removed Phone and Address from description
+                        const eventDescription = `Job Details:\\nVehicle: ${mainTitle}\\nCustomer: ${job.customer_name || 'N/A'}`; 
 
                         const icsData = [
                             'BEGIN:VCALENDAR',
@@ -506,7 +509,7 @@
                             `DTSTART:${iCalTimes.start}`,
                             `DTEND:${iCalTimes.end}`,
                             `SUMMARY:${eventTitle}`,
-                            `LOCATION:${eventLocation}`,
+                            `LOCATION:${eventLocation}`, // Will be empty
                             `DESCRIPTION:${eventDescription.replace(/\n/g, '\\n')}`, // Escape newlines
                             'END:VEVENT',
                             'END:VCALENDAR'
@@ -712,5 +715,6 @@
     </script>
 </body>
 </html>
+
 
 
