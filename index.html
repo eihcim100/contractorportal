@@ -442,6 +442,21 @@
                     if (job.status === 'pending') {
                         // --- PENDING JOB CARD (Simplified Structure) ---
                         
+                        // --- START: Job Notes Section (for pending) ---
+                        let jobNotesHTML = '';
+                        const jobNotes = String(job.job_notes || '').trim();
+                        if (jobNotes && jobNotes !== "N/A") {
+                            jobNotesHTML = `
+                                <div class="mt-4 border-t pt-4 border-gray-200">
+                                    <h4 class="text-xs uppercase text-gray-500 font-semibold mb-3">Job Notes</h4>
+                                    <div class="text-sm text-gray-700 bg-yellow-50 border border-yellow-200 p-3 rounded-lg">
+                                        <p class="whitespace-pre-wrap">${jobNotes}</p>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                        // --- END: Job Notes Section (for pending) ---
+
                         const payButton = `
                             <div class="w-full ${payClass} font-bold py-3 px-4 rounded-lg text-center text-lg">
                                 ${payDisplay}
@@ -460,6 +475,10 @@
                                     ${job.appointment_time && job.appointment_time !== "N/A" ? `<p><strong>Time:</strong> ${formatAppointmentTime(job.appointment_time)}</p>` : ''}
                                 </div>
                                 ${estTimeStr && estTimeStr !== "N/A" ? `<p class="text-sm text-gray-500 mt-3">Est. Time: ${estTimeStr} hours</p>` : ''}
+                                
+                                <!-- START: Insert Job Notes HTML (pending) -->
+                                ${jobNotesHTML}
+                                <!-- END: Insert Job Notes HTML (pending) -->
                             </div>
                             <div class="bg-gray-50 px-5 py-4 border-t border-gray-100 space-y-3">
                                 ${payButton}
@@ -555,7 +574,7 @@
                         }
                         bonusBoxHTML += `</div></div>`;
 
-                        // --- START: Job Notes Section ---
+                        // --- START: Job Notes Section (for accepted) ---
                         let jobNotesHTML = '';
                         const jobNotes = String(job.job_notes || '').trim();
                         if (jobNotes && jobNotes !== "N/A") {
@@ -568,7 +587,7 @@
                                 </div>
                             `;
                         }
-                        // --- END: Job Notes Section ---
+                        // --- END: Job Notes Section (for accepted) ---
 
                         // --- Build Accepted Card HTML ---
                         jobDescriptionHTML = `
@@ -604,9 +623,9 @@
                                     </div>
                                 </div>
 
-                                <!-- START: Insert Job Notes HTML -->
+                                <!-- START: Insert Job Notes HTML (accepted) -->
                                 ${jobNotesHTML}
-                                <!-- END: Insert Job Notes HTML -->
+                                <!-- END: Insert Job Notes HTML (accepted) -->
 
                                 <div class="mt-4 border-t pt-4 border-gray-200">
                                     <h4 class="text-xs uppercase text-gray-500 font-semibold mb-3">Pay</h4>
