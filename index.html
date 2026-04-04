@@ -281,7 +281,7 @@
             return phoneString;
         }
 
-        // --- iCalendar Helper (CST time, 5 hour duration) ---
+        // --- iCalendar Helper (Dynamically supports CST and CDT) ---
         function formatICalDateTime(dateStr, timeStr) {
             let validDateString;
             
@@ -320,10 +320,32 @@
                 console.error("Error parsing iCal time:", timeStr, e);
             }
 
-            // Construct ISO string assuming CST (UTC-6)
-            const isoStringCST = `${validDateString}T${validTimeString}:00-06:00`;
+            // --- Determine correct DST offset for America/Chicago ---
+            let offset = '-06:00'; // Default to CST
+            try {
+                // Check timezone offset for noon UTC on the specified date
+                const checkDate = new Date(`${validDateString}T12:00:00Z`);
+                const formatter = new Intl.DateTimeFormat('en-US', {
+                    timeZone: 'America/Chicago',
+                    hour: 'numeric',
+                    hour12: false
+                });
+                
+                const formattedHour = formatter.format(checkDate);
+                const match = formattedHour.match(/\d+/);
+                
+                // If 12:00 UTC translates to 07:00 local time, we are in CDT (UTC-5)
+                if (match && parseInt(match[0], 10) === 7) {
+                    offset = '-05:00'; // CDT active
+                }
+            } catch (e) {
+                console.error("Error calculating Daylight Saving Time offset:", e);
+            }
+
+            // Construct ISO string with dynamic timezone offset
+            const isoStringLocal = `${validDateString}T${validTimeString}:00${offset}`;
             
-            const startDateTime = new Date(isoStringCST);
+            const startDateTime = new Date(isoStringLocal);
 
             // Calculate end time (5 hours later)
             const durationHours = 5; 
