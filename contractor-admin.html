@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Michie Auto Detailing Contractor Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        [v-cloak] { display: none; }
+        .tab-button {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .tab-button.active {
+            background-color: #3b82f6; /* blue-500 */
+            color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .tab-button:not(.active) {
+            background-color: #e5e7eb; /* gray-200 */
+            color: #4b5563; /* gray-700 */
+        }
+        .tab-button:not(.active):hover {
+            background-color: #d1d5db; /* gray-300 */
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 500px;
+        }
+        .contractor-card {
+            transition: all 0.3s ease-in-out;
+        }
+        /* Custom styles for input fields */
+        .custom-input {
+            padding: 0.75rem 1rem; /* py-3 px-4 */
+            border: 1px solid #d1d5db; /* border-gray-300 */
+            border-radius: 0.5rem; /* rounded-lg */
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm */
+            background-color: #f9fafb; /* bg-gray-50 */
+            color: #1f2937; /* text-gray-900 */
+            transition: all 0.2s ease-in-out;
+        }
+        .custom-input:focus {
+            outline: none;
+            border-color: #3b82f6; /* focus:border-blue-500 */
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25); /* focus:ring-blue-500 with opacity */
+            background-color: #ffffff; /* bg-white on focus */
+        }
+        .custom-input:disabled {
+            background-color: #e5e7eb; /* gray-200 */
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+
+    <div id="app" v-cloak class="container mx-auto max-w-4xl p-4 sm:p-8 my-10">
+        <div class="bg-white p-8 rounded-2xl shadow-lg">
+            <header class="text-center mb-8">
+                <h1 class="text-3xl sm:text-4xl font-bold text-gray-800">Contractor Admin Panel</h1>
+                <p class="text-gray-600 mt-2">Manage Michie Auto Detailing Contractor Accounts</p>
+            </header>
+
+            <!-- Login Section -->
+            <div v-if="!isAdminLoggedIn" class="max-w-md mx-auto p-6 bg-gray-50 rounded-lg shadow-md">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Admin Login</h2>
+                <div class="mb-4">
+                    <label for="admin-api-key" class="block text-gray-700 text-sm font-bold mb-2">Admin API Key:</label>
+                    <input type="password" id="admin-api-key" v-model="adminApiKey"
+                           class="custom-input w-full">
+                </div>
+                <button @click="loginAdmin" :disabled="isLoggingIn"
+                        class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline w-full transition duration-300 ease-in-out disabled:bg-gray-400">
+                    {{ isLoggingIn ? 'Logging In...' : 'Login' }}
+                </button>
+                <p v-if="loginMessage" class="text-red-500 text-xs italic mt-4 text-center">{{ loginMessage }}</p>
+            </div>
+
+            <!-- Admin Dashboard -->
+            <div v-else>
+                <div class="flex justify-between items-center mb-6">
+                    <div class="flex space-x-4">
+                        <button @click="activeTab = 'create'" :class="['tab-button', { 'active': activeTab === 'create' }]">Create Contractor</button>
+                        <button @click="activeTab = 'manage'" :class="['tab-button', { 'active': activeTab === 'manage' }]">Manage Contractors</button>
+                    </div>
+                    <button @click="logoutAdmin" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out">
+                        Logout
+                    </button>
+                </div>
+
+                <!-- Create Contractor Tab -->
+                <div v-if="activeTab === 'create'">
+                    <h2 class="text-2xl font-semibold text-gray-700 mb-4 border-b pb-2">Create New Contractor Account</h2>
+                    <form @submit.prevent="createContractor" class="space-y-4">
+                        <div>
+                            <label for="new-contractor-email" class="block text-sm font-medium text-gray-700">Email (Username):</label>
+                            <input type="email" id="new-contractor-email" v-model="newContractor.email" required
+                                   class="custom-input w-full" :class="{'border-red-500': newContractor.email && !isNewEmailValid}">
+                            <p v-if="newContractor.email && !isNewEmailValid" class="text-red-500 text-xs mt-1">Please enter a valid email address.</p>
+                        </div>
+                        <div>
+                            <label for="new-contractor-password" class="block text-sm font-medium text-gray-700">Password:</label>
+                            <input type="password" id="new-contractor-password" v-model="newContractor.password" required
+                                   class="custom-input w-full">
+                        </div>
+                        <div>
+                            <label for="new-contractor-first-name" class="block text-sm font-medium text-gray-700">First Name:</label>
+                            <input type="text" id="new-contractor-first-name" v-model="newContractor.first_name"
+                                   class="custom-input w-full">
+                        </div>
+                        <div>
+                            <label for="new-contractor-last-name" class="block text-sm font-medium text-gray-700">Last Name:</label>
+                            <input type="text" id="new-contractor-last-name" v-model="newContractor.last_name"
+                                   class="custom-input w-full">
+                        </div>
+                        <div>
+                            <label for="new-contractor-phone" class="block text-sm font-medium text-gray-700">Phone Number:</label>
+                            <input type="tel" id="new-contractor-phone" v-model="newContractor.phone_number"
+                                   class="custom-input w-full">
+                        </div>
+                        <button type="submit" :disabled="isCreatingContractor || !isNewEmailValid"
+                                class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out disabled:bg-gray-400">
+                            {{ isCreatingContractor ? 'Creating...' : 'Create Contractor' }}
+                        </button>
+                        <p v-if="createContractorMessage" :class="{'text-green-600': createContractorSuccess, 'text-red-600': !createContractorSuccess}" class="mt-2 text-sm">{{ createContractorMessage }}</p>
+                    </form>
+                </div>
+
+                <!-- Manage Contractors Tab -->
+                <div v-if="activeTab === 'manage'">
+                    <h2 class="text-2xl font-semibold text-gray-700 mb-4 border-b pb-2">Manage Existing Contractors</h2>
+                    <button @click="fetchContractors" :disabled="isLoadingContractors" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg mb-4 disabled:bg-gray-400">
+                        {{ isLoadingContractors ? 'Loading...' : 'Refresh Contractors' }}
+                    </button>
+                    <p v-if="contractorListMessage" class="text-red-500 text-sm mb-4">{{ contractorListMessage }}</p>
+
+                    <!-- Contractor List -->
+                    <div v-if="contractors.length > 0" class="space-y-4">
+                        <div v-for="contractor in contractors" :key="contractor.email" class="contractor-card bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200">
+                            <h3 class="text-lg font-semibold text-gray-800">{{ contractor.first_name }} {{ contractor.last_name }}</h3>
+                            <p class="text-sm text-gray-600">{{ contractor.email }}</p>
+                            <p class="text-sm text-gray-600">Phone: {{ contractor.phone_number || 'N/A' }}</p>
+                            <div class="mt-4 flex space-x-2">
+                                <button @click="openEditModal(contractor)" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg text-sm transition duration-300 ease-in-out">Edit</button>
+                                <button @click="confirmDeleteContractor(contractor)" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg text-sm transition duration-300 ease-in-out">Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                    <p v-else-if="!isLoadingContractors" class="text-gray-500 text-center mt-4">No contractors found.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Contractor Modal -->
+        <div v-if="showEditModal" class="modal-overlay">
+            <div class="modal-content">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Edit Contractor</h3>
+                <form @submit.prevent="updateContractor" class="space-y-4">
+                    <div>
+                        <label for="edit-email" class="block text-sm font-medium text-gray-700">Email:</label>
+                        <input type="email" id="edit-email" v-model="editingContractor.email" disabled
+                               class="custom-input w-full disabled:bg-gray-200">
+                        <p v-if="editingContractor.email && !isEditEmailValid" class="text-red-500 text-xs mt-1">Please enter a valid email address.</p>
+                    </div>
+                    <div>
+                        <label for="edit-password" class="block text-sm font-medium text-gray-700">New Password (leave blank to keep current):</label>
+                        <input type="password" id="edit-password" v-model="editingContractor.new_password"
+                               class="custom-input w-full">
+                    </div>
+                    <div>
+                        <label for="edit-first-name" class="block text-sm font-medium text-gray-700">First Name:</label>
+                        <input type="text" id="edit-first-name" v-model="editingContractor.first_name"
+                               class="custom-input w-full">
+                    </div>
+                    <div>
+                        <label for="edit-last-name" class="block text-sm font-medium text-gray-700">Last Name:</label>
+                        <input type="text" id="edit-last-name" v-model="editingContractor.last_name"
+                               class="custom-input w-full">
+                    </div>
+                    <div>
+                        <label for="edit-phone" class="block text-sm font-medium text-gray-700">Phone Number:</label>
+                        <input type="tel" id="edit-phone" v-model="editingContractor.phone_number"
+                               class="custom-input w-full">
+                    </div>
+                    <div class="flex justify-end space-x-2 mt-6">
+                        <button type="button" @click="showEditModal = false" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out">Cancel</button>
+                        <button type="submit" :disabled="isUpdatingContractor || !isEditEmailValid" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-400 transition duration-300 ease-in-out">
+                            {{ isUpdatingContractor ? 'Updating...' : 'Save Changes' }}
+                        </button>
+                    </div>
+                    <p v-if="updateContractorMessage" :class="{'text-green-600': updateContractorSuccess, 'text-red-600': !updateContractorSuccess}" class="mt-2 text-sm text-center">{{ updateContractorMessage }}</p>
+                </form>
+            </div>
+        </div>
+
+        <!-- Delete Confirmation Modal -->
+        <div v-if="showDeleteConfirmModal" class="modal-overlay">
+            <div class="modal-content">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Confirm Deletion</h3>
+                <p class="text-gray-700 mb-6">Are you sure you want to delete {{ contractorToDelete ? contractorToDelete.email : 'this contractor' }}?</p>
+                <div class="flex justify-end space-x-2">
+                    <button @click="showDeleteConfirmModal = false" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out">Cancel</button>
+                    <button @click="deleteContractor" :disabled="isDeletingContractor" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-400 transition duration-300 ease-in-out">
+                        {{ isDeletingContractor ? 'Deleting...' : 'Delete' }}
+                    </button>
+                </div>
+                <p v-if="deleteContractorMessage" :class="{'text-green-600': deleteContractorSuccess, 'text-red-600': !deleteContractorSuccess}" class="mt-2 text-sm text-center">{{ deleteContractorMessage }}</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, onMounted, computed } = Vue;
+
+        const app = createApp({
+            setup() {
+                // IMPORTANT: This URL should point to your 'app.py' backend service (Contractor Portal Backend)
+                const API_BASE_URL = 'https://michie-detailing-backend.onrender.com'; 
+
+                // Admin Login State
+                const isAdminLoggedIn = ref(false);
+                const adminApiKey = ref('');
+                const isLoggingIn = ref(false);
+                const loginMessage = ref('');
+
+                // Tabs
+                const activeTab = ref('manage'); // Default to manage tab
+
+                // Create Contractor State
+                const newContractor = reactive({
+                    email: '',
+                    password: '',
+                    first_name: '',
+                    last_name: '',
+                    phone_number: ''
+                });
+                const isCreatingContractor = ref(false);
+                const createContractorMessage = ref('');
+                const createContractorSuccess = ref(false);
+
+                // Manage Contractors State
+                const contractors = ref([]);
+                const isLoadingContractors = ref(false);
+                const contractorListMessage = ref('');
+
+                // Edit Modal State
+                const showEditModal = ref(false);
+                const editingContractor = reactive({
+                    email: '', // Email is the identifier for contractors
+                    new_password: '', 
+                    first_name: '',
+                    last_name: '',
+                    phone_number: ''
+                });
+                const isUpdatingContractor = ref(false);
+                const updateContractorMessage = ref('');
+                const updateContractorSuccess = ref(false);
+
+                // Delete Modal State
+                const showDeleteConfirmModal = ref(false);
+                const contractorToDelete = ref(null);
+                const isDeletingContractor = ref(false);
+                const deleteContractorMessage = ref('');
+                const deleteContractorSuccess = ref(false);
+
+                // Email Validation Computed Properties
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+                const isNewEmailValid = computed(() => {
+                    return emailRegex.test(newContractor.email);
+                });
+
+                const isEditEmailValid = computed(() => {
+                    // For editing, if the email is provided, validate it.
+                    // The email field is disabled, so it should always be valid if present.
+                    return emailRegex.test(editingContractor.email);
+                });
+
+
+                // --- Admin Login/Logout Functions ---
+                const loginAdmin = async () => {
+                    isLoggingIn.value = true;
+                    loginMessage.value = '';
+                    try {
+                        // Test authentication against the /admin/users GET endpoint
+                        const response = await fetch(`${API_BASE_URL}/admin/users`, {
+                            method: 'GET',
+                            headers: {
+                                'Authorization': `Bearer ${adminApiKey.value}`, // app.py uses Bearer token
+                                'Content-Type': 'application/json',
+                            },
+                        });
+
+                        if (response.ok) {
+                            localStorage.setItem('contractorAdminAuthToken', adminApiKey.value); // Store token for this panel
+                            isAdminLoggedIn.value = true;
+                            loginMessage.value = 'Login successful!';
+                            fetchContractors(); // Automatically fetch contractors after successful login
+                        } else {
+                            const errorData = await response.json();
+                            loginMessage.value = errorData.message || 'Login failed. Invalid API Key.';
+                            isAdminLoggedIn.value = false;
+                        }
+                    } catch (error) {
+                        console.error('Admin login error:', error);
+                        loginMessage.value = 'An error occurred during login. Please check network or server.';
+                        isAdminLoggedIn.value = false;
+                    } finally {
+                        isLoggingIn.value = false;
+                    }
+                };
+
+                const logoutAdmin = () => {
+                    localStorage.removeItem('contractorAdminAuthToken');
+                    isAdminLoggedIn.value = false;
+                    adminApiKey.value = ''; // Clear the input field
+                    loginMessage.value = 'Logged out successfully.';
+                    contractors.value = []; // Clear contractor list on logout
+                };
+
+                // --- Contractor Management Functions ---
+                const fetchContractors = async () => {
+                    isLoadingContractors.value = true;
+                    contractorListMessage.value = '';
+                    const token = localStorage.getItem('contractorAdminAuthToken');
+                    if (!token) {
+                        contractorListMessage.value = 'Authentication token missing. Please log in.';
+                        isLoadingContractors.value = false;
+                        isAdminLoggedIn.value = false; // Force logout if token is missing
+                        return;
+                    }
+
+                    try {
+                        // Call /admin/users endpoint from app.py
+                        const response = await fetch(`${API_BASE_URL}/admin/users`, {
+                            method: 'GET',
+                            headers: {
+                                'Authorization': `Bearer ${token}`, // app.py uses Bearer token
+                                'Content-Type': 'application/json',
+                            },
+                        });
+
+                        if (response.ok) {
+                            contractors.value = await response.json();
+                            if (contractors.value.length === 0) {
+                                contractorListMessage.value = 'No contractors found.';
+                            } else {
+                                contractorListMessage.value = '';
+                            }
+                        } else {
+                            const errorData = await response.json();
+                            contractorListMessage.value = errorData.message || 'Failed to fetch contractors.';
+                            contractors.value = [];
+                            if (response.status === 401 || response.status === 403) {
+                                // If unauthorized, force logout
+                                logoutAdmin();
+                                loginMessage.value = 'Session expired or unauthorized. Please log in again.';
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error fetching contractors:', error);
+                        contractorListMessage.value = 'An error occurred while fetching contractors.';
+                        contractors.value = [];
+                    } finally {
+                        isLoadingContractors.value = false;
+                    }
+                };
+
+                const createContractor = async () => {
+                    isCreatingContractor.value = true;
+                    createContractorMessage.value = '';
+                    createContractorSuccess.value = false;
+                    const token = localStorage.getItem('contractorAdminAuthToken');
+
+                    if (!token) {
+                        createContractorMessage.value = 'Authentication token missing. Please log in.';
+                        isCreatingContractor.value = false;
+                        isAdminLoggedIn.value = false;
+                        return;
+                    }
+
+                    if (!isNewEmailValid.value) {
+                        createContractorMessage.value = 'Please enter a valid email address.';
+                        createContractorSuccess.value = false;
+                        isCreatingContractor.value = false;
+                        return;
+                    }
+
+                    // Payload for app.py's /admin/users POST
+                    const payload = {
+                        email: newContractor.email,
+                        password: newContractor.password,
+                        first_name: newContractor.first_name,
+                        last_name: newContractor.last_name,
+                        phone_number: newContractor.phone_number
+                    };
+
+                    try {
+                        const response = await fetch(`${API_BASE_URL}/admin/users`, { // Correct endpoint
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${token}`, // app.py uses Bearer token
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(payload),
+                        });
+
+                        if (response.ok) {
+                            createContractorMessage.value = 'Contractor created successfully!';
+                            createContractorSuccess.value = true;
+                            // Clear form
+                            newContractor.email = '';
+                            newContractor.password = '';
+                            newContractor.first_name = '';
+                            newContractor.last_name = '';
+                            newContractor.phone_number = '';
+                            fetchContractors(); // Refresh list
+                        } else {
+                            const errorData = await response.json();
+                            createContractorMessage.value = errorData.message || 'Failed to create contractor.';
+                            createContractorSuccess.value = false;
+                            if (response.status === 401 || response.status === 403) {
+                                logoutAdmin();
+                                loginMessage.value = 'Session expired or unauthorized. Please log in again.';
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error creating contractor:', error);
+                        createContractorMessage.value = 'An error occurred during contractor creation.';
+                        createContractorSuccess.value = false;
+                    } finally {
+                        isCreatingContractor.value = false;
+                    }
+                };
+
+                const openEditModal = (contractor) => {
+                    // Populate editingContractor with current data
+                    editingContractor.email = contractor.email;
+                    editingContractor.new_password = ''; // Always clear password field
+                    editingContractor.first_name = contractor.first_name;
+                    editingContractor.last_name = contractor.last_name;
+                    editingContractor.phone_number = contractor.phone_number;
+                    updateContractorMessage.value = ''; // Clear previous messages
+                    updateContractorSuccess.value = false;
+                    showEditModal.value = true;
+                };
+
+                const updateContractor = async () => {
+                    isUpdatingContractor.value = true;
+                    updateContractorMessage.value = '';
+                    updateContractorSuccess.value = false;
+                    const token = localStorage.getItem('contractorAdminAuthToken');
+
+                    if (!token) {
+                        updateContractorMessage.value = 'Authentication token missing. Please log in.';
+                        isUpdatingContractor.value = false;
+                        isAdminLoggedIn.value = false;
+                        return;
+                    }
+
+                    if (!isEditEmailValid.value) { // Although email is disabled, this is a safeguard
+                        updateContractorMessage.value = 'Invalid email address detected.';
+                        updateContractorSuccess.value = false;
+                        isUpdatingContractor.value = false;
+                        return;
+                    }
+
+                    // Payload for app.py's /admin/users/<email> PUT
+                    const payload = {
+                        new_password: editingContractor.new_password || undefined, // Only send if not empty
+                        new_first_name: editingContractor.first_name,
+                        new_last_name: editingContractor.last_name,
+                        new_phone_number: editingContractor.phone_number,
+                    };
+
+                    // Remove undefined fields from payload
+                    Object.keys(payload).forEach(key => payload[key] === undefined && delete payload[key]);
+
+                    try {
+                        const response = await fetch(`${API_BASE_URL}/admin/users/${editingContractor.email}`, { // Correct endpoint with email
+                            method: 'PUT',
+                            headers: {
+                                'Authorization': `Bearer ${token}`, // app.py uses Bearer token
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(payload),
+                        });
+
+                        if (response.ok) {
+                            updateContractorMessage.value = 'Contractor updated successfully!';
+                            updateContractorSuccess.value = true;
+                            showEditModal.value = false;
+                            fetchContractors(); // Refresh list
+                        } else {
+                            const errorData = await response.json();
+                            updateContractorMessage.value = errorData.message || 'Failed to update contractor.';
+                            updateContractorSuccess.value = false;
+                            if (response.status === 401 || response.status === 403) {
+                                logoutAdmin();
+                                loginMessage.value = 'Session expired or unauthorized. Please log in again.';
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error updating contractor:', error);
+                        updateContractorMessage.value = 'An error occurred during contractor update.';
+                        updateContractorSuccess.value = false;
+                    } finally {
+                        isUpdatingContractor.value = false;
+                    }
+                };
+
+                const confirmDeleteContractor = (contractor) => {
+                    contractorToDelete.value = contractor;
+                    deleteContractorMessage.value = ''; // Clear previous messages
+                    deleteContractorSuccess.value = false;
+                    showDeleteConfirmModal.value = true;
+                };
+
+                const deleteContractor = async () => {
+                    isDeletingContractor.value = true;
+                    deleteContractorMessage.value = '';
+                    deleteContractorSuccess.value = false;
+                    const token = localStorage.getItem('contractorAdminAuthToken');
+
+                    if (!token) {
+                        deleteContractorMessage.value = 'Authentication token missing. Please log in.';
+                        isDeletingContractor.value = false;
+                        isAdminLoggedIn.value = false;
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch(`${API_BASE_URL}/admin/users/${contractorToDelete.value.email}`, { // Correct endpoint with email
+                            method: 'DELETE',
+                            headers: {
+                                'Authorization': `Bearer ${token}`, // app.py uses Bearer token
+                            },
+                        });
+
+                        if (response.ok) {
+                            deleteContractorMessage.value = 'Contractor deleted successfully!';
+                            deleteContractorSuccess.value = true;
+                            showDeleteConfirmModal.value = false;
+                            fetchContractors(); // Refresh list
+                        } else {
+                            const errorData = await response.json();
+                            deleteContractorMessage.value = errorData.message || 'Failed to delete contractor.';
+                            deleteContractorSuccess.value = false;
+                            if (response.status === 401 || response.status === 403) {
+                                logoutAdmin();
+                                loginMessage.value = 'Session expired or unauthorized. Please log in again.';
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error deleting contractor:', error);
+                        deleteContractorMessage.value = 'An error occurred during contractor deletion.';
+                        deleteContractorSuccess.value = false;
+                    } finally {
+                        isDeletingContractor.value = false;
+                    }
+                };
+
+                // On component mount, check for existing token
+                onMounted(() => {
+                    const token = localStorage.getItem('contractorAdminAuthToken');
+                    if (token) {
+                        adminApiKey.value = token; // Pre-fill the API key field if token exists
+                        isAdminLoggedIn.value = true;
+                        // Fetch data based on the default active tab
+                        if (activeTab.value === 'manage') {
+                            fetchContractors(); 
+                        }
+                    }
+                });
+
+                return {
+                    // Admin Login State
+                    isAdminLoggedIn,
+                    adminApiKey,
+                    isLoggingIn,
+                    loginMessage,
+                    loginAdmin,
+                    logoutAdmin,
+
+                    // Tabs
+                    activeTab,
+
+                    // Create Contractor State & Functions
+                    newContractor,
+                    isCreatingContractor,
+                    createContractorMessage,
+                    createContractorSuccess,
+                    createContractor,
+                    isNewEmailValid, // Expose for template
+
+                    // Manage Contractors State
+                    contractors,
+                    isLoadingContractors,
+                    contractorListMessage,
+                    fetchContractors,
+
+                    // Edit Modal State & Functions
+                    showEditModal,
+                    editingContractor,
+                    isUpdatingContractor,
+                    updateContractorMessage,
+                    updateContractorSuccess,
+                    openEditModal,
+                    updateContractor,
+                    isEditEmailValid, // Expose for template
+
+                    // Delete Modal State & Functions
+                    showDeleteConfirmModal,
+                    contractorToDelete,
+                    isDeletingContractor,
+                    deleteContractorMessage,
+                    deleteContractorSuccess,
+                    confirmDeleteContractor,
+                    deleteContractor,
+                };
+            }
+        });
+        
+        app.mount('#app');
+    </script>
+</body>
+</html>
