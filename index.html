@@ -436,19 +436,22 @@
                     jobCard.className = 'bg-white-77 rounded-xl shadow-lg border border-gray-200 overflow-hidden flex flex-col';
 
                     let mainTitle = '';
-                    // Use robust String conversion for all fields to prevent crashes
-                    const jobYear = String(job.year || '').trim();
-                    const jobMake = String(job.make || '').trim();
-                    const jobModel = String(job.model || '').trim();
+                    
+                    // --- MAPPING UPDATE ---
+                    // Updated string mappings to perfectly match the SQL response keys created in your app.py backend
+                    // Fallbacks included just in case the old JSON key format somehow persists
+                    const jobYear = String(job.vehicle_year || job.year || '').trim();
+                    const jobMake = String(job.vehicle_make || job.make || '').trim();
+                    const jobModel = String(job.vehicle_model || job.model || '').trim();
+                    const dealName = String(job.deal_name || '').trim();
                     const serviceLevelStr = String(job.service_level || '').trim();
                     const estTimeStr = String(job.estimated_time || '').trim();
                     const payString = String(job.pay || '').trim();
 
-
                     if (jobYear && jobYear !== "N/A") mainTitle += jobYear + ' ';
                     if (jobMake && jobMake !== "N/A") mainTitle += jobMake + ' ';
                     if (jobModel && jobModel !== "N/A") mainTitle += jobModel;
-                    mainTitle = mainTitle.trim() || "Untitled Job";
+                    mainTitle = mainTitle.trim() || dealName || "Untitled Job";
 
                     // --- NEW PAY LOGIC: Show custom pay if present, otherwise default ---
                     let payDisplay = '$120 + TIPS'; 
