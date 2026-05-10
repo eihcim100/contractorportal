@@ -1,611 +1,912 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-6Y327JERG9"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-6Y327JERG9');
+    </script>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MichieCRM Admin</title>
+    <title>Michie Auto Detailing - Spring Interior Booking 🌸</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <!-- Replace YOUR_GOOGLE_MAPS_API_KEY below with your actual API key -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=places"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
-        [v-cloak] { display: none; }
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0, 0, 0, 0.6);
-            display: flex; justify-content: center; align-items: center;
-            z-index: 50; padding: 1rem;
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #334155;
+            padding-bottom: 120px; /* Increased padding for bottom banner */
         }
-        .modal-content {
-            background-color: white; padding: 2rem; border-radius: 1rem;
-            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
-            width: 100%; max-width: 900px; max-height: 90vh; overflow-y: auto;
+        .pac-container { z-index: 1050 !important; }
+
+        /* Spring Header Gradient */
+        .spring-header {
+            background: linear-gradient(135deg, #dcfce7 0%, #f0fdf4 100%);
+            border-bottom: 1px solid #bbf7d0;
         }
-        .custom-input {
-            width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db;
-            border-radius: 0.5rem; transition: all 0.2s;
+
+        /* Promotion Timer Banner - MOVED TO BOTTOM & LARGER */
+        #promo-timer-banner {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: #ef4444;
+            color: white;
+            text-align: center;
+            padding: 1rem;
+            font-weight: 800;
+            font-size: 1.5rem; 
+            z-index: 2000;
+            box-shadow: 0 -4px 15px rgba(0,0,0,0.2);
+            animation: slideUp 0.5s ease;
         }
-        .custom-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.25); }
+
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+
+        /* General button styling */
+        .btn-primary {
+            background-color: #2563eb;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2), 0 2px 4px -1px rgba(37, 99, 235, 0.1);
+            border: none;
+        }
+        .btn-primary:hover {
+            background-color: #1d4ed8;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 10px -1px rgba(37, 99, 235, 0.25), 0 4px 6px -2px rgba(37, 99, 235, 0.15);
+        }
+        /* Success/Spring Green Button */
+        .btn-success {
+            background-color: #16a34a;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px -1px rgba(22, 163, 74, 0.2), 0 2px 4px -1px rgba(22, 163, 74, 0.1);
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-success:hover:not(:disabled) {
+            background-color: #15803d;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 10px -1px rgba(22, 163, 74, 0.25), 0 4px 6px -2px rgba(22, 163, 74, 0.15);
+        }
+        .btn-success:disabled {
+            background-color: #16a34a;
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        /* Package card styles */
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            justify-content: center;
+            align-items: stretch;
+        }
+        @media (min-width: 768px) {
+            .pricing-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        .pricing-card {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 1rem; 
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+        .pricing-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 30px rgba(34, 197, 94, 0.15);
+            border-color: #86efac;
+        }
+        .pricing-level {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 0.75rem;
+        }
+        .pricing-price {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #059669;
+            margin-bottom: 1.5rem;
+        }
+        .feature-list {
+            list-style: none;
+            padding: 0;
+            text-align: left;
+            flex-grow: 1;
+            margin-bottom: 1.5rem;
+        }
+        .feature-list li {
+            position: relative;
+            padding-left: 2rem;
+            margin-bottom: 0.8rem;
+            color: #475569;
+            font-size: 0.95rem;
+        }
+        .feature-list li::before {
+            content: '✨';
+            color: #10b981; 
+            position: absolute;
+            left: 0;
+            font-size: 1rem;
+        }
+        .select-package-btn {
+            width: 100%;
+            margin-top: auto;
+        }
+        .see-whats-included-btn {
+            background-color: #f0fdf4;
+            color: #166534;
+            font-weight: 500;
+            padding: 0.6rem 1.2rem;
+            border-radius: 0.75rem;
+            width: 100%;
+            margin-top: 0.5rem;
+            margin-bottom: 1rem;
+            transition: background-color 0.2s;
+            cursor: pointer;
+            text-align: center;
+            border: none;
+        }
+        .see-whats-included-btn:hover { background-color: #dcfce7; }
+        .feature-dropdown {
+            display: none;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            max-height: 0;
+            padding-bottom: 1rem;
+        }
+        .feature-dropdown.show {
+            max-height: 1000px;
+            display: block;
+        }
+
+        /* Time Slot Box */
+        .time-slots-box {
+            height: 220px;
+            overflow-y: auto;
+            border: 1px solid #cbd5e1;
+            border-radius: 0.5rem;
+            background-color: #ffffff;
+            padding: 0.5rem;
+        }
+        .time-slot-item {
+            display: block;
+            width: 100%;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+            text-align: left;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-weight: 500;
+            color: #334155;
+            border: 1px solid transparent;
+        }
+        .time-slot-item:hover:not(:disabled) { background-color: #f0fdf4; }
+        .time-slot-item.selected { background-color: #16a34a; color: white; }
+        .time-slot-item:disabled { color: #94a3b8; cursor: not-allowed; opacity: 0.6; text-decoration: line-through; }
+        
+        .time-slots-box::-webkit-scrollbar { width: 8px; }
+        .time-slots-box::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        .time-slots-box::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .time-slots-box::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Form inputs */
+        input[type="text"], input[type="email"], input[type="tel"], input[type="date"], textarea, select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 0.5rem;
+            background-color: #ffffff;
+            font-size: 1rem;
+            color: #334155;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #10b981;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+        }
+        label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: #475569;
+        }
+
+        #booking-flow-container { display: none; }
+
+        .sticky-book-now-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: #ffffff;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+            padding: 1rem;
+            text-align: center;
+            z-index: 1000;
+            border-top: 1px solid #e2e8f0;
+        }
+        .sticky-book-now-footer .btn-success {
+            font-size: 1.25rem;
+            padding: 1rem 2.5rem;
+            border-radius: 9999px;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .vehicle-type-buttons-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1rem;
+        }
+        
+        /* Promo Box Style */
+        .promo-box {
+            background-color: #f0fdf4;
+            border: 2px dashed #16a34a;
+            padding: 1rem;
+            border-radius: 1rem;
+            max-width: 400px;
+            margin: 0 auto 2rem auto;
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
     </style>
 </head>
-<body>
+<body class="bg-slate-50">
 
-<div id="app" v-cloak class="min-h-screen flex flex-col">
-    <!-- Login Screen -->
-    <div v-if="!isLoggedIn" class="flex-grow flex items-center justify-center">
-        <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
-            <h2 class="text-3xl font-bold text-gray-800 mb-2 text-center">MichieCRM</h2>
-            <p class="text-gray-500 text-center mb-8">Enter your API Key to access the database.</p>
-            <form @submit.prevent="login">
-                <input type="password" v-model="apiKey" required class="custom-input mb-4" placeholder="Admin API Key">
-                <button type="submit" :disabled="isLoading" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg">
-                    {{ isLoading ? 'Authenticating...' : 'Secure Login' }}
-                </button>
-                <p v-if="error" class="text-red-500 text-sm text-center mt-4">{{ error }}</p>
-            </form>
+    <!-- Promo Timer Banner -->
+    <div id="promo-timer-banner">
+        🔥 Promotion active for <span id="timer-countdown">03:30</span>
+    </div>
+
+    <!-- Festive Header Section -->
+    <div class="spring-header pt-12 pb-12 px-4 mb-[-30px]">
+        <div class="container mx-auto max-w-4xl text-center">
+            <img src="https://michieauto.com/logo.jpeg" alt="Michie Auto Detailing Logo" class="mx-auto mb-6 w-64 h-auto rounded-lg shadow-lg border-4 border-white">
+            <h1 class="text-4xl sm:text-5xl font-bold text-slate-800 mb-3">Book Your Spring Detail 🌸☀️</h1>
+            <p class="text-xl text-slate-600">Refresh your ride for the beautiful weather ahead! 🌻</p>
         </div>
     </div>
 
-    <!-- Main Dashboard -->
-    <div v-else class="flex-grow flex flex-col">
-        <nav class="bg-white shadow-sm border-b px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
-            <h1 class="text-2xl font-bold text-gray-800">MichieCRM</h1>
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-4xl relative z-10">
+        
+        <!-- Why Choose Us Section -->
+        <section class="bg-white p-8 rounded-xl shadow-xl mb-8 border border-green-50">
+            <div class="flex flex-col md:flex-row items-center justify-center gap-2 mb-6">
+                <span class="text-3xl">🌷</span>
+                <h2 class="text-3xl font-bold text-slate-700 text-center">Why Choose Our Spring Service?</h2>
+                <span class="text-3xl">🌷</span>
+            </div>
             
-            <div class="flex space-x-2 bg-gray-100 p-1 rounded-lg">
-                <button @click="currentTab = 'leads'" :class="currentTab === 'leads' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:text-gray-800'" class="px-5 py-2 rounded-md font-semibold transition">Jobs Database</button>
-                <button @click="currentTab = 'reports'" :class="currentTab === 'reports' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:text-gray-800'" class="px-5 py-2 rounded-md font-semibold transition">Gross Profit Reports</button>
+            <p class="text-lg text-slate-600 text-center mb-8 max-w-2xl mx-auto">
+                Spring is the perfect time to clear out the winter grime! We specialize in restoring the freshness of your interior. From deep cleaning carpets to premium leather conditioning, we ensure a spotless ride for your road trips and sunny drives!
+            </p>
+
+            <div class="mb-8 relative group">
+                <div class="absolute -inset-1 bg-gradient-to-r from-green-400 to-yellow-300 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
+                <img src="https://res.cloudinary.com/dvrljjtdr/image/upload/v1773523558/unnamed_1_s3qjze.jpg" alt="Spring Detailing Car" class="relative w-full h-auto rounded-xl shadow-2xl border-2 border-white hover:scale-[1.01] transition-transform duration-300 object-cover max-h-[500px]" onerror="this.onerror=null;this.src='https://placehold.co/800x400/dcfce7/15803d?text=Spring+Refresh+Detailing'">
             </div>
 
-            <div class="flex items-center space-x-4">
-                <span class="text-sm text-gray-500 font-medium">Total Jobs: {{ leads.length }}</span>
-                <button @click="logout" class="bg-red-50 hover:bg-red-100 text-red-600 font-semibold py-2 px-4 rounded-lg transition">Logout</button>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <img src="https://res.cloudinary.com/dvrljjtdr/image/upload/v1773523761/unnamed_4_em1hkj.jpg" alt="Spring Interior Detail" class="w-full h-64 object-cover rounded-lg shadow-md border border-slate-200 hover:scale-105 transition-transform duration-300" onerror="this.onerror=null;this.src='https://placehold.co/400x300/f0fdf4/166534?text=Interior+Detailing'">
+                <img src="https://res.cloudinary.com/dvrljjtdr/image/upload/v1773523890/unnamed_5_qgnxhs.jpg" alt="Spring Interior Detail Close-up" class="w-full h-64 object-cover rounded-lg shadow-md border border-slate-200 hover:scale-105 transition-transform duration-300" onerror="this.onerror=null;this.src='https://placehold.co/400x300/f0fdf4/166534?text=Spotless+Interior'">
             </div>
-        </nav>
+        </section>
 
-        <main class="flex-grow p-6 max-w-7xl mx-auto w-full">
-            
-            <!-- LEADS TAB -->
-            <div v-if="currentTab === 'leads'" class="bg-white rounded-xl shadow-md overflow-hidden">
-                <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
-                    <h2 class="text-lg font-semibold text-gray-700">Jobs Database</h2>
-                    <input type="text" v-model="searchQuery" placeholder="Search names, phones, or zips..." class="custom-input w-64 text-sm">
+        <div id="booking-flow-container" class="bg-white p-8 rounded-xl shadow-xl space-y-8 border border-green-50">
+
+            <!-- Step 1: Vehicle Type Selection -->
+            <div id="vehicle-type-selection">
+                <h2 class="text-2xl font-bold text-slate-700 mb-6 text-center">1. Select Your Vehicle Type 🚗</h2>
+                <div class="vehicle-type-buttons-container">
+                    <button id="select-car-type" class="btn-primary">Car</button>
+                    <button id="select-truck-type" class="btn-primary">Truck</button>
+                    <button id="select-suv-type" class="btn-primary">SUV</button>
                 </div>
+            </div>
+
+            <!-- Step 2: Package Selection -->
+            <div id="package-selection-container" class="hidden">
+                <h2 class="text-2xl font-bold text-slate-700 mb-4 text-center">2. Choose Your Spring Package 🌿</h2>
                 
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 text-sm">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Service Date</th>
-                                <th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Customer</th>
-                                <th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Assigned To</th>
-                                <th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Status</th>
-                                <th class="px-6 py-3 text-right font-medium text-gray-500 uppercase">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            <tr v-if="isLoading" class="text-center"><td colspan="5" class="py-8 text-gray-500">Loading database...</td></tr>
-                            <tr v-for="lead in sortedFilteredLeads" :key="lead.id" class="hover:bg-gray-50">
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="font-medium text-gray-900">{{ formatDateForDisplay(lead.appointment_date) }}</div>
-                                    <div class="text-gray-500">{{ lead.appointment_time || 'N/A' }}</div>
-                                </td>
-                                <td class="px-6 py-4">
-                                    <div class="font-medium text-gray-900">{{ lead.customer_name || 'N/A' }}</div>
-                                    <div class="text-gray-500">{{ lead.customer_phone || 'N/A' }}</div>
-                                </td>
-                                <td class="px-6 py-4">
-                                    <div class="font-medium text-gray-900">{{ getContractorName(lead.contractor_id_field) }}</div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span :class="['px-2 py-1 text-xs font-semibold rounded-full', lead.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : lead.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800']">
-                                        {{ (lead.status || 'unknown').toUpperCase() }}
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-right">
-                                    <button @click="editLead(lead)" class="text-blue-600 hover:text-blue-900 font-medium border border-blue-200 px-3 py-1 rounded transition hover:bg-blue-50">Edit / View All</button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <!-- Promo Code Box -->
+                <div class="promo-box">
+                    <input type="text" id="promo-code-input" placeholder="Promo Code" class="!py-2">
+                    <button id="activate-promo-btn" class="btn-success !py-2 !px-4">Activate</button>
+                </div>
+
+                <!-- SEDAN PACKAGES -->
+                <div id="sedan-packages-display" class="pricing-grid hidden">
+                    <!-- Sedan Interior Level 1 -->
+                    <div class="pricing-card">
+                        <h4 class="pricing-level">Interior Level 1</h4>
+                        <p class="pricing-price" id="sedan-price-1" data-orig="199">$199</p>
+                        <button class="see-whats-included-btn" data-target="sedan-level1-features">See what's included</button>
+                        <div id="sedan-level1-features" class="feature-dropdown">
+                            <ul class="feature-list">
+                                <li>Deep vacuuming</li>
+                                <li>Display and controls wipe down</li>
+                                <li>Interior window cleaning</li>
+                                <li>Surface protectant for dash</li>
+                                <li>Door jambs wipe down</li>
+                            </ul>
+                        </div>
+                        <button class="select-package-btn btn-success" data-package-type="Interior Level 1" data-package-price="199">Select Package ☀️</button>
+                    </div>
+                    <!-- Sedan Interior Level 2 -->
+                    <div class="pricing-card">
+                        <div class="absolute top-0 right-0 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-bl-lg">POPULAR</div>
+                        <h4 class="pricing-level">Interior Level 2</h4>
+                        <p class="pricing-price" id="sedan-price-2" data-orig="249">$249</p>
+                        <button class="see-whats-included-btn" data-target="sedan-level2-features">See what's included</button>
+                        <div id="sedan-level2-features" class="feature-dropdown">
+                            <ul class="feature-list">
+                                <li><strong>Everything in Level 1 +</strong></li>
+                                <li>Shampoo carpets and seats</li>
+                                <li>Premium Leather treatment</li>
+                                <li>Detailed Door jamb cleaning</li>
+                                <li>Pet hair removal</li>
+                                <li>Odor removal treatment</li>
+                            </ul>
+                        </div>
+                        <button class="select-package-btn btn-success" data-package-type="Interior Level 2" data-package-price="249">Select Package ☀️</button>
+                    </div>
+                    <!-- Sedan Interior Level 3 -->
+                    <div class="pricing-card">
+                        <h4 class="pricing-level">Interior Level 3</h4>
+                        <p class="pricing-price" id="sedan-price-3" data-orig="349">$349</p>
+                        <button class="see-whats-included-btn" data-target="sedan-level3-features">See what's included</button>
+                        <div id="sedan-level3-features" class="feature-dropdown">
+                            <ul class="feature-list">
+                                <li><strong>Everything in Level 2 +</strong></li>
+                                <li>FINE TOOTH COMB deep cleaning</li>
+                                <li>Glove compartment cleaning</li>
+                                <li>Trunk shampoo and vacuum</li>
+                                <li>Hard to reach areas deep shampoo</li>
+                                <li>Sanitization of touched surfaces</li>
+                            </ul>
+                        </div>
+                        <button class="select-package-btn btn-success" data-package-type="Interior Level 3" data-package-price="349">Select Package ☀️</button>
+                    </div>
+                </div>
+
+                <!-- SUV/TRUCK PACKAGES -->
+                <div id="suv-truck-packages-display" class="pricing-grid hidden">
+                    <!-- SUV Interior Level 1 -->
+                    <div class="pricing-card">
+                        <h4 class="pricing-level">Interior Level 1</h4>
+                        <p class="pricing-price" id="suv-price-1" data-orig="219">$219</p>
+                        <button class="see-whats-included-btn" data-target="suv-truck-level1-features">See what's included</button>
+                        <div id="suv-truck-level1-features" class="feature-dropdown">
+                            <ul class="feature-list">
+                                <li>Deep vacuuming</li>
+                                <li>Display and controls wipe down</li>
+                                <li>Interior window cleaning</li>
+                                <li>Surface protectant for dash</li>
+                                <li>Door jambs wipe down</li>
+                            </ul>
+                        </div>
+                        <button class="select-package-btn btn-success" data-package-type="Interior Level 1" data-package-price="219">Select Package ☀️</button>
+                    </div>
+                    <!-- SUV Interior Level 2 -->
+                    <div class="pricing-card">
+                        <div class="absolute top-0 right-0 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-bl-lg">POPULAR</div>
+                        <h4 class="pricing-level">Interior Level 2</h4>
+                        <p class="pricing-price" id="suv-price-2" data-orig="299">$299</p>
+                        <button class="see-whats-included-btn" data-target="suv-truck-level2-features">See what's included</button>
+                        <div id="suv-truck-level2-features" class="feature-dropdown">
+                            <ul class="feature-list">
+                                <li><strong>Everything in Level 1 +</strong></li>
+                                <li>Shampoo carpets and seats</li>
+                                <li>Premium Leather treatment</li>
+                                <li>Detailed Door jamb cleaning</li>
+                                <li>Pet hair removal</li>
+                                <li>Odor removal treatment</li>
+                            </ul>
+                        </div>
+                        <button class="select-package-btn btn-success" data-package-type="Interior Level 2" data-package-price="299">Select Package ☀️</button>
+                    </div>
+                    <!-- SUV Interior Level 3 -->
+                    <div class="pricing-card">
+                        <h4 class="pricing-level">Interior Level 3</h4>
+                        <p class="pricing-price" id="suv-price-3" data-orig="379">$379</p>
+                        <button class="see-whats-included-btn" data-target="suv-truck-level3-features">See what's included</button>
+                        <div id="suv-truck-level3-features" class="feature-dropdown">
+                            <ul class="feature-list">
+                                <li><strong>Everything in Level 2 +</strong></li>
+                                <li>FINE TOOTH COMB deep cleaning</li>
+                                <li>Glove compartment cleaning</li>
+                                <li>Trunk shampoo and vacuum</li>
+                                <li>Hard to reach areas deep shampoo</li>
+                                <li>Sanitization of touched surfaces</li>
+                            </ul>
+                        </div>
+                        <button class="select-package-btn btn-success" data-package-type="Interior Level 3" data-package-price="379">Select Package ☀️</button>
+                    </div>
                 </div>
             </div>
 
-            <!-- REPORTS TAB -->
-            <div v-if="currentTab === 'reports'" class="space-y-6">
+            <!-- Standard Booking Flow - Step 3 -->
+            <div id="booking-form-section" class="hidden">
+                <h2 class="text-2xl font-bold text-slate-700 mb-4">3. Your Information & Appointment Details 📝</h2>
+                <p class="text-lg font-semibold text-gray-800 mb-4">Selected Package: <span id="selected-package-display" class="text-blue-600"></span></p>
                 
-                <!-- Report Filters -->
-                <div class="bg-white p-6 rounded-xl shadow-md flex flex-wrap gap-4 items-end">
+                <form id="booking-form" class="space-y-6">
                     <div>
-                        <label class="block text-xs font-bold text-gray-600 mb-1">Timeframe</label>
-                        <select v-model="reportTimeframe" class="custom-input w-48 bg-white">
-                            <option value="7days">Last 7 Days</option>
-                            <option value="30days">Last 30 Days</option>
-                            <option value="3months">Last 3 Months</option>
-                            <option value="6months">Last 6 Months</option>
-                            <option value="custom">Custom Date Range</option>
-                        </select>
+                        <label for="full_name" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                        <input type="text" id="full_name" placeholder="Your Full Name" required>
                     </div>
-
-                    <div v-if="reportTimeframe === 'custom'" class="flex gap-4">
-                        <div>
-                            <label class="block text-xs font-bold text-gray-600 mb-1">Start Date</label>
-                            <input type="date" v-model="reportCustomStart" class="custom-input w-40">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-gray-600 mb-1">End Date</label>
-                            <input type="date" v-model="reportCustomEnd" class="custom-input w-40">
-                        </div>
-                    </div>
-
                     <div>
-                        <label class="block text-xs font-bold text-gray-600 mb-1">Contractor</label>
-                        <select v-model="reportContractor" class="custom-input w-64 bg-white">
-                            <option value="ALL">All Contractors</option>
-                            <option v-for="c in contractors" :key="c.email" :value="c.email">
-                                {{ c.first_name }} {{ c.last_name }}
-                            </option>
-                        </select>
+                        <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                        <input type="email" id="email" placeholder="Your Email Address" required>
                     </div>
-                </div>
-
-                <!-- Report Summary Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="bg-white p-6 rounded-xl shadow-md border-l-4 border-blue-500">
-                        <h3 class="text-gray-500 font-semibold text-sm mb-1">Total Jobs Completed</h3>
-                        <p class="text-3xl font-bold text-gray-800">{{ generatedReport.jobCount }}</p>
+                    <div>
+                        <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                        <input type="tel" id="phone" placeholder="Your Phone Number" required>
                     </div>
-                    <div class="bg-white p-6 rounded-xl shadow-md border-l-4 border-green-500">
-                        <h3 class="text-gray-500 font-semibold text-sm mb-1">Gross Profit</h3>
-                        <p class="text-3xl font-bold text-gray-800">${{ generatedReport.totalProfit.toFixed(2) }}</p>
+                    <div>
+                        <label for="address" class="block text-sm font-medium text-gray-700 mb-1">Service Address</label>
+                        <input type="text" id="address" placeholder="Start typing your address..." required>
                     </div>
-                    <div class="bg-white p-6 rounded-xl shadow-md border-l-4 border-purple-500">
-                        <h3 class="text-gray-500 font-semibold text-sm mb-1">Average Job Ticket</h3>
-                        <p class="text-3xl font-bold text-gray-800">${{ generatedReport.avgTicket.toFixed(2) }}</p>
-                    </div>
-                </div>
-
-                <!-- Report Table -->
-                <div class="bg-white rounded-xl shadow-md overflow-hidden">
-                    <div class="p-4 border-b bg-gray-50">
-                        <h2 class="text-lg font-semibold text-gray-700">Gross Profit Breakdown</h2>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200 text-sm">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Service Date</th>
-                                    <th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Customer</th>
-                                    <th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Contractor</th>
-                                    <th class="px-6 py-3 text-right font-medium text-gray-500 uppercase">Package Price</th>
-                                    <th class="px-6 py-3 text-right font-medium text-gray-500 uppercase">Contractor Pay</th>
-                                    <th class="px-6 py-3 text-right font-medium text-green-600 uppercase">Gross Profit</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
-                                <tr v-for="row in generatedReport.rows" :key="row.id" class="hover:bg-gray-50">
-                                    <td class="px-6 py-4 whitespace-nowrap text-gray-900">{{ formatDateForDisplay(row.appointment_date) }}</td>
-                                    <td class="px-6 py-4 text-gray-900">{{ row.customer_name }}</td>
-                                    <td class="px-6 py-4 text-gray-500">{{ getContractorName(row.contractor_id_field) }}</td>
-                                    <td class="px-6 py-4 text-right font-medium">${{ row.revenue.toFixed(2) }}</td>
-                                    <td class="px-6 py-4 text-right text-red-500">-${{ row.expense.toFixed(2) }}</td>
-                                    <td class="px-6 py-4 text-right font-bold text-green-600">${{ row.profit.toFixed(2) }}</td>
-                                </tr>
-                                <tr v-if="generatedReport.rows.length === 0">
-                                    <td colspan="6" class="px-6 py-8 text-center text-gray-500">No jobs found for this timeframe.</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </main>
-    </div>
-
-    <!-- Edit Lead Modal -->
-    <div v-if="showModal" class="modal-overlay">
-        <div class="modal-content">
-            <div class="flex justify-between items-center mb-6 border-b pb-3">
-                <h3 class="text-2xl font-bold text-gray-800">Edit Lead Record #{{ activeLead.id }}</h3>
-                <button @click="showModal = false" class="text-gray-500 hover:text-gray-800 font-bold text-3xl leading-none">&times;</button>
-            </div>
-            
-            <form @submit.prevent="saveLead">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Customer Details -->
-                    <div class="bg-gray-50 p-5 rounded-xl border border-gray-100">
-                        <h4 class="font-bold text-gray-700 mb-3 border-b pb-2 flex items-center"><span class="mr-2">👤</span> Client Details</h4>
-                        
-                        <label class="block text-xs font-bold text-gray-600 mt-3">Name</label>
-                        <input type="text" v-model="activeLead.customer_name" class="custom-input">
-                        
-                        <label class="block text-xs font-bold text-gray-600 mt-3">Phone (Converts to +1 Format)</label>
-                        <input type="text" v-model="activeLead.customer_phone" class="custom-input" placeholder="e.g. 123-456-7890">
-                        
-                        <label class="block text-xs font-bold text-gray-600 mt-3">Address (Google Maps Search)</label>
-                        <input type="text" id="autocomplete-address" v-model="activeLead.customer_address" class="custom-input" placeholder="Start typing address...">
-                        
-                        <label class="block text-xs font-bold text-gray-600 mt-3">Zip Code</label>
-                        <input type="text" v-model="activeLead.zip_code" class="custom-input">
-                    </div>
-
-                    <!-- Scheduling & Assignment -->
-                    <div class="bg-gray-50 p-5 rounded-xl border border-gray-100">
-                        <h4 class="font-bold text-gray-700 mb-3 border-b pb-2 flex items-center"><span class="mr-2">📅</span> Scheduling & Status</h4>
-                        
-                        <div class="flex gap-3">
-                            <div class="w-1/2">
-                                <label class="block text-xs font-bold text-gray-600 mt-3">Date (MM/DD/YYYY)</label>
-                                <input type="text" v-model="activeLead.display_date" class="custom-input" placeholder="MM/DD/YYYY">
-                            </div>
-                            <div class="w-1/2">
-                                <label class="block text-xs font-bold text-gray-600 mt-3">Time (12hr AM/PM)</label>
-                                <input type="text" v-model="activeLead.appointment_time" class="custom-input" placeholder="e.g. 02:30 PM">
-                            </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="zip_code" class="block text-sm font-medium text-gray-700 mb-1">Zip Code</label>
+                            <input type="text" id="zip_code" placeholder="Your Zip Code" required>
                         </div>
-
-                        <label class="block text-xs font-bold text-gray-600 mt-3">Status</label>
-                        <select v-model="activeLead.status" class="custom-input bg-white">
-                            <option value="pending">Pending (Open)</option>
-                            <option value="accepted">Accepted (Claimed)</option>
-                            <option value="completed">Completed</option>
-                            <option value="declined">Declined / Lost</option>
-                        </select>
-
-                        <div class="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
-                            <label class="block text-xs font-bold text-blue-800 mb-1">Assigned Contractor</label>
-                            <select v-model="activeLead.contractor_id_field" class="custom-input bg-white border-blue-200">
-                                <option value="">Unassigned</option>
-                                <option v-for="c in contractors" :key="c.email" :value="c.email">
-                                    {{ c.first_name }} {{ c.last_name }} ({{ c.email }})
-                                </option>
+                        <div>
+                            <label for="vehicle_year" class="block text-sm font-medium text-gray-700 mb-1">Vehicle Year</label>
+                            <input type="text" id="vehicle_year" placeholder="e.g., 2020" required>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="vehicle_make" class="block text-sm font-medium text-gray-700 mb-1">Vehicle Make</label>
+                            <select id="vehicle_make" required>
+                                <option value="">Select Make</option>
+                                <option value="Acura">Acura</option>
+                                <option value="Audi">Audi</option>
+                                <option value="BMW">BMW</option>
+                                <option value="Chevrolet">Chevrolet</option>
+                                <option value="Dodge">Dodge</option>
+                                <option value="Ford">Ford</option>
+                                <option value="GMC">GMC</option>
+                                <option value="Honda">Honda</option>
+                                <option value="Hyundai">Hyundai</option>
+                                <option value="Jeep">Jeep</option>
+                                <option value="Kia">Kia</option>
+                                <option value="Lexus">Lexus</option>
+                                <option value="Mercedes-Benz">Mercedes-Benz</option>
+                                <option value="Nissan">Nissan</option>
+                                <option value="Subaru">Subaru</option>
+                                <option value="Tesla">Tesla</option>
+                                <option value="Toyota">Toyota</option>
+                                <option value="Volkswagen">Volkswagen</option>
+                                <option value="Other">Other</option>
                             </select>
                         </div>
+                        <div>
+                            <label for="vehicle_model" class="block text-sm font-medium text-gray-700 mb-1">Vehicle Model</label>
+                            <input type="text" id="vehicle_model" placeholder="e.g., Civic" required>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label for="additional-info" class="block text-sm font-medium text-gray-700 mb-1">Additional Information (Optional)</label>
+                        <textarea id="additional-info" rows="3" placeholder="Specific stains, pet hair details, etc." class="w-full px-3 py-2 border rounded-lg"></textarea>
                     </div>
 
-                    <!-- Job Details -->
-                    <div class="bg-gray-50 p-5 rounded-xl border border-gray-100 md:col-span-2">
-                        <h4 class="font-bold text-gray-700 mb-3 border-b pb-2 flex items-center"><span class="mr-2">🚘</span> Job Details & Financials</h4>
-                        
-                        <div class="grid grid-cols-3 gap-3 mb-4">
-                            <div>
-                                <label class="block text-xs font-bold text-gray-600">Year</label>
-                                <input type="text" v-model="activeLead.vehicle_year" class="custom-input">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-600">Make</label>
-                                <input type="text" v-model="activeLead.vehicle_make" class="custom-input">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-600">Model</label>
-                                <input type="text" v-model="activeLead.vehicle_model" class="custom-input">
-                            </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="booking-date" class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                            <input type="date" id="booking-date" required>
                         </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div>
-                                <label class="block text-xs font-bold text-gray-600">Service Level (Package)</label>
-                                <input type="text" v-model="activeLead.service_level" class="custom-input">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-600">Pay Description (Legacy)</label>
-                                <input type="text" v-model="activeLead.pay" class="custom-input" placeholder="e.g. $120 + Tips">
-                            </div>
+                        <div>
+                            <label for="selected-booking-time" class="block text-sm font-medium text-gray-700 mb-1">Time</label>
+                            <div id="booking-time-box" class="time-slots-box"></div>
+                            <input type="hidden" id="selected-booking-time" name="booking-time" required>
                         </div>
-
-                        <!-- UPDATED TERMINOLOGY FIELDS -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-green-50 border border-green-100 rounded-lg mb-4">
-                            <div>
-                                <label class="block text-xs font-bold text-green-800">Package Price ($)</label>
-                                <input type="number" step="0.01" v-model="activeLead.service_cost" class="custom-input border-green-300">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-red-800">Contractor Pay ($)</label>
-                                <input type="number" step="0.01" v-model="activeLead.contractor_expense" class="custom-input border-red-300">
-                            </div>
-                        </div>
-                        
-                        <label class="block text-xs font-bold text-gray-600">Job Notes / Instructions</label>
-                        <textarea v-model="activeLead.job_notes" rows="3" class="custom-input"></textarea>
                     </div>
+
+                    <input type="hidden" id="selected-package-type" name="package-type">
+                    <input type="hidden" id="selected-package-price" name="package-price">
+                    <input type="hidden" id="selected-vehicle-type" name="vehicle-type">
+                    
+                    <button type="submit" id="final-book-appointment-btn" class="w-full btn-success hidden">Book Appointment</button>
+                    <p id="booking-message" class="text-center mt-2"></p>
+                </form>
+            </div>
+
+            <!-- Confirmation Section -->
+            <div id="confirmation-section" class="hidden text-center">
+                <div id="confirmation-message" class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-6 rounded-lg">
+                    <p class="text-2xl font-bold mb-2">⚠️ Action Required: One more step!</p>
+                    <p class="text-md mt-4">Payment is required to confirm your appointment.</p>
                 </div>
-
-                <div class="flex justify-between mt-6 pt-5 border-t">
-                    <button type="button" @click="deleteLead" class="bg-red-50 hover:bg-red-600 text-red-600 hover:text-white font-bold py-2 px-6 rounded-lg transition border border-red-200">Delete Record</button>
-                    <div class="space-x-3">
-                        <button type="button" @click="showModal = false" class="bg-white hover:bg-gray-100 text-gray-700 font-bold py-2 px-6 rounded-lg border transition">Cancel</button>
-                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-8 rounded-lg shadow-md transition transform hover:scale-105">Save & Validate</button>
-                    </div>
+                
+                <div class="mt-8">
+                    <button id="pay-now-button" class="btn-success w-full sm:w-auto px-8 py-4 text-xl">Pay in full</button>
                 </div>
-            </form>
+            </div>
+
+            <div id="policy-text" class="hidden text-xs text-gray-500 mt-8">
+                <p>* 100% credit provided for cancellations, valid for 12 months. No cash refunds.</p>
+            </div>
         </div>
     </div>
-</div>
 
-<script>
-    const { createApp, ref, computed, onMounted, nextTick } = Vue;
-    const API_BASE_URL = 'https://michie-detailing-backend.onrender.com';
+    <div id="sticky-book-now-footer" class="sticky-book-now-footer">
+        <button id="sticky-book-now-btn" class="btn-success">
+            Book Your Spring Detail! 🌸
+        </button>
+    </div>
 
-    // Formatting Helpers
-    function formatPhone(phone) {
-        if (!phone) return phone;
-        let cleaned = phone.replace(/\D/g, '');
-        if (cleaned.length === 10) return '+1' + cleaned;
-        if (cleaned.length === 11 && cleaned.startsWith('1')) return '+' + cleaned;
-        return phone; // Return as is if it doesn't match standard US structure
-    }
+    <script>
+        window.initBookingPage = function() {
+            const addressInput = document.getElementById('address'); 
+            if (window.google && window.google.maps && window.google.maps.places && addressInput) {
+                let addressAutocomplete = new google.maps.places.Autocomplete(addressInput, {
+                    componentRestrictions: { country: "us" },
+                    fields: ["formatted_address", "address_components"],
+                    types: ["address"],
+                });
+                addressAutocomplete.addListener('place_changed', () => {
+                    const place = addressAutocomplete.getPlace();
+                    if (place.formatted_address) {
+                        addressInput.value = place.formatted_address;
+                        fillAddressFields(place);
+                    }
+                });
+            }
+        };
 
-    function formatDateForDisplay(dateStr) {
-        if (!dateStr || dateStr === 'N/A') return '';
-        const parts = dateStr.split('-');
-        if (parts.length === 3) return `${parts[1]}/${parts[2]}/${parts[0]}`; // YYYY-MM-DD to MM/DD/YYYY
-        return dateStr;
-    }
-
-    function formatDateForDB(dateStr) {
-        if (!dateStr) return null;
-        const parts = dateStr.split('/');
-        if (parts.length === 3) {
-            const m = parts[0].padStart(2, '0');
-            const d = parts[1].padStart(2, '0');
-            return `${parts[2]}-${m}-${d}`; // MM/DD/YYYY to YYYY-MM-DD
+        function fillAddressFields(place) {
+            let zipCode = '';
+            for (const component of place.address_components) {
+                if (component.types.includes('postal_code')) zipCode = component.long_name;
+            }
+            const zipCodeInput = document.getElementById('zip_code');
+            if(zipCodeInput) zipCodeInput.value = zipCode;
         }
-        return dateStr;
-    }
 
-    function formatTime(timeStr) {
-        if (!timeStr) return '';
-        const match = timeStr.trim().match(/^(0?[1-9]|1[0-2]):([0-5][0-9])\s?(AM|PM|am|pm)$/i);
-        if (match) {
-            let h = match[1].padStart(2, '0');
-            return `${h}:${match[2]} ${match[3].toUpperCase()}`;
-        }
-        return timeStr;
-    }
-
-    // Auto-Extraction helper to pull pure numbers from strings like "$120 Flat Rate" or "Basic Detail $150"
-    function extractPrice(str) {
-        if (!str) return 0;
-        const s = String(str).trim();
-        if (!isNaN(s) && s !== '') return parseFloat(s);
-        
-        // Match numbers preceded by dollar sign
-        const dollarMatch = s.match(/\$\s*([0-9]+(?:\.[0-9]{2})?)/);
-        if (dollarMatch) return parseFloat(dollarMatch[1]);
-        
-        // Match standard entries like "120 Flat Rate" or "120 + tips"
-        const numberMatch = s.match(/^([0-9]+(?:\.[0-9]{2})?)\s*(?:Flat|Rate|\+|-)/i);
-        if (numberMatch) return parseFloat(numberMatch[1]);
-        
-        return 0;
-    }
-
-    createApp({
-        setup() {
-            const apiKey = ref(localStorage.getItem('crmApiKey') || '');
-            const isLoggedIn = ref(false);
-            const isLoading = ref(false);
-            const error = ref('');
+        function initializeApp() {
+            // FIXED URL HERE! Points directly to your backend CRM database server
+            const API_BASE_URL = 'https://michie-detailing-backend.onrender.com';
             
-            const leads = ref([]);
-            const contractors = ref([]);
-            const searchQuery = ref('');
-            
-            const currentTab = ref('leads');
-            const showModal = ref(false);
-            const activeLead = ref({});
-
-            // Report Filters
-            const reportTimeframe = ref('30days');
-            const reportCustomStart = ref('');
-            const reportCustomEnd = ref('');
-            const reportContractor = ref('ALL');
-
-            // Fetch Contractors
-            const fetchContractors = async () => {
-                try {
-                    const res = await fetch(`${API_BASE_URL}/admin/users`, { headers: getHeaders() });
-                    if (res.ok) contractors.value = await res.json();
-                } catch (e) { console.error("Failed to load contractors", e); }
+            const elements = {
+                bookingFlowContainer: document.getElementById('booking-flow-container'),
+                vehicleTypeSelection: document.getElementById('vehicle-type-selection'),
+                selectCarBtn: document.getElementById('select-car-type'), 
+                selectTruckBtn: document.getElementById('select-truck-type'), 
+                selectSuvBtn: document.getElementById('select-suv-type'), 
+                packageSelectionContainer: document.getElementById('package-selection-container'),
+                sedanPackagesDisplay: document.getElementById('sedan-packages-display'), 
+                suvTruckPackagesDisplay: document.getElementById('suv-truck-packages-display'), 
+                bookingFormSection: document.getElementById('booking-form-section'),
+                bookingForm: document.getElementById('booking-form'),
+                selectedPackageDisplay: document.getElementById('selected-package-display'),
+                selectedPackageTypeInput: document.getElementById('selected-package-type'),
+                selectedPackagePriceInput: document.getElementById('selected-package-price'),
+                selectedVehicleTypeInput: document.getElementById('selected-vehicle-type'),
+                finalBookAppointmentBtn: document.getElementById('final-book-appointment-btn'),
+                confirmationSection: document.getElementById('confirmation-section'),
+                stickyBookNowBtn: document.getElementById('sticky-book-now-btn'), 
+                stickyBookNowFooter: document.getElementById('sticky-book-now-footer'), 
+                payNowButton: document.getElementById('pay-now-button'),
+                policyText: document.getElementById('policy-text'),
+                bookingDateInput: document.getElementById('booking-date'),
+                bookingTimeButtonsContainer: document.getElementById('booking-time-box'), 
+                selectedBookingTimeInput: document.getElementById('selected-booking-time'),
+                bookingMessage: document.getElementById('booking-message'),
+                promoInput: document.getElementById('promo-code-input'),
+                activatePromoBtn: document.getElementById('activate-promo-btn'),
+                timerBanner: document.getElementById('promo-timer-banner'),
+                timerCountdown: document.getElementById('timer-countdown')
             };
 
-            const getContractorName = (email) => {
-                if (!email) return 'Unassigned';
-                const c = contractors.value.find(u => u.email === email);
-                return c ? `${c.first_name} ${c.last_name}` : email;
+            let isPromoActive = false; // Track if promo is applied
+
+            // Promo and Timer Logic
+            elements.activatePromoBtn.addEventListener('click', () => {
+                const code = elements.promoInput.value.trim().toLowerCase();
+                if (code === 'vipclient') {
+                    isPromoActive = true;
+                    applyDiscounts();
+                    startPromoTimer();
+                } else {
+                    alert('Invalid promo code');
+                }
+            });
+
+            function applyDiscounts() {
+                const discounts = { 1: 0.12, 2: 0.18, 3: 0.19 }; // Updated to 12%, 18%, 19%
+                ['sedan', 'suv'].forEach(prefix => {
+                    [1, 2, 3].forEach(level => {
+                        const priceEl = document.getElementById(`${prefix}-price-${level}`);
+                        const orig = parseFloat(priceEl.dataset.orig);
+                        const discounted = Math.floor(orig * (1 - discounts[level]));
+                        priceEl.innerHTML = `<span class="line-through text-gray-400 text-xl mr-2">$${orig}</span> <span class="font-bold text-green-600">$${discounted}</span>`;
+                        const btn = priceEl.closest('.pricing-card').querySelector('.select-package-btn');
+                        if (btn) btn.dataset.packagePrice = discounted;
+                    });
+                });
+                elements.activatePromoBtn.disabled = true;
+                elements.activatePromoBtn.textContent = 'Active! ✅';
+            }
+
+            function startPromoTimer() {
+                elements.timerBanner.style.display = 'block';
+                let timeLeft = 210;
+                const interval = setInterval(() => {
+                    const mins = Math.floor(timeLeft / 60);
+                    const secs = timeLeft % 60;
+                    elements.timerCountdown.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                    if (timeLeft <= 0) {
+                        clearInterval(interval);
+                        elements.timerBanner.style.backgroundColor = "#64748b";
+                        elements.timerBanner.textContent = "Expired";
+                    }
+                    timeLeft--;
+                }, 1000);
+            }
+
+            function hideAllMajorSections() {
+                [elements.vehicleTypeSelection, elements.packageSelectionContainer, elements.bookingFormSection, elements.confirmationSection, elements.policyText]
+                    .forEach(el => el && (el.style.display = 'none'));
+            }
+
+            if (elements.stickyBookNowBtn) {
+                elements.stickyBookNowBtn.addEventListener('click', () => {
+                    hideAllMajorSections();
+                    elements.bookingFlowContainer.style.display = 'block';
+                    elements.vehicleTypeSelection.style.display = 'block';
+                    setTimeout(() => elements.bookingFlowContainer.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+                });
+            }
+
+            const handleVehicleClick = (type) => {
+                hideAllMajorSections();
+                elements.packageSelectionContainer.style.display = 'block';
+                elements.sedanPackagesDisplay.style.display = type === 'car' ? 'grid' : 'none';
+                elements.suvTruckPackagesDisplay.style.display = type !== 'car' ? 'grid' : 'none';
+                elements.selectedVehicleTypeInput.value = type.charAt(0).toUpperCase() + type.slice(1);
+                elements.stickyBookNowFooter.style.display = 'none';
             };
 
-            // Sorted & Filtered Leads for Main Table
-            const sortedFilteredLeads = computed(() => {
-                let result = leads.value;
-                if (searchQuery.value) {
-                    const q = searchQuery.value.toLowerCase();
-                    result = result.filter(l => 
-                        (l.customer_name||'').toLowerCase().includes(q) || 
-                        (l.customer_phone||'').toLowerCase().includes(q) || 
-                        (l.zip_code||'').toLowerCase().includes(q)
-                    );
-                }
-                // Sort Newest to Oldest Date
-                return result.sort((a, b) => {
-                    const dateA = new Date(a.appointment_date || '1970-01-01');
-                    const dateB = new Date(b.appointment_date || '1970-01-01');
-                    return dateB - dateA; 
-                });
+            [elements.selectCarBtn, elements.selectTruckBtn, elements.selectSuvBtn].forEach((btn, i) => {
+                const types = ['car', 'truck', 'suv'];
+                btn.addEventListener('click', () => handleVehicleClick(types[i]));
             });
 
-            // Gross Profit Report Engine
-            const generatedReport = computed(() => {
-                // Include completed/accepted jobs that have EITHER a saved cost OR extractable legacy pricing
-                let filtered = leads.value.filter(l => 
-                    l.status === 'completed' || 
-                    l.status === 'accepted' || 
-                    l.service_cost > 0 || 
-                    extractPrice(l.pay) > 0 || 
-                    extractPrice(l.deal_name) > 0
-                );
-                
-                if (reportContractor.value !== 'ALL') {
-                    filtered = filtered.filter(l => l.contractor_id_field === reportContractor.value);
-                }
+            async function sendSmsNotification(bookingDetails, paymentLink) {
+                const firstName = bookingDetails.full_name.split(' ')[0];
+                const message = `ACTION REQUIRED: Hi ${firstName}, it's Michie Auto Detail. Your ${bookingDetails.package_type} for the ${bookingDetails.vehicle_make} ${bookingDetails.vehicle_model} is PENDING. Payment is required IMMEDIATELY to secure your spot. Pay here: ${paymentLink} Questions? (405) 295-5189`;
 
-                const now = new Date();
-                let startDate = new Date(0);
-                let endDate = new Date();
-                
-                if (reportTimeframe.value === '7days') startDate.setDate(now.getDate() - 7);
-                else if (reportTimeframe.value === '30days') startDate.setDate(now.getDate() - 30);
-                else if (reportTimeframe.value === '3months') startDate.setMonth(now.getMonth() - 3);
-                else if (reportTimeframe.value === '6months') startDate.setMonth(now.getMonth() - 6);
-                else if (reportTimeframe.value === 'custom') {
-                    startDate = new Date(reportCustomStart.value || '1970-01-01');
-                    endDate = new Date(reportCustomEnd.value || '2099-12-31');
-                    endDate.setHours(23,59,59);
-                }
-
-                filtered = filtered.filter(l => {
-                    if (!l.appointment_date) return false;
-                    const d = new Date(l.appointment_date);
-                    return d >= startDate && d <= endDate;
-                });
-
-                // Calculate Totals using Auto-Extraction Fallbacks
-                let totalRevenue = 0;
-                let totalExpense = 0;
-                
-                const rows = filtered.map(l => {
-                    // Extract Package Price from saved numeric field, deal_name text, or service_level text
-                    const rev = parseFloat(l.service_cost) || extractPrice(l.deal_name) || extractPrice(l.service_level) || 0;
-                    
-                    // Extract Contractor Pay from saved numeric field or the legacy pay text
-                    const exp = parseFloat(l.contractor_expense) || extractPrice(l.pay) || 0;
-                    
-                    totalRevenue += rev;
-                    totalExpense += exp;
-                    return { ...l, revenue: rev, expense: exp, profit: rev - exp };
-                });
-
-                rows.sort((a,b) => new Date(b.appointment_date) - new Date(a.appointment_date));
-
-                const jobCount = rows.length;
-                return {
-                    rows, jobCount, totalRevenue, totalExpense,
-                    totalProfit: totalRevenue - totalExpense,
-                    avgTicket: jobCount > 0 ? (totalRevenue / jobCount) : 0
-                };
-            });
-
-            const getHeaders = () => ({
-                'Authorization': `Bearer ${apiKey.value}`,
-                'Content-Type': 'application/json',
-                'X-Admin-API-Key': apiKey.value
-            });
-
-            const login = async () => {
-                isLoading.value = true; error.value = '';
                 try {
-                    const res = await fetch(`${API_BASE_URL}/admin/leads`, { headers: getHeaders() });
-                    if (res.ok) {
-                        leads.value = await res.json();
-                        isLoggedIn.value = true;
-                        localStorage.setItem('crmApiKey', apiKey.value);
-                        fetchContractors(); // Get user list for dropdowns
+                    await fetch('https://client-notifications.onrender.com/send-sms', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ to: bookingDetails.phone, message_body: message })
+                    });
+                    console.log('SMS notification sent successfully.');
+                } catch (error) {
+                    console.error('Error sending SMS notification:', error);
+                }
+            }
+
+            function getPaymentLink(packageType, vehicleType, priceStr, isPromo) {
+                if (isPromo) {
+                    if (vehicleType === 'Car') {
+                        if (packageType === "Interior Level 1") return "https://pay.michieauto.com/vipsinterior26";
+                        if (packageType === "Interior Level 2") return "https://pay.michieauto.com/vipsinteriorlvl2s";
+                        if (packageType === "Interior Level 3") return "https://pay.michieauto.com/vipsinteriorlvl3s";
+                    } else if (vehicleType === 'Truck') {
+                        if (packageType === "Interior Level 1") return "https://pay.michieauto.com/vipsinteriorlvl1truck";
+                        if (packageType === "Interior Level 2") return "https://pay.michieauto.com/vipsinteriorlvl2truck";
+                        if (packageType === "Interior Level 3") return "https://pay.michieauto.com/vipsinteriorlvl3truck";
+                    } else { // SUV or fallback
+                        if (packageType === "Interior Level 1") return "https://pay.michieauto.com/vipsinteriorlvl1suv";
+                        if (packageType === "Interior Level 2") return "https://pay.michieauto.com/vipsinteriorlvl2suv";
+                        if (packageType === "Interior Level 3") return "https://pay.michieauto.com/vipsinteriorlvl3suv";
+                    }
+                } else {
+                    // Standard Links (No Promo)
+                    if (vehicleType === 'Car') {
+                        if (packageType === "Interior Level 1") return "https://pay.michieauto.com/springinteriorlvl1s";
+                        if (packageType === "Interior Level 2") return "https://pay.michieauto.com/springinteriorlvl2s";
+                        if (packageType === "Interior Level 3") return "https://pay.michieauto.com/springinteriorlvl3s";
+                    } else if (vehicleType === 'Truck') {
+                        if (packageType === "Interior Level 1") return "https://pay.michieauto.com/springinteriorlvl1truck";
+                        if (packageType === "Interior Level 2") return "https://pay.michieauto.com/springinteriorlvl2truck";
+                        if (packageType === "Interior Level 3") return "https://pay.michieauto.com/springinteriorlvl3truck";
+                    } else { // SUV or fallback
+                        if (packageType === "Interior Level 1") return "https://pay.michieauto.com/springinteriorlvl1suv";
+                        if (packageType === "Interior Level 2") return "https://pay.michieauto.com/springinteriorlvl2suv";
+                        if (packageType === "Interior Level 3") return "https://pay.michieauto.com/springinteriorlvl3suv";
+                    }
+                }
+                
+                return "https://pay.michieauto.com/deposit";
+            }
+
+            // Fetch times when date changes
+            elements.bookingDateInput.addEventListener('change', (e) => {
+                elements.selectedBookingTimeInput.value = '';
+                elements.finalBookAppointmentBtn.style.display = 'none';
+                renderTimeButtons(elements.bookingTimeButtonsContainer, elements.selectedBookingTimeInput, e.target.value, elements.finalBookAppointmentBtn);
+            });
+
+            if (elements.packageSelectionContainer) elements.packageSelectionContainer.addEventListener('click', (e) => {
+                const btn = e.target.closest('.select-package-btn');
+                if (btn) {
+                    elements.selectedPackageDisplay.textContent = btn.dataset.packageType;
+                    elements.selectedPackageTypeInput.value = btn.dataset.packageType;
+                    elements.selectedPackagePriceInput.value = btn.dataset.packagePrice;
+                    hideAllMajorSections();
+                    elements.bookingFormSection.style.display = 'block';
+                    
+                    // Generate local today's date string YYYY-MM-DD
+                    const d = new Date();
+                    const year = d.getFullYear();
+                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                    const day = String(d.getDate()).padStart(2, '0');
+                    const todayStr = `${year}-${month}-${day}`;
+                    
+                    elements.bookingDateInput.value = todayStr;
+                    elements.selectedBookingTimeInput.value = ''; 
+                    elements.finalBookAppointmentBtn.style.display = 'none';
+                    renderTimeButtons(elements.bookingTimeButtonsContainer, elements.selectedBookingTimeInput, todayStr, elements.finalBookAppointmentBtn);
+                } else if (e.target.classList.contains('see-whats-included-btn')) {
+                    const dropdown = document.getElementById(e.target.dataset.target);
+                    dropdown.classList.toggle('show');
+                    e.target.textContent = dropdown.classList.contains('show') ? 'Hide details' : "See what's included";
+                }
+            });
+
+            async function handleBooking(e, endpoint, messageEl, selectedTimeInputId) { 
+                e.preventDefault();
+                const submitButton = elements.finalBookAppointmentBtn;
+                submitButton.disabled = true;
+                submitButton.innerHTML = `Processing...`;
+
+                try {
+                    const packagePrice = document.getElementById('selected-package-price').value;
+                    // Contractor pay calculation: 50% of the gross revenue after $60 operational expense deduction
+                    const contractorPayAmount = (parseFloat(packagePrice) - 70) * 0.50;
+                    
+                    const payload = {
+                        full_name: document.getElementById('full_name').value,
+                        email: document.getElementById('email').value,
+                        phone: `+1${document.getElementById('phone').value.replace(/\D/g, '')}`,
+                        address: document.getElementById('address').value,
+                        zip_code: document.getElementById('zip_code').value,
+                        vehicle_year: document.getElementById('vehicle_year').value,
+                        vehicle_make: document.getElementById('vehicle_make').value,
+                        vehicle_model: document.getElementById('vehicle_model').value,
+                        date: document.getElementById('booking-date').value,
+                        time: document.getElementById(selectedTimeInputId).value,
+                        package_type: document.getElementById('selected-package-type').value,
+                        package_price: packagePrice,
+                        vehicle_type: document.getElementById('selected-vehicle-type').value,
+                        job_notes: document.getElementById('additional-info').value,
+                        contractor_pay: `$${contractorPayAmount.toFixed(2)} + TIPS`,
+                        deal_name: `${document.getElementById('selected-package-type').value} - ${document.getElementById('vehicle_make').value}`
+                    };
+
+                    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (response.ok) {
+                        const paymentLink = getPaymentLink(payload.package_type, payload.vehicle_type, payload.package_price, isPromoActive);
+                        sendSmsNotification(payload, paymentLink);
+
+                        hideAllMajorSections();
+                        elements.confirmationSection.style.display = 'block';
+                        elements.policyText.style.display = 'block';
+                        elements.payNowButton.onclick = () => window.open(paymentLink, '_blank');
                     } else {
-                        error.value = 'Invalid API Key or Server Error';
+                        messageEl.textContent = 'Booking failed. Try again.';
+                        submitButton.disabled = false;
+                        submitButton.innerHTML = 'Book Appointment';
                     }
-                } catch (e) { error.value = 'Network error connecting to backend.'; }
-                isLoading.value = false;
-            };
+                } catch (error) {
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = 'Book Appointment';
+                }
+            }
 
-            const logout = () => { localStorage.removeItem('crmApiKey'); location.reload(); };
+            elements.bookingForm.addEventListener('submit', (e) => handleBooking(e, '/public/appointment', elements.bookingMessage, 'selected-booking-time'));
 
-            const editLead = (lead) => {
-                activeLead.value = JSON.parse(JSON.stringify(lead));
-                activeLead.value.display_date = formatDateForDisplay(lead.appointment_date);
+            // Dynamic fetching of available slots from calendar server
+            function renderTimeButtons(container, hiddenInput, selectedDateStr, finalBookButton) {
+                container.innerHTML = '<div class="text-center text-slate-500 py-4 font-medium">Loading available times...</div>';
                 
-                // Auto-Extract numbers for existing/older DB rows that haven't been manually set yet
-                activeLead.value.service_cost = lead.service_cost || extractPrice(lead.deal_name) || extractPrice(lead.service_level) || 0;
-                activeLead.value.contractor_expense = lead.contractor_expense || extractPrice(lead.pay) || 0;
-                
-                showModal.value = true;
+                fetch(`https://calendar-system-l6vb.onrender.com/api/available_slots?date=${selectedDateStr}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        container.innerHTML = '';
+                        
+                        if (!data.slots || data.slots.length === 0) {
+                            container.innerHTML = '<div class="text-center text-slate-500 py-4">No times available for this date.</div>';
+                            return;
+                        }
 
-                // Init Google Autocomplete for this modal instance
-                setTimeout(() => {
-                    const input = document.getElementById('autocomplete-address');
-                    if (input && window.google) {
-                        const autocomplete = new google.maps.places.Autocomplete(input);
-                        autocomplete.addListener('place_changed', () => {
-                            const place = autocomplete.getPlace();
-                            if (place && place.formatted_address) {
-                                activeLead.value.customer_address = place.formatted_address;
-                                const zipComp = place.address_components?.find(c => c.types.includes('postal_code'));
-                                if (zipComp) activeLead.value.zip_code = zipComp.long_name;
+                        data.slots.forEach(slot => {
+                            // Convert military HH:mm to 12-hour format
+                            const [hour, minute] = slot.time.split(':');
+                            let h = parseInt(hour);
+                            const ampm = h >= 12 ? 'PM' : 'AM';
+                            h = h % 12 || 12;
+                            const displayTime = `${h}:${minute} ${ampm}`;
+
+                            const item = document.createElement('button');
+                            item.type = 'button';
+                            item.className = 'time-slot-item';
+                            
+                            if (slot.available) {
+                                item.textContent = displayTime;
+                                item.addEventListener('click', () => {
+                                    container.querySelectorAll('.time-slot-item').forEach(i => i.classList.remove('selected'));
+                                    item.classList.add('selected');
+                                    hiddenInput.value = slot.time;
+                                    finalBookButton.style.display = 'block';
+                                });
+                            } else {
+                                item.textContent = `${displayTime} - ${slot.reason}`;
+                                item.disabled = true;
                             }
+                            
+                            container.appendChild(item);
                         });
-                    }
-                }, 200);
-            };
-
-            const saveLead = async () => {
-                // Strict Validation before saving
-                
-                // 1. Validate Date (MM/DD/YYYY)
-                const dateRegex = /^(0[1-9]|1[0-2])\/(0[1-9]|[12]\d|3[01])\/\d{4}$/;
-                if (activeLead.value.display_date && !dateRegex.test(activeLead.value.display_date)) {
-                    alert("Validation Error: Please enter a valid date in MM/DD/YYYY format.");
-                    return;
-                }
-                if (activeLead.value.display_date) {
-                    activeLead.value.appointment_date = formatDateForDB(activeLead.value.display_date);
-                }
-
-                // 2. Validate Time (12hr AM/PM)
-                const timeRegex = /^(0?[1-9]|1[0-2]):[0-5][0-9]\s?(AM|PM|am|pm)$/;
-                if (activeLead.value.appointment_time && !timeRegex.test(activeLead.value.appointment_time)) {
-                    alert("Validation Error: Please enter a valid time in standard 12-hour format (e.g., 02:30 PM).");
-                    return;
-                }
-                activeLead.value.appointment_time = formatTime(activeLead.value.appointment_time);
-
-                // 3. Format Phone automatically
-                activeLead.value.customer_phone = formatPhone(activeLead.value.customer_phone);
-
-                try {
-                    const res = await fetch(`${API_BASE_URL}/admin/leads/${activeLead.value.id}`, {
-                        method: 'PUT',
-                        headers: getHeaders(),
-                        body: JSON.stringify(activeLead.value)
+                    })
+                    .catch(err => {
+                        console.error('Error fetching time slots:', err);
+                        container.innerHTML = '<div class="text-center text-red-500 py-4">Error loading times. Please try again or choose another date.</div>';
                     });
-                    if (res.ok) {
-                        showModal.value = false;
-                        login(); // Refresh data to see sorting changes
-                    } else { alert('Failed to save changes.'); }
-                } catch (e) { alert('Network error during save.'); }
-            };
-
-            const deleteLead = async () => {
-                if(!confirm("Are you SURE you want to delete this record? This cannot be undone.")) return;
-                try {
-                    const res = await fetch(`${API_BASE_URL}/admin/leads/${activeLead.value.id}`, {
-                        method: 'DELETE',
-                        headers: getHeaders()
-                    });
-                    if (res.ok) {
-                        showModal.value = false;
-                        login();
-                    } else { alert('Failed to delete.'); }
-                } catch (e) { alert('Network error during deletion.'); }
-            };
-
-            onMounted(() => { if (apiKey.value) login(); });
-
-            return { 
-                apiKey, isLoggedIn, isLoading, error, leads, contractors, searchQuery, sortedFilteredLeads, 
-                currentTab, showModal, activeLead, reportTimeframe, reportCustomStart, reportCustomEnd, reportContractor, generatedReport,
-                login, logout, editLead, saveLead, deleteLead, getContractorName, formatDateForDisplay
-            };
+            }
         }
-    }).mount('#app');
-</script>
+        document.addEventListener('DOMContentLoaded', initializeApp);
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB133ISKHPtat18iloHDlqm2QHBv133sOk&libraries=places&callback=initBookingPage" async defer></script>
 </body>
 </html>
