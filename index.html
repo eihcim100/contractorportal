@@ -94,16 +94,13 @@
     <script>
         const API_BASE_URL = 'https://michie-detailing-backend.onrender.com';
         const API_URL_SMS = 'https://client-notifications.onrender.com/send-sms';
-        const APP_FRONTEND_URL = 'https://jobs.michieauto.com';
 
         const loginSection = document.getElementById('login-section');
         const jobsSection = document.getElementById('jobs-section');
-
         const usernameInput = document.getElementById('username');
         const passwordInput = document.getElementById('password');
         const loginButton = document.getElementById('login-button');
         const loginMessage = document.getElementById('login-message');
-        
         const logoutButton = document.getElementById('logout-button');
         const jobsList = document.getElementById('jobs-list');
         const noJobsMessage = document.getElementById('no-jobs-message');
@@ -154,13 +151,6 @@
                 buttonElement.classList.remove('opacity-50', 'cursor-not-allowed');
                 return;
             }
-            if (!messageContent) {
-                showCustomMessage("Error: No message content to send SMS.", 'error');
-                buttonElement.disabled = false;
-                buttonElement.textContent = originalText;
-                buttonElement.classList.remove('opacity-50', 'cursor-not-allowed');
-                return;
-            }
 
             try {
                 const response = await fetch(API_URL_SMS, {
@@ -179,8 +169,7 @@
                     buttonElement.classList.remove('opacity-50', 'cursor-not-allowed');
                 }
             } catch (error) {
-                console.error('SMS Sending Error:', error);
-                showCustomMessage(`An error occurred while sending SMS: ${error.message}`, 'error');
+                showCustomMessage(`An error occurred while sending SMS.`, 'error');
                 buttonElement.disabled = false;
                 buttonElement.textContent = originalText;
                 buttonElement.classList.remove('opacity-50', 'cursor-not-allowed');
@@ -203,14 +192,12 @@
         loginButton.addEventListener('click', async () => {
             const username = usernameInput.value;
             const password = passwordInput.value;
-
             try {
                 const response = await fetch(`${API_BASE_URL}/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password }),
                 });
-
                 const data = await response.json();
                 if (response.ok) {
                     authToken = data.token;
@@ -222,7 +209,6 @@
                     loginMessage.textContent = data.message || 'Login failed. Please check your credentials.';
                 }
             } catch (error) {
-                console.error('Login error:', error);
                 loginMessage.textContent = 'An error occurred during login.';
             }
         });
@@ -234,27 +220,30 @@
             updateUI();
         });
 
+        // --- HARMONIZED SAFE TIME FORMATTING ---
         function formatAppointmentDate(dateString) {
             if (!dateString || dateString === "N/A") return "N/A";
             try {
-                const [year, month, day] = String(dateString).split('-');
-                return `${month}-${day}-${year}`;
+                const parts = String(dateString).split('-');
+                if (parts.length === 3) return `${parts[1]}-${parts[2]}-${parts[0]}`;
+                return dateString;
             } catch (e) {
                 return dateString;
             }
         }
 
-        function formatAppointmentTime(timeString) {
-            if (!timeString || timeString === "N/A") return "N/A";
-            try {
-                const [hours, minutes] = String(timeString).split(':');
-                let hour = parseInt(hours, 10);
-                const ampm = hour >= 12 ? 'PM' : 'AM';
-                hour = hour % 12 || 12;
-                return `${hour}:${minutes} ${ampm}`;
-            } catch (e) {
-                return timeString;
+        function formatAppointmentTime(timeStr) {
+            if (!timeStr || timeStr === 'N/A') return 'N/A';
+            const match = String(timeStr).trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp][Mm])?$/);
+            if (!match) return timeStr;
+            let hours = parseInt(match[1], 10);
+            let minutes = match[2];
+            let suffix = match[3] ? match[3].toUpperCase() : null;
+            if (!suffix) {
+                suffix = hours >= 12 ? 'PM' : 'AM';
+                hours = hours % 12 || 12;
             }
+            return `${hours}:${minutes} ${suffix}`;
         }
 
         function formatCustomerAddress(addressString) {
@@ -269,43 +258,41 @@
             return match ? `(${match[1]}) ${match[2]}-${match[3]}` : phoneString;
         }
 
+        // --- CRASH-PROOF ICAL GENERATOR ---
         function formatICalDateTime(dateStr, timeStr) {
-            let validDateString;
-            try {
-                if (dateStr && dateStr !== "N/A") {
-                    const dateParts = String(dateStr).split('-');
-                    if (dateParts.length === 3) {
-                        validDateString = `${dateParts[0].padStart(4, '0')}-${dateParts[1].padStart(2, '0')}-${dateParts[2].padStart(2, '0')}`;
-                    }
+            let yyyy = new Date().getFullYear(), mm = String(new Date().getMonth() + 1).padStart(2, '0'), dd = String(new Date().getDate()).padStart(2, '0');
+            if (dateStr && dateStr !== "N/A") {
+                const parts = String(dateStr).split('-');
+                if (parts.length === 3) {
+                    yyyy = parts[0].padStart(4, '0'); mm = parts[1].padStart(2, '0'); dd = parts[2].padStart(2, '0');
                 }
-            } catch (e) {}
-            
-            if (!validDateString) { 
-                const today = new Date();
-                validDateString = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
             }
             
-            let validTimeString = "09:00";
-            try {
-                if (timeStr && timeStr !== "N/A") {
-                    const timeParts = String(timeStr).split(':').map(Number);
-                    validTimeString = `${String(timeParts[0]).padStart(2, '0')}:${String(timeParts[1]).padStart(2, '0')}`;
+            let hh = 9, min = 0;
+            if (timeStr && timeStr !== "N/A") {
+                const match = String(timeStr).trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp][Mm])?$/);
+                if (match) {
+                    hh = parseInt(match[1], 10);
+                    min = parseInt(match[2], 10);
+                    const suf = match[3] ? match[3].toUpperCase() : null;
+                    if (suf === 'PM' && hh < 12) hh += 12;
+                    if (suf === 'AM' && hh === 12) hh = 0;
                 }
-            } catch (e) {}
+            }
 
             let offset = '-06:00';
             try {
-                const checkDate = new Date(`${validDateString}T12:00:00Z`);
+                const checkDate = new Date(`${yyyy}-${mm}-${dd}T12:00:00Z`);
                 const formatter = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', hour: 'numeric', hour12: false });
-                const formattedHour = formatter.format(checkDate);
-                if (parseInt(formattedHour, 10) === 7) offset = '-05:00';
+                if (parseInt(formatter.format(checkDate), 10) === 7) offset = '-05:00';
             } catch (e) {}
 
-            const startDateTime = new Date(`${validDateString}T${validTimeString}:00${offset}`);
+            const startStr = `${yyyy}-${mm}-${dd}T${String(hh).padStart(2, '0')}:${String(min).padStart(2, '0')}:00${offset}`;
+            const startDateTime = new Date(startStr);
+            if(isNaN(startDateTime.getTime())) throw new Error("Invalid Date");
             const endDateTime = new Date(startDateTime.getTime() + 5 * 60 * 60 * 1000);
 
             const toICalString = (date) => date.toISOString().replace(/[.:-]/g, '').slice(0, 15) + 'Z';
-
             return { start: toICalString(startDateTime), end: toICalString(endDateTime) };
         }
 
@@ -345,7 +332,6 @@
                 return;
             }
 
-            // --- SORTING LOGIC: Pending jobs first, then the rest ---
             const sortedJobs = [...jobs].sort((a, b) => {
                 const statusA = a.status || '';
                 const statusB = b.status || '';
@@ -358,11 +344,8 @@
                 if (!job || !job.status) return;
                 
                 let showJob = false;
-                if (job.status === 'pending') {
-                    showJob = true;
-                } else if (job.status === 'accepted' && job.contractor_id_field === contractorEmail) {
-                    showJob = true;
-                }
+                if (job.status === 'pending') showJob = true;
+                else if (job.status === 'accepted' && job.contractor_id_field === contractorEmail) showJob = true;
                 
                 if (showJob) {
                     const jobCard = document.createElement('div');
@@ -374,7 +357,12 @@
                     const dealName = String(job.deal_name || '').trim();
                     const serviceLevelStr = String(job.service_level || '').trim();
                     const estTimeStr = String(job.estimated_time || '').trim();
-                    const payString = String(job.pay || '').trim();
+                    
+                    // Display either string pay OR numerical pay safely
+                    let payString = String(job.pay || '').trim();
+                    if (job.contractor_expense && parseFloat(job.contractor_expense) > 0) {
+                        payString = `$${parseFloat(job.contractor_expense).toFixed(2)}`;
+                    }
 
                     let mainTitle = [jobYear, jobMake, jobModel].filter(s => s && s !== "N/A").join(' ');
                     mainTitle = mainTitle.trim() || dealName || "Untitled Job";
@@ -434,10 +422,17 @@
                             largeAppointmentInfo = `<div class="flex items-center text-base text-gray-800 font-medium"><svg class="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg> <span>${formatAppointmentDate(job.appointment_date)}${job.appointment_time !== "N/A" ? ' at ' + formatAppointmentTime(job.appointment_time) : ''}</span></div>`;
                         }
 
-                        const iCalTimes = formatICalDateTime(job.appointment_date, job.appointment_time);
-                        const eventTitle = `${mainTitle} Detail - ${job.customer_name || 'Client'}`;
-                        const icsData = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'BEGIN:VEVENT', `DTSTART:${iCalTimes.start}`, `DTEND:${iCalTimes.end}`, `SUMMARY:${eventTitle}`, 'END:VEVENT', 'END:VCALENDAR'].join('\n');
-                        const icsUri = `data:text/calendar;charset=utf8,${encodeURIComponent(icsData)}`;
+                        // --- CRASH-PROOF ICAL GENERATION ---
+                        let icsUri = '';
+                        let eventTitle = '';
+                        try {
+                            const iCalTimes = formatICalDateTime(job.appointment_date, job.appointment_time);
+                            eventTitle = `${mainTitle} Detail - ${job.customer_name || 'Client'}`;
+                            const icsData = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'BEGIN:VEVENT', `DTSTART:${iCalTimes.start}`, `DTEND:${iCalTimes.end}`, `SUMMARY:${eventTitle}`, 'END:VEVENT', 'END:VCALENDAR'].join('\n');
+                            icsUri = `data:text/calendar;charset=utf8,${encodeURIComponent(icsData)}`;
+                        } catch (calendarError) {
+                            console.warn("Could not generate calendar link due to broken date data:", calendarError);
+                        }
 
                         let jobNotesHTML = '';
                         const jobNotes = String(job.job_notes || '').trim();
@@ -453,10 +448,10 @@
                                     <h4 class="text-xs uppercase text-gray-500 font-semibold mb-2">When & Where</h4>
                                     <div class="text-gray-700 space-y-2">
                                         ${largeAppointmentInfo}
-                                        ${job.zip_code !== "N/A" ? `<div class="flex items-center mt-2 text-base text-gray-800 font-medium"><svg class="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path></svg><span>${job.zip_code}</span></div>` : ''}
-                                        ${serviceLevelStr !== "N/A" ? `<div class="flex items-center text-base text-gray-800 font-medium"><svg class="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg><span>${serviceLevelStr}</span></div>` : ''}
+                                        ${job.zip_code && job.zip_code !== "N/A" ? `<div class="flex items-center mt-2 text-base text-gray-800 font-medium"><svg class="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path></svg><span>${job.zip_code}</span></div>` : ''}
+                                        ${serviceLevelStr && serviceLevelStr !== "N/A" ? `<div class="flex items-center text-base text-gray-800 font-medium"><svg class="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg><span>${serviceLevelStr}</span></div>` : ''}
                                     </div>
-                                    <a href="${icsUri}" download="${eventTitle}.ics" class="inline-block w-full bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-3 rounded-lg transition text-sm text-center mt-4 shadow-sm">Add to Calendar</a>
+                                    ${icsUri ? `<a href="${icsUri}" download="${eventTitle}.ics" class="inline-block w-full bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-3 rounded-lg transition text-sm text-center mt-4 shadow-sm">Add to Calendar</a>` : ''}
                                 </div>
                                 <div class="mt-4 border-t pt-4 border-gray-200"><h4 class="text-xs uppercase text-gray-500 font-semibold mb-3">Customer Details</h4><div class="text-sm text-gray-700 space-y-2">${customerDetails}</div></div>
                                 ${jobNotesHTML}
@@ -484,7 +479,6 @@
             noJobsMessage.classList.toggle('hidden', renderedJobCount > 0);
             if (renderedJobCount === 0) noJobsMessage.textContent = "No jobs available at the moment.";
 
-            // Event Listeners
             document.querySelectorAll('.accept-button').forEach(btn => btn.addEventListener('click', (e) => handleJobAction(e.target.dataset.jobId, 'accept', e.target)));
             document.querySelectorAll('.decline-button').forEach(btn => btn.addEventListener('click', (e) => handleJobAction(e.target.dataset.jobId, 'decline', e.target)));
             document.querySelectorAll('.send-sms-button').forEach(btn => {
