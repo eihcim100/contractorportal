@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <!-- Replace YOUR_GOOGLE_MAPS_API_KEY below with your actual API key -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB133ISKHPtat18iloHDlqm2QHBv133sOk&libraries=places"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=places"></script>
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
         [v-cloak] { display: none; }
@@ -192,6 +192,7 @@
             
             <form @submit.prevent="saveLead" class="space-y-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Column 1 -->
                     <div class="space-y-4">
                         <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
                             <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-3">Client Information</p>
@@ -220,6 +221,7 @@
                         </div>
                     </div>
 
+                    <!-- Column 2 -->
                     <div class="space-y-4">
                         <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
                             <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-3">Scheduling</p>
@@ -244,6 +246,21 @@
                             </div>
                         </div>
 
+                        <!-- RESTORED LEGACY FIELDS -->
+                        <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                            <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-3">Service & Legacy Pay</p>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="text-[10px] font-black text-gray-400 uppercase mb-1">Service Level</label>
+                                    <input type="text" v-model="activeLead.service_level" class="custom-input !py-2 text-sm" placeholder="e.g. Full Detail">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-black text-gray-400 uppercase mb-1">Legacy Pay Text</label>
+                                    <input type="text" v-model="activeLead.pay" class="custom-input !py-2 text-sm" placeholder="e.g. $120 + Tips">
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="bg-green-50 p-4 rounded-xl border border-green-100">
                             <p class="text-[10px] font-black text-green-600 uppercase tracking-widest mb-3">Financials</p>
                             <div class="grid grid-cols-2 gap-3">
@@ -260,12 +277,12 @@
                     </div>
                 </div>
 
-                <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 mt-4">
                     <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-3">Job & Vehicle Notes</p>
                     <div class="grid grid-cols-3 gap-3 mb-3">
-                        <input type="text" v-model="activeLead.vehicle_year" class="custom-input !py-1 text-sm" placeholder="Year">
-                        <input type="text" v-model="activeLead.vehicle_make" class="custom-input !py-1 text-sm" placeholder="Make">
-                        <input type="text" v-model="activeLead.vehicle_model" class="custom-input !py-1 text-sm" placeholder="Model">
+                        <input type="text" v-model="activeLead.vehicle_year" class="custom-input !py-2 text-sm" placeholder="Year">
+                        <input type="text" v-model="activeLead.vehicle_make" class="custom-input !py-2 text-sm" placeholder="Make">
+                        <input type="text" v-model="activeLead.vehicle_model" class="custom-input !py-2 text-sm" placeholder="Model">
                     </div>
                     <textarea v-model="activeLead.job_notes" rows="3" class="custom-input" placeholder="Any specific instructions..."></textarea>
                 </div>
