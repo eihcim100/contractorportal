@@ -358,16 +358,27 @@
                     const serviceLevelStr = String(job.service_level || '').trim();
                     const estTimeStr = String(job.estimated_time || '').trim();
                     
-                    // Display either string pay OR numerical pay safely
-                    let payString = String(job.pay || '').trim();
-                    if (job.contractor_expense && parseFloat(job.contractor_expense) > 0) {
-                        payString = `$${parseFloat(job.contractor_expense).toFixed(2)}`;
+                    // --- PAY OVERRIDE LOGIC ---
+                    // If Legacy (job.pay) is filled out, show it exactly as-is.
+                    // Otherwise, fall back to numerical contractor_expense, then fallback to default string.
+                    const legacyPay = String(job.pay || '').trim();
+                    let payDisplay = '$120 + TIPS'; 
+
+                    if (legacyPay && legacyPay !== "N/A" && legacyPay !== "0" && legacyPay !== "0.00") {
+                        // If it's purely a number (e.g. "150"), format it with a dollar sign. 
+                        // Otherwise (e.g. "$150 + Tips"), display the exact string.
+                        if (!isNaN(legacyPay)) {
+                            payDisplay = `$${parseFloat(legacyPay).toFixed(2)}`;
+                        } else {
+                            payDisplay = legacyPay;
+                        }
+                    } else if (job.contractor_expense && parseFloat(job.contractor_expense) > 0) {
+                        payDisplay = `$${parseFloat(job.contractor_expense).toFixed(2)}`;
                     }
 
                     let mainTitle = [jobYear, jobMake, jobModel].filter(s => s && s !== "N/A").join(' ');
                     mainTitle = mainTitle.trim() || dealName || "Untitled Job";
 
-                    let payDisplay = (payString && payString !== "N/A") ? payString : '$120 + TIPS'; 
                     let payClass = "bg-green-600 text-white"; 
                     
                     let jobDescriptionHTML = '';
