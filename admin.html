@@ -69,7 +69,7 @@
             <div v-if="currentTab === 'leads'" class="bg-white rounded-xl shadow-md overflow-hidden">
                 <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
                     <h2 class="text-lg font-semibold text-gray-700">Jobs Database</h2>
-                    <input type="text" v-model="searchQuery" placeholder="Search names, phones, or zips..." class="custom-input w-64 text-sm">
+                    <input type="text" v-model="searchQuery" placeholder="Search names, phones, or vehicles..." class="custom-input w-64 text-sm">
                 </div>
                 
                 <div class="overflow-x-auto">
@@ -101,7 +101,7 @@
                                     <div class="text-xs text-gray-500">{{ lead.vehicle_model }}</div>
                                 </td>
                                 <td class="px-6 py-4">
-                                    <div class="text-xs font-bold px-2 py-1 bg-gray-100 rounded text-gray-600 inline-block">{{ lead.service_level || 'General Detail' }}</div>
+                                    <div class="text-xs font-bold px-2 py-1 bg-gray-100 rounded text-gray-600 inline-block border border-gray-200">{{ lead.service_level || 'General Detail' }}</div>
                                 </td>
                                 <td class="px-6 py-4">
                                     <div class="text-sm font-medium text-gray-800">{{ getContractorName(lead.contractor_id_field) }}</div>
@@ -361,16 +361,28 @@
         return dateStr;
     }
 
+    /**
+     * Converts a time string (potentially 24-hour HH:mm:ss) to formatted 12-hour AM/PM string.
+     */
     function formatTime(timeStr) {
         if (!timeStr || timeStr === 'N/A') return 'N/A';
-        const match = timeStr.trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s?(AM|PM|am|pm)?$/i);
-        if (match) {
-            let h = match[1].padStart(2, '0');
-            let m = match[2];
-            let ampm = (match[3] || 'AM').toUpperCase();
-            return `${h}:${m} ${ampm}`;
+        
+        // Regex to capture hours, minutes, and optional seconds/AM-PM
+        const match = timeStr.trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp][Mm])?$/);
+        if (!match) return timeStr;
+
+        let hours = parseInt(match[1]);
+        let minutes = match[2];
+        let suffix = match[3] ? match[3].toUpperCase() : null;
+
+        // If no suffix is provided (e.g., from DB as 14:30:00), we convert from 24hr
+        if (!suffix) {
+            suffix = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12; // convert 0 to 12
         }
-        return timeStr;
+
+        return `${hours.toString().padStart(2, '0')}:${minutes} ${suffix}`;
     }
 
     function extractPrice(str) {
@@ -404,29 +416,36 @@
             const reportCustomEnd = ref('');
             const reportContractor = ref('ALL');
 
-            // LIVE STATUS LOGIC
+            /**
+             * Calculates the "Live" status of a job.
+             * Logic: Unassigned -> OPEN. Assigned -> ACCEPTED. 5hrs Past -> COMPLETED.
+             */
             const getEffectiveStatus = (lead) => {
                 if (!lead.contractor_id_field || lead.contractor_id_field === '') return 'unassigned';
                 
                 try {
                     const now = new Date();
-                    const apptDateStr = lead.appointment_date;
-                    const apptTimeStr = lead.appointment_time;
+                    const apptDateStr = lead.appointment_date; // YYYY-MM-DD
+                    const apptTimeStr = lead.appointment_time; // HH:mm:ss or HH:mm AM/PM
                     
                     if (!apptDateStr || !apptTimeStr) return 'accepted';
 
-                    const timeMatch = apptTimeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
-                    if (!timeMatch) return 'accepted';
+                    // Parse hours/minutes robustly for status calculation
+                    const match = apptTimeStr.trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp][Mm])?$/);
+                    if (!match) return 'accepted';
                     
-                    let hours = parseInt(timeMatch[1]);
-                    const minutes = parseInt(timeMatch[2]);
-                    const ampm = timeMatch[3].toUpperCase();
-                    if (ampm === 'PM' && hours < 12) hours += 12;
-                    if (ampm === 'AM' && hours === 12) hours = 0;
+                    let hours = parseInt(match[1]);
+                    const minutes = parseInt(match[2]);
+                    const suffix = match[3] ? match[3].toUpperCase() : null;
+
+                    // If it has a suffix, adjust for 24h math
+                    if (suffix === 'PM' && hours < 12) hours += 12;
+                    if (suffix === 'AM' && hours === 12) hours = 0;
                     
                     const dateParts = apptDateStr.split('-');
                     const apptDate = new Date(dateParts[0], dateParts[1]-1, dateParts[2], hours, minutes);
                     
+                    // Completion Threshold = Appt Time + 5 Hours
                     const completionThreshold = new Date(apptDate.getTime() + (5 * 60 * 60 * 1000));
                     
                     if (now > completionThreshold) return 'completed';
