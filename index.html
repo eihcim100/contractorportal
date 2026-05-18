@@ -360,20 +360,20 @@
                     
                     // --- PAY OVERRIDE LOGIC FIX ---
                     const legacyPay = String(job.pay || '').trim();
-                    let payDisplay = '$120.00 + TIPS'; 
+                    let payDisplay = '$120.00 '; 
 
                     if (legacyPay && legacyPay !== "N/A" && legacyPay !== "0" && legacyPay !== "0.00") {
                         if (!isNaN(legacyPay)) {
-                            payDisplay = `$${parseFloat(legacyPay).toFixed(2)} + TIPS`;
+                            payDisplay = `$${parseFloat(legacyPay).toFixed(2)} `;
                         } else {
                             payDisplay = legacyPay;
-                            // Ensure "+ TIPS" is always present if it was passed as a raw string without it
+                            // Ensure "" is always present if it was passed as a raw string without it
                             if (!payDisplay.toUpperCase().includes('TIPS')) {
-                                payDisplay += ' + TIPS';
+                                payDisplay += ' ';
                             }
                         }
                     } else if (job.contractor_expense && parseFloat(job.contractor_expense) > 0) {
-                        payDisplay = `$${parseFloat(job.contractor_expense).toFixed(2)} + TIPS`;
+                        payDisplay = `$${parseFloat(job.contractor_expense).toFixed(2)} `;
                     }
 
                     let mainTitle = [jobYear, jobMake, jobModel].filter(s => s && s !== "N/A").join(' ');
