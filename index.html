@@ -311,6 +311,13 @@
                     },
                 });
 
+                // FIX: Instantly catch unauthorized actions to sign them out
+                if (response.status === 401) {
+                    logoutButton.click();
+                    showCustomMessage('Account deleted or session expired. You have been logged out.', 'error');
+                    return;
+                }
+
                 const data = await response.json();
                 if (response.ok) {
                     renderJobs(data);
@@ -520,6 +527,14 @@
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
                 });
+                
+                // FIX: Instantly catch unauthorized actions to sign them out
+                if (response.status === 401) {
+                    logoutButton.click();
+                    showCustomMessage('Account deleted or session expired. You have been logged out.', 'error');
+                    return;
+                }
+
                 if (response.ok) fetchJobs();
                 else {
                     const data = await response.json();
