@@ -7,51 +7,24 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            position: relative; 
-            z-index: 1; 
-        }
-        /* --- FIXED BACKGROUND VIA PSEUDO-ELEMENT --- */
+        body { font-family: 'Inter', sans-serif; position: relative; z-index: 1; }
         body::before {
             content: '';
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 0; left: 0; width: 100%; height: 100%;
             background-image: url('https://res.cloudinary.com/dvrljjtdr/image/upload/v1787707522/background_ijjw1z.jpg');
-            background-size: cover;
-            background-position: center;
-            opacity: 0.77; 
-            z-index: -1; 
+            background-size: cover; background-position: center;
+            opacity: 0.77; z-index: -1;
         }
-        /* --- CUSTOM CLASS FOR SEMI-TRANSPARENT WHITE BACKGROUND --- */
-        .bg-white-77 {
-            background-color: rgba(255, 255, 255, 0.77);
-        }
-
-        .address-display {
-            white-space: pre-wrap;
-        }
-        
-        #no-jobs-message {
-            font-size: 1.25rem;
-            color: #6b7280;
-            margin-top: 2rem;
-            text-align: center;
-        }
-
-        /* Hide scrollbar for photo gallery */
+        .bg-white-77 { background-color: rgba(255, 255, 255, 0.77); }
+        .address-display { white-space: pre-wrap; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="min-h-screen">
-    <!-- Main App Container -->
     <div id="app" class="w-full max-w-3xl mx-auto p-4 md:my-8">
         
-        <!-- Login Section -->
         <div id="login-section" class="bg-white-77 rounded-2xl shadow-xl p-6 md:p-10">
             <img src="https://res.cloudinary.com/dvrljjtdr/image/upload/v1761924705/Gemini_Generated_Image_bov797bov797bov7_ooqpjf.png" alt="Company Logo" class="w-80 mx-auto mb-6">
             <h2 class="text-3xl font-bold text-gray-800 mb-8 text-center">Contractor Login</h2>
@@ -67,14 +40,12 @@
             <p id="login-message" class="text-red-500 text-xs italic mt-4 text-center"></p>
         </div>
 
-        <!-- Jobs Section -->
         <div id="jobs-section" class="hidden p-4 md:p-8 md:bg-white-77 md:rounded-2xl md:shadow-xl">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-3xl font-bold text-gray-800">Available Jobs</h2>
                 <button id="logout-button" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out text-sm">Logout</button>
             </div>
             
-            <!-- Important Update Banner -->
             <div class="bg-amber-50 border-l-4 border-amber-500 text-amber-900 p-5 mb-6 rounded-xl flex flex-col md:flex-row justify-between items-center shadow-sm" role="alert">
                 <div class="mb-4 md:mb-0 md:mr-6 text-center md:text-left">
                     <p class="font-bold text-amber-700 text-lg mb-1">IMPORTANT UPDATE:</p>
@@ -85,14 +56,13 @@
             </div>
             
             <p id="no-jobs-message" class="text-gray-600 text-center hidden">No jobs available at the moment.</p>
-            <div id="jobs-list" class="space-y-6">
-                <!-- Job Cards will be injected here -->
-            </div>
+            <div id="jobs-list" class="space-y-6"></div>
         </div>
     </div>
 
     <script>
         const API_BASE_URL = 'https://michie-detailing-backend.onrender.com';
+        const QUOTE_PHOTO_HOST = 'https://quote.michieauto.com';
         const API_URL_SMS = 'https://client-notifications.onrender.com/send-sms';
 
         const loginSection = document.getElementById('login-section');
@@ -106,76 +76,13 @@
         const noJobsMessage = document.getElementById('no-jobs-message');
 
         let authToken = localStorage.getItem('authToken');
-        let currentMessageBox = null;
 
-        function showCustomMessage(message, type = 'info') {
-            if (currentMessageBox && document.body.contains(currentMessageBox)) {
-                document.body.removeChild(currentMessageBox);
-                currentMessageBox = null;
-            }
-            const messageBox = document.createElement('div');
-            messageBox.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4';
-            let bgColor = type === 'success' ? 'bg-green-100' : type === 'error' ? 'bg-red-100' : 'bg-blue-100';
-            let textColor = type === 'success' ? 'text-green-800' : type === 'error' ? 'text-red-800' : 'text-blue-800';
-            let btnStyle = 'bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg mt-4';
-
-            messageBox.innerHTML = `
-                <div class="${bgColor} p-6 rounded-lg shadow-xl max-w-sm w-full text-center">
-                    <p class="text-lg font-semibold ${textColor} mb-4">${message}</p>
-                    <button id="message-box-ok" class="${btnStyle}">OK</button>
-                </div>
-            `;
-            document.body.appendChild(messageBox);
-            currentMessageBox = messageBox;
-            document.getElementById('message-box-ok').addEventListener('click', () => {
-                if (currentMessageBox && document.body.contains(currentMessageBox)) {
-                    document.body.removeChild(currentMessageBox);
-                    currentMessageBox = null;
-                }
-            });
+        function formatPhotoUrl(url) {
+            if (!url) return '';
+            if (url.startsWith('http://') || url.startsWith('https://')) return url;
+            return QUOTE_PHOTO_HOST + (url.startsWith('/') ? '' : '/') + url;
         }
 
-        async function sendAutoSMS(phoneNumber, messageContent, buttonElement) {
-            const originalText = buttonElement.textContent;
-            buttonElement.disabled = true;
-            buttonElement.textContent = 'Sending...';
-            buttonElement.classList.add('opacity-50', 'cursor-not-allowed');
-
-            const digitsOnly = phoneNumber.replace(/\D/g, '');
-            const formattedPhoneNumber = digitsOnly.length === 10 ? `+1${digitsOnly}` : `+${digitsOnly}`;
-
-            if (!formattedPhoneNumber || !/^\+\d{11,15}$/.test(formattedPhoneNumber)) {
-                showCustomMessage('Error: Invalid phone number format for SMS.', 'error');
-                buttonElement.disabled = false;
-                buttonElement.textContent = originalText;
-                buttonElement.classList.remove('opacity-50', 'cursor-not-allowed');
-                return;
-            }
-
-            try {
-                const response = await fetch(API_URL_SMS, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ to: formattedPhoneNumber, message_body: messageContent }),
-                });
-                const result = await response.json();
-                if (response.ok) {
-                    showCustomMessage(result.message || 'SMS sent successfully!', 'success');
-                    buttonElement.textContent = 'Sent!';
-                } else {
-                    showCustomMessage(result.error || 'Failed to send SMS.', 'error');
-                    buttonElement.disabled = false;
-                    buttonElement.textContent = originalText;
-                    buttonElement.classList.remove('opacity-50', 'cursor-not-allowed');
-                }
-            } catch (error) {
-                showCustomMessage(`An error occurred while sending SMS.`, 'error');
-                buttonElement.disabled = false;
-                buttonElement.textContent = originalText;
-                buttonElement.classList.remove('opacity-50', 'cursor-not-allowed');
-            }
-        }
-        
         function updateUI() {
             if (authToken) {
                 loginSection.classList.add('hidden');
@@ -206,10 +113,10 @@
                     loginMessage.textContent = '';
                     updateUI();
                 } else {
-                    loginMessage.textContent = data.message || 'Login failed. Please check your credentials.';
+                    loginMessage.textContent = data.message || 'Login failed. Please check credentials.';
                 }
             } catch (error) {
-                loginMessage.textContent = 'An error occurred during login.';
+                loginMessage.textContent = 'Login network error.';
             }
         });
 
@@ -222,13 +129,8 @@
 
         function formatAppointmentDate(dateString) {
             if (!dateString || dateString === "N/A") return "N/A";
-            try {
-                const parts = String(dateString).split('-');
-                if (parts.length === 3) return `${parts[1]}-${parts[2]}-${parts[0]}`;
-                return dateString;
-            } catch (e) {
-                return dateString;
-            }
+            const parts = String(dateString).split('-');
+            return parts.length === 3 ? `${parts[1]}-${parts[2]}-${parts[0]}` : dateString;
         }
 
         function formatAppointmentTime(timeStr) {
@@ -237,85 +139,32 @@
             if (!match) return timeStr;
             let hours = parseInt(match[1], 10);
             let minutes = match[2];
-            let suffix = match[3] ? match[3].toUpperCase() : null;
-            if (!suffix) {
-                suffix = hours >= 12 ? 'PM' : 'AM';
-                hours = hours % 12 || 12;
-            }
+            let suffix = match[3] ? match[3].toUpperCase() : (hours >= 12 ? 'PM' : 'AM');
+            hours = hours % 12 || 12;
             return `${hours}:${minutes} ${suffix}`;
-        }
-
-        function formatCustomerAddress(addressString) {
-            if (!addressString || addressString === "N/A") return "N/A";
-            return addressString.replace(/, /g, ',<br>');
-        }
-
-        function formatICalDateTime(dateStr, timeStr) {
-            let yyyy = new Date().getFullYear(), mm = String(new Date().getMonth() + 1).padStart(2, '0'), dd = String(new Date().getDate()).padStart(2, '0');
-            if (dateStr && dateStr !== "N/A") {
-                const parts = String(dateStr).split('-');
-                if (parts.length === 3) {
-                    yyyy = parts[0].padStart(4, '0'); mm = parts[1].padStart(2, '0'); dd = parts[2].padStart(2, '0');
-                }
-            }
-            
-            let hh = 9, min = 0;
-            if (timeStr && timeStr !== "N/A") {
-                const match = String(timeStr).trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp][Mm])?$/);
-                if (match) {
-                    hh = parseInt(match[1], 10);
-                    min = parseInt(match[2], 10);
-                    const suf = match[3] ? match[3].toUpperCase() : null;
-                    if (suf === 'PM' && hh < 12) hh += 12;
-                    if (suf === 'AM' && hh === 12) hh = 0;
-                }
-            }
-
-            let offset = '-06:00';
-            try {
-                const checkDate = new Date(`${yyyy}-${mm}-${dd}T12:00:00Z`);
-                const formatter = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', hour: 'numeric', hour12: false });
-                if (parseInt(formatter.format(checkDate), 10) === 7) offset = '-05:00';
-            } catch (e) {}
-
-            const startStr = `${yyyy}-${mm}-${dd}T${String(hh).padStart(2, '0')}:${String(min).padStart(2, '0')}:00${offset}`;
-            const startDateTime = new Date(startStr);
-            if(isNaN(startDateTime.getTime())) throw new Error("Invalid Date");
-            const endDateTime = new Date(startDateTime.getTime() + 5 * 60 * 60 * 1000);
-
-            const toICalString = (date) => date.toISOString().replace(/[.:-]/g, '').slice(0, 15) + 'Z';
-            return { start: toICalString(startDateTime), end: toICalString(endDateTime) };
         }
 
         async function fetchJobs() {
             if (!authToken) return;
             jobsList.innerHTML = ''; 
-            noJobsMessage.textContent = 'Loading available jobs...';
+            noJobsMessage.textContent = 'Loading jobs...';
             noJobsMessage.classList.remove('hidden');
 
             try {
                 const response = await fetch(`${API_BASE_URL}/jobs`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`,
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
                 });
 
                 if (response.status === 401) {
                     logoutButton.click();
-                    showCustomMessage('Account deleted or session expired. You have been logged out.', 'error');
                     return;
                 }
 
                 const data = await response.json();
-                if (response.ok) {
-                    renderJobs(data);
-                } else {
-                    noJobsMessage.textContent = data.message || 'Error fetching jobs.';
-                }
+                if (response.ok) renderJobs(data);
+                else noJobsMessage.textContent = data.message || 'Error fetching jobs.';
             } catch (error) {
-                noJobsMessage.textContent = 'An error occurred while fetching jobs.';
+                noJobsMessage.textContent = 'Error connecting to database.';
             }
         }
 
@@ -329,268 +178,142 @@
                 return;
             }
 
-            const sortedJobs = [...jobs].sort((a, b) => {
-                const statusA = a.status || '';
-                const statusB = b.status || '';
-                if (statusA === 'pending' && statusB !== 'pending') return -1;
-                if (statusA !== 'pending' && statusB === 'pending') return 1;
-                return 0;
-            });
-
-            sortedJobs.forEach(job => {
+            jobs.forEach(job => {
                 if (!job || !job.status) return;
                 
-                let showJob = false;
-                if (job.status === 'pending') showJob = true;
-                else if (job.status === 'accepted' && job.contractor_id_field === contractorEmail) showJob = true;
-                
-                if (showJob) {
-                    const jobCard = document.createElement('div');
-                    jobCard.className = 'bg-white-77 rounded-xl shadow-lg border border-gray-200 overflow-hidden flex flex-col';
+                let showJob = (job.status === 'pending') || (job.status === 'accepted' && job.contractor_id_field === contractorEmail);
+                if (!showJob) return;
 
-                    const jobYear = String(job.vehicle_year || job.year || '').trim();
-                    const jobMake = String(job.vehicle_make || job.make || '').trim();
-                    const jobModel = String(job.vehicle_model || job.model || '').trim();
-                    const dealName = String(job.deal_name || '').trim();
-                    const serviceLevelStr = String(job.service_level || '').trim();
-                    const estTimeStr = String(job.estimated_time || '').trim();
-                    
-                    const legacyPay = String(job.pay || '').trim();
-                    let payDisplay = '$120.00 '; 
+                const jobCard = document.createElement('div');
+                jobCard.className = 'bg-white-77 rounded-xl shadow-lg border border-gray-200 overflow-hidden flex flex-col';
 
-                    if (legacyPay && legacyPay !== "N/A" && legacyPay !== "0" && legacyPay !== "0.00") {
-                        if (!isNaN(legacyPay)) {
-                            payDisplay = `$${parseFloat(legacyPay).toFixed(2)} `;
-                        } else {
-                            payDisplay = legacyPay;
-                            if (!payDisplay.toUpperCase().includes('TIPS')) {
-                                payDisplay += ' ';
-                            }
-                        }
-                    } else if (job.contractor_expense && parseFloat(job.contractor_expense) > 0) {
-                        payDisplay = `$${parseFloat(job.contractor_expense).toFixed(2)} `;
-                    }
+                const jobYear = String(job.vehicle_year || job.year || '').trim();
+                const jobMake = String(job.vehicle_make || job.make || '').trim();
+                const jobModel = String(job.vehicle_model || job.model || '').trim();
+                let mainTitle = [jobYear, jobMake, jobModel].filter(s => s && s !== "N/A").join(' ').trim() || job.deal_name || "Detail Job";
 
-                    let mainTitle = [jobYear, jobMake, jobModel].filter(s => s && s !== "N/A").join(' ');
-                    mainTitle = mainTitle.trim() || dealName || "Untitled Job";
+                let payDisplay = job.pay && job.pay !== "N/A" ? job.pay : (job.contractor_expense ? `$${parseFloat(job.contractor_expense).toFixed(2)} + TIPS` : '$120.00 + TIPS');
 
-                    let payClass = "bg-green-600 text-white"; 
-                    
-                    let jobDescriptionHTML = '';
-                    
-                    // --- PENDING JOB VIEW ---
-                    if (job.status === 'pending') {
-                        let jobNotesHTML = '';
-                        const jobNotes = String(job.job_notes || '').trim();
-                        if (jobNotes && jobNotes !== "N/A") {
-                            jobNotesHTML = `
-                                <div class="mt-4 border-t pt-4 border-gray-200">
-                                    <h4 class="text-xs uppercase text-gray-500 font-semibold mb-3">Customer Notes</h4>
-                                    <div class="text-sm text-gray-700 bg-yellow-50 border border-yellow-200 p-3 rounded-lg">
-                                        <p class="whitespace-pre-wrap">${jobNotes}</p>
-                                    </div>
-                                </div>`;
-                        }
-
-                        // NEW: AI Notes visible on pending jobs
-                        let aiNotesHTML = '';
-                        const aiNotes = String(job.ai_notes || '').trim();
-                        if (aiNotes && aiNotes !== "N/A" && aiNotes !== "undefined" && aiNotes !== "null") {
-                            aiNotesHTML = `
-                                <div class="mt-4 border-t pt-4 border-gray-200">
-                                    <h4 class="text-xs uppercase text-blue-500 font-semibold mb-3">AI Diagnostic Summary</h4>
-                                    <div class="text-sm text-blue-800 bg-blue-50 border border-blue-200 p-3 rounded-lg">
-                                        <p class="whitespace-pre-wrap font-medium leading-relaxed">${aiNotes}</p>
-                                    </div>
-                                </div>`;
-                        }
-
-                        jobDescriptionHTML = `
-                            <div class="p-5">
-                                <h3 class="text-xl font-semibold text-gray-900 mb-3">${mainTitle}</h3>
-                                <div class="space-y-2 mb-4 text-gray-700">
-                                    ${serviceLevelStr && serviceLevelStr !== "N/A" ? `<p><strong>Service:</strong> ${serviceLevelStr}</p>` : ''}
-                                    ${job.zip_code && job.zip_code !== "N/A" ? `<p><strong>Zip:</strong> ${job.zip_code}</p>` : ''}
-                                    ${job.appointment_date && job.appointment_date !== "N/A" ? `<p><strong>Date:</strong> ${formatAppointmentDate(job.appointment_date)}</p>` : ''}
-                                    ${job.appointment_time && job.appointment_time !== "N/A" ? `<p><strong>Time:</strong> ${formatAppointmentTime(job.appointment_time)}</p>` : ''}
-                                </div>
-                                ${estTimeStr && estTimeStr !== "N/A" ? `<p class="text-sm text-gray-500 mt-3">Est. Time: ${estTimeStr} hours</p>` : ''}
-                                ${jobNotesHTML}
-                                ${aiNotesHTML}
+                // 1. Customer Notes
+                let jobNotesHTML = '';
+                if (job.job_notes && job.job_notes.trim() !== "N/A") {
+                    jobNotesHTML = `
+                        <div class="mt-4 border-t pt-4 border-gray-200">
+                            <h4 class="text-xs uppercase text-gray-500 font-semibold mb-2">Customer Instructions</h4>
+                            <div class="text-sm text-gray-700 bg-yellow-50 border border-yellow-200 p-3 rounded-lg">
+                                <p class="whitespace-pre-wrap">${job.job_notes.trim()}</p>
                             </div>
-                            <div class="bg-gray-50 px-5 py-4 border-t border-gray-100 space-y-3">
-                                <div class="w-full ${payClass} font-bold py-3 px-4 rounded-lg text-center text-lg">${payDisplay}</div>
-                                <div class="flex space-x-3">
-                                    <button data-job-id="${job.id}" class="accept-button w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out">Accept Job</button>
-                                    <button data-job-id="${job.id}" class="decline-button w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out">Decline</button>
-                                </div>
-                            </div>`;
-                            
-                    // --- ACCEPTED JOB VIEW ---
-                    } else if (job.status === 'accepted') {
-                        let customerDetails = '';
-                        if (job.customer_name && job.customer_name !== "N/A") {
-                            customerDetails += `<div class="flex items-center"><svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg> <span>${job.customer_name}</span></div>`;
-                        }
-                        
-                        if (job.customer_address && job.customer_address !== "N/A") {
-                            customerDetails += `<div class="flex items-start mt-2"><svg class="w-4 h-4 mr-2 mt-1 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg> <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.customer_address)}" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:underline"><span class="address-display">${formatCustomerAddress(job.customer_address)}</span></a></div>`;
-                        }
-
-                        let largeAppointmentInfo = '';
-                        if (job.appointment_date && job.appointment_date !== "N/A") {
-                            largeAppointmentInfo = `<div class="flex items-center text-base text-gray-800 font-medium"><svg class="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg> <span>${formatAppointmentDate(job.appointment_date)}${job.appointment_time !== "N/A" ? ' at ' + formatAppointmentTime(job.appointment_time) : ''}</span></div>`;
-                        }
-
-                        let icsUri = '';
-                        let eventTitle = '';
-                        try {
-                            const iCalTimes = formatICalDateTime(job.appointment_date, job.appointment_time);
-                            eventTitle = `${mainTitle} Detail - ${job.customer_name || 'Client'}`;
-                            const icsData = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'BEGIN:VEVENT', `DTSTART:${iCalTimes.start}`, `DTEND:${iCalTimes.end}`, `SUMMARY:${eventTitle}`, 'END:VEVENT', 'END:VCALENDAR'].join('\n');
-                            icsUri = `data:text/calendar;charset=utf8,${encodeURIComponent(icsData)}`;
-                        } catch (calendarError) {}
-
-                        // Append Customer Notes
-                        let jobNotesHTML = '';
-                        const jobNotes = String(job.job_notes || '').trim();
-                        if (jobNotes && jobNotes !== "N/A") {
-                            jobNotesHTML = `<div class="mt-4 border-t pt-4 border-gray-200"><h4 class="text-xs uppercase text-gray-500 font-semibold mb-3">Customer Notes</h4><div class="text-sm text-gray-700 bg-yellow-50 border border-yellow-200 p-3 rounded-lg"><p class="whitespace-pre-wrap">${jobNotes}</p></div></div>`;
-                        }
-
-                        // Connect AI System Data
-                        let aiNotesHTML = '';
-                        const aiNotes = String(job.ai_notes || '').trim();
-                        if (aiNotes && aiNotes !== "N/A" && aiNotes !== "undefined" && aiNotes !== "null") {
-                            aiNotesHTML = `<div class="mt-4 border-t pt-4 border-gray-200"><h4 class="text-xs uppercase text-blue-500 font-semibold mb-3">AI Diagnostic Summary</h4><div class="text-sm text-blue-800 bg-blue-50 border border-blue-200 p-3 rounded-lg"><p class="whitespace-pre-wrap font-medium leading-relaxed">${aiNotes}</p></div></div>`;
-                        }
-
-                        let beforePhotosHTML = '';
-                        if (job.before_photos) {
-                            try {
-                                const photos = typeof job.before_photos === 'string' ? JSON.parse(job.before_photos) : job.before_photos;
-                                if (Array.isArray(photos) && photos.length > 0) {
-                                    beforePhotosHTML = `
-                                    <div class="mt-4 border-t pt-4 border-gray-200">
-                                        <h4 class="text-xs uppercase text-blue-500 font-semibold mb-3">AI Scan - Before Photos</h4>
-                                        <div class="flex overflow-x-auto space-x-3 pb-3 no-scrollbar snap-x">
-                                    `;
-                                    photos.forEach(url => {
-                                        beforePhotosHTML += `<img src="${url}" class="h-28 w-28 object-cover rounded-xl shadow-sm border border-slate-200 flex-shrink-0 snap-center">`;
-                                    });
-                                    beforePhotosHTML += `</div></div>`;
-                                }
-                            } catch(e) {}
-                        }
-
-                        jobDescriptionHTML = `
-                            <div class="p-4 bg-green-50 border-b border-green-200"><h3 class="text-lg font-bold text-green-800">Job Accepted!</h3></div>
-                            <div class="p-5 flex-grow">
-                                <div><h4 class="text-xs uppercase text-gray-500 font-semibold mb-1">Vehicle</h4><p class="text-2xl font-bold text-gray-800">${mainTitle}</p></div>
-                                <div class="mt-4 border-t pt-4 border-gray-200">
-                                    <h4 class="text-xs uppercase text-gray-500 font-semibold mb-2">When & Where</h4>
-                                    <div class="text-gray-700 space-y-2">
-                                        ${largeAppointmentInfo}
-                                        ${job.zip_code && job.zip_code !== "N/A" ? `<div class="flex items-center mt-2 text-base text-gray-800 font-medium"><svg class="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path></svg><span>${job.zip_code}</span></div>` : ''}
-                                        ${serviceLevelStr && serviceLevelStr !== "N/A" ? `<div class="flex items-center text-base text-gray-800 font-medium"><svg class="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg><span>${serviceLevelStr}</span></div>` : ''}
-                                    </div>
-                                    ${icsUri ? `<a href="${icsUri}" download="${eventTitle}.ics" class="inline-block w-full bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-3 rounded-lg transition text-sm text-center mt-4 shadow-sm">Add to Calendar</a>` : ''}
-                                </div>
-                                <div class="mt-4 border-t pt-4 border-gray-200"><h4 class="text-xs uppercase text-gray-500 font-semibold mb-3">Customer Details</h4><div class="text-sm text-gray-700 space-y-2">${customerDetails}</div></div>
-                                ${jobNotesHTML}
-                                ${aiNotesHTML}
-                                ${beforePhotosHTML}
-                                <div class="mt-4 border-t pt-4 border-gray-200"><h4 class="text-xs uppercase text-gray-500 font-semibold mb-3">Pay</h4><div class="${payClass} text-lg font-bold py-3 px-5 rounded-lg text-center">${payDisplay}</div></div>
-                                <div class="bg-green-50 text-green-800 p-4 rounded-lg border border-green-200 my-4">
-                                    <p class="font-bold mb-3">Bonus Opportunities</p>
-                                    <div class="mb-4">
-                                        <p class="mb-2"><strong>Protection Plan:</strong> $20 Commission per plan sold</p>
-                                        ${job.customer_phone !== "N/A" ? `<button data-phone="${job.customer_phone}" data-sms-type="protection" class="send-sms-button w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-3 rounded-lg text-sm transition shadow-sm">Send Protection Plan Message</button>` : ''}
-                                    </div>
-                                    <div>
-                                        <p class="mb-2"><strong>Google Review:</strong> $12 Bonus for a photo review</p>
-                                        ${job.customer_phone !== "N/A" ? `<button data-phone="${job.customer_phone}" data-sms-type="review" class="send-sms-button w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-3 rounded-lg text-sm transition shadow-sm">Send Review Request</button>` : ''}
-                                    </div>
-                                </div>
-                                
-                                <div class="mt-4 mb-2">
-                                    <form method="GET" action="https://inspection.michieauto.com/" target="_blank">
-                                        <input type="hidden" name="job_id" value="${job.id}">
-                                        <input type="hidden" name="v-year" value="${jobYear || ''}">
-                                        <input type="hidden" name="v-make" value="${jobMake || ''}">
-                                        <input type="hidden" name="v-model" value="${jobModel || ''}">
-                                        <input type="hidden" name="s-level" value="${serviceLevelStr || ''}">
-                                        <button type="submit" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold py-4 px-4 rounded-xl shadow-lg flex items-center justify-center transition-all duration-200 active:scale-95 text-lg">
-                                            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                                            Start Detail Inspection
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>`;
-                    }
-                    
-                    jobCard.innerHTML = jobDescriptionHTML;
-                    jobsList.appendChild(jobCard);
-                    renderedJobCount++;
+                        </div>`;
                 }
+
+                // 2. Private AI Work Order (No customer data/greetings)
+                let aiWorkOrderHTML = '';
+                const aiNotes = String(job.ai_notes || '').trim();
+                if (aiNotes && aiNotes !== "N/A" && aiNotes !== "undefined" && aiNotes !== "null") {
+                    aiWorkOrderHTML = `
+                        <div class="mt-4 border-t pt-4 border-gray-200">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="bg-blue-600 text-white text-[10px] font-black uppercase px-2 py-0.5 rounded">AI Work Order</span>
+                                <h4 class="text-xs uppercase text-blue-700 font-bold">Scope & Pay Justification</h4>
+                            </div>
+                            <div class="text-sm text-blue-950 bg-blue-50/90 border border-blue-200 p-4 rounded-xl leading-relaxed whitespace-pre-wrap font-medium">${aiNotes}</div>
+                        </div>`;
+                }
+
+                // 3. Before Photos (Visible upon Accept)
+                let beforePhotosHTML = '';
+                if (job.status === 'accepted' && job.before_photos) {
+                    try {
+                        const photos = typeof job.before_photos === 'string' ? JSON.parse(job.before_photos) : job.before_photos;
+                        if (Array.isArray(photos) && photos.length > 0) {
+                            beforePhotosHTML = `
+                                <div class="mt-4 border-t pt-4 border-gray-200">
+                                    <h4 class="text-xs uppercase text-blue-600 font-semibold mb-3">AI Scan - Before Photos</h4>
+                                    <div class="flex overflow-x-auto space-x-3 pb-3 no-scrollbar snap-x">
+                            `;
+                            photos.forEach(url => {
+                                const resolvedUrl = formatPhotoUrl(url);
+                                beforePhotosHTML += `<img src="${resolvedUrl}" class="h-28 w-28 object-cover rounded-xl shadow-sm border border-slate-200 flex-shrink-0 snap-center cursor-pointer" onclick="window.open('${resolvedUrl}', '_blank')">`;
+                            });
+                            beforePhotosHTML += `</div></div>`;
+                        }
+                    } catch(e) {}
+                }
+
+                let html = '';
+                if (job.status === 'pending') {
+                    html = `
+                        <div class="p-5">
+                            <h3 class="text-xl font-semibold text-gray-900 mb-3">${mainTitle}</h3>
+                            <div class="space-y-2 mb-4 text-gray-700">
+                                ${job.service_level ? `<p><strong>Service:</strong> ${job.service_level}</p>` : ''}
+                                ${job.zip_code ? `<p><strong>Zip:</strong> ${job.zip_code}</p>` : ''}
+                                ${job.appointment_date ? `<p><strong>Date:</strong> ${formatAppointmentDate(job.appointment_date)}</p>` : ''}
+                                ${job.appointment_time ? `<p><strong>Time:</strong> ${formatAppointmentTime(job.appointment_time)}</p>` : ''}
+                            </div>
+                            ${jobNotesHTML}
+                            ${aiWorkOrderHTML}
+                        </div>
+                        <div class="bg-gray-50 px-5 py-4 border-t border-gray-100 space-y-3">
+                            <div class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg text-center text-lg">${payDisplay}</div>
+                            <div class="flex space-x-3">
+                                <button data-job-id="${job.id}" class="accept-button w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg">Accept Job</button>
+                                <button data-job-id="${job.id}" class="decline-button w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-lg">Decline</button>
+                            </div>
+                        </div>`;
+                } else {
+                    html = `
+                        <div class="p-4 bg-green-50 border-b border-green-200"><h3 class="text-lg font-bold text-green-800">Job Claimed</h3></div>
+                        <div class="p-5 flex-grow">
+                            <div><h4 class="text-xs uppercase text-gray-500 font-semibold mb-1">Vehicle</h4><p class="text-2xl font-bold text-gray-800">${mainTitle}</p></div>
+                            <div class="mt-4 border-t pt-4 border-gray-200">
+                                <h4 class="text-xs uppercase text-gray-500 font-semibold mb-2">Schedule & Location</h4>
+                                <div class="text-gray-700 space-y-1">
+                                    <p class="font-medium">${formatAppointmentDate(job.appointment_date)} at ${formatAppointmentTime(job.appointment_time)}</p>
+                                    <p class="text-blue-600 font-medium">${job.customer_address || job.zip_code}</p>
+                                    <p class="text-gray-600">Client: ${job.customer_name || 'N/A'}</p>
+                                </div>
+                            </div>
+                            ${jobNotesHTML}
+                            ${aiWorkOrderHTML}
+                            ${beforePhotosHTML}
+                            <div class="mt-4 border-t pt-4 border-gray-200">
+                                <h4 class="text-xs uppercase text-gray-500 font-semibold mb-2">Guaranteed Contractor Pay</h4>
+                                <div class="bg-green-600 text-white text-lg font-bold py-3 px-5 rounded-lg text-center">${payDisplay}</div>
+                            </div>
+                            <div class="mt-5">
+                                <a href="https://inspection.michieauto.com/?job_id=${job.id}&v-year=${encodeURIComponent(jobYear)}&v-make=${encodeURIComponent(jobMake)}&v-model=${encodeURIComponent(jobModel)}&s-level=${encodeURIComponent(job.service_level || '')}" target="_blank" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-4 rounded-xl flex items-center justify-center text-lg shadow-md transition">
+                                    Start Detail Inspection
+                                </a>
+                            </div>
+                        </div>`;
+                }
+
+                jobCard.innerHTML = html;
+                jobsList.appendChild(jobCard);
+                renderedJobCount++;
             });
 
             noJobsMessage.classList.toggle('hidden', renderedJobCount > 0);
             if (renderedJobCount === 0) noJobsMessage.textContent = "No jobs available at the moment.";
 
-            document.querySelectorAll('.accept-button').forEach(btn => btn.addEventListener('click', (e) => handleJobAction(e.target.dataset.jobId, 'accept', e.target)));
-            document.querySelectorAll('.decline-button').forEach(btn => btn.addEventListener('click', (e) => handleJobAction(e.target.dataset.jobId, 'decline', e.target)));
-            document.querySelectorAll('.send-sms-button').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const b = e.currentTarget;
-                    const msg = b.dataset.smsType === 'protection' ? "Protect your vehicle with our protection plan which covers you for 60 days with one $0 out of pocket cost detail. Signup now at https://michieauto.com/protection" : "Michie Auto Detailing LLC would love your feedback. Post a photo review to our profile, it only takes 3 minutes! https://g.page/r/CcRJGcUyQxksEBE/review";
-                    sendAutoSMS(b.dataset.phone, msg, b);
-                });
-            });
+            document.querySelectorAll('.accept-button').forEach(btn => btn.addEventListener('click', (e) => handleJobAction(e.target.dataset.jobId, 'accept')));
+            document.querySelectorAll('.decline-button').forEach(btn => btn.addEventListener('click', (e) => handleJobAction(e.target.dataset.jobId, 'decline')));
         }
 
-        async function handleJobAction(jobId, actionType, buttonElement) {
-            if (!authToken) return showCustomMessage('You must be logged in.', 'error');
-            const cardFooter = buttonElement.closest('.bg-gray-50') || buttonElement.closest('.bg-white-77');
-            if (!cardFooter) return;
-            const acceptBtn = cardFooter.querySelector('.accept-button');
-            const declineBtn = cardFooter.querySelector('.decline-button');
-            if (!acceptBtn || !declineBtn) return;
-            const originalAccept = acceptBtn.textContent;
-            const originalDecline = declineBtn.textContent;
-            [acceptBtn, declineBtn].forEach(b => {
-                b.disabled = true;
-                b.classList.add('opacity-50', 'cursor-not-allowed');
-            });
-            if (actionType === 'accept') acceptBtn.textContent = 'Accepting...';
-            else declineBtn.textContent = 'Declining...';
-            try { 
-                const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/${actionType}`, {
+        async function handleJobAction(jobId, action) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/${action}`, {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
                 });
-                
-                if (response.status === 401) {
-                    logoutButton.click();
-                    showCustomMessage('Account deleted or session expired. You have been logged out.', 'error');
-                    return;
-                }
-
                 if (response.ok) fetchJobs();
-                else {
-                    const data = await response.json();
-                    showCustomMessage(data.message || 'Failed action.', 'error');
-                    [acceptBtn, declineBtn].forEach(b => {
-                        b.disabled = false;
-                        b.classList.remove('opacity-50', 'cursor-not-allowed');
-                    });
-                    acceptBtn.textContent = originalAccept;
-                    declineBtn.textContent = originalDecline;
-                }
+                else alert('Action failed.');
             } catch (error) {
-                showCustomMessage('Network error occurred.', 'error');
+                alert('Network error.');
             }
         }
+
         document.addEventListener('DOMContentLoaded', updateUI);
     </script>
 </body>
