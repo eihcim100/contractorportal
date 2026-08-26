@@ -7,24 +7,69 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; position: relative; z-index: 1; }
+        body {
+            font-family: 'Inter', sans-serif;
+            position: relative; 
+            z-index: 1; 
+        }
+        /* --- FIXED BACKGROUND VIA PSEUDO-ELEMENT --- */
         body::before {
             content: '';
             position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             background-image: url('https://res.cloudinary.com/dvrljjtdr/image/upload/v1787707522/background_ijjw1z.jpg');
-            background-size: cover; background-position: center;
-            opacity: 0.77; z-index: -1;
+            background-size: cover;
+            background-position: center;
+            opacity: 0.77; 
+            z-index: -1; 
         }
-        .bg-white-77 { background-color: rgba(255, 255, 255, 0.77); }
-        .address-display { white-space: pre-wrap; }
+        /* --- CUSTOM CLASS FOR SEMI-TRANSPARENT WHITE BACKGROUND --- */
+        .bg-white-77 {
+            background-color: rgba(255, 255, 255, 0.77);
+        }
+
+        .address-display {
+            white-space: pre-wrap;
+        }
+        
+        #no-jobs-message {
+            font-size: 1.25rem;
+            color: #6b7280;
+            margin-top: 2rem;
+            text-align: center;
+        }
+
+        /* Hide scrollbar for photo gallery */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="min-h-screen">
+
+    <!-- Accept Confirmation Warning Modal -->
+    <div id="accept-confirm-modal" class="fixed inset-0 bg-slate-900/80 hidden z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white p-6 sm:p-8 rounded-3xl max-w-md w-full border border-slate-200 shadow-2xl text-center">
+            <div class="text-yellow-500 mb-4 flex justify-center">
+                <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+            </div>
+            <h3 class="text-2xl font-black text-slate-900 uppercase mb-2">NOTICE</h3>
+            <p class="text-slate-700 mb-8 font-medium text-lg leading-snug">
+                After accepting this job you will not be able to change the rate of pay. Do you agree to provide <span id="confirm-pkg" class="font-bold text-slate-900"></span> for <span id="confirm-price" class="font-bold text-green-600"></span>?
+            </p>
+            <div class="flex gap-4">
+                <button id="cancel-accept-btn" class="w-1/2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-black uppercase p-4 rounded-xl transition-colors">Cancel</button>
+                <button id="confirm-accept-btn" class="w-1/2 bg-green-600 hover:bg-green-700 text-white font-black uppercase p-4 rounded-xl transition-colors shadow-lg shadow-green-600/30">Yes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Container -->
     <div id="app" class="w-full max-w-3xl mx-auto p-4 md:my-8">
         
+        <!-- Login Section -->
         <div id="login-section" class="bg-white-77 rounded-2xl shadow-xl p-6 md:p-10">
             <img src="https://res.cloudinary.com/dvrljjtdr/image/upload/v1761924705/Gemini_Generated_Image_bov797bov797bov7_ooqpjf.png" alt="Company Logo" class="w-80 mx-auto mb-6">
             <h2 class="text-3xl font-bold text-gray-800 mb-8 text-center">Contractor Login</h2>
@@ -40,12 +85,20 @@
             <p id="login-message" class="text-red-500 text-xs italic mt-4 text-center"></p>
         </div>
 
+        <!-- Jobs Section -->
         <div id="jobs-section" class="hidden p-4 md:p-8 md:bg-white-77 md:rounded-2xl md:shadow-xl">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-3xl font-bold text-gray-800">Available Jobs</h2>
                 <button id="logout-button" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out text-sm">Logout</button>
             </div>
+
+            <!-- Reliability Score Reminder Banner -->
+            <div class="bg-blue-50 border-l-4 border-blue-500 text-blue-900 p-4 mb-4 rounded-xl shadow-sm text-sm font-semibold flex items-center gap-3">
+                <svg class="w-6 h-6 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <p>Reminder: Cancelations or late arrivals after accepting will impact your reliability score.</p>
+            </div>
             
+            <!-- Important Update Banner -->
             <div class="bg-amber-50 border-l-4 border-amber-500 text-amber-900 p-5 mb-6 rounded-xl flex flex-col md:flex-row justify-between items-center shadow-sm" role="alert">
                 <div class="mb-4 md:mb-0 md:mr-6 text-center md:text-left">
                     <p class="font-bold text-amber-700 text-lg mb-1">IMPORTANT UPDATE:</p>
@@ -56,7 +109,9 @@
             </div>
             
             <p id="no-jobs-message" class="text-gray-600 text-center hidden">No jobs available at the moment.</p>
-            <div id="jobs-list" class="space-y-6"></div>
+            <div id="jobs-list" class="space-y-6">
+                <!-- Job Cards will be injected here -->
+            </div>
         </div>
     </div>
 
@@ -76,13 +131,83 @@
         const noJobsMessage = document.getElementById('no-jobs-message');
 
         let authToken = localStorage.getItem('authToken');
+        let currentMessageBox = null;
+        let pendingAcceptJobId = null; 
+
+        function showCustomMessage(message, type = 'info') {
+            if (currentMessageBox && document.body.contains(currentMessageBox)) {
+                document.body.removeChild(currentMessageBox);
+                currentMessageBox = null;
+            }
+            const messageBox = document.createElement('div');
+            messageBox.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4';
+            let bgColor = type === 'success' ? 'bg-green-100' : type === 'error' ? 'bg-red-100' : 'bg-blue-100';
+            let textColor = type === 'success' ? 'text-green-800' : type === 'error' ? 'text-red-800' : 'text-blue-800';
+            let btnStyle = 'bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg mt-4';
+
+            messageBox.innerHTML = `
+                <div class="${bgColor} p-6 rounded-lg shadow-xl max-w-sm w-full text-center">
+                    <p class="text-lg font-semibold ${textColor} mb-4">${message}</p>
+                    <button id="message-box-ok" class="${btnStyle}">OK</button>
+                </div>
+            `;
+            document.body.appendChild(messageBox);
+            currentMessageBox = messageBox;
+            document.getElementById('message-box-ok').addEventListener('click', () => {
+                if (currentMessageBox && document.body.contains(currentMessageBox)) {
+                    document.body.removeChild(currentMessageBox);
+                    currentMessageBox = null;
+                }
+            });
+        }
+
+        async function sendAutoSMS(phoneNumber, messageContent, buttonElement) {
+            const originalText = buttonElement.textContent;
+            buttonElement.disabled = true;
+            buttonElement.textContent = 'Sending...';
+            buttonElement.classList.add('opacity-50', 'cursor-not-allowed');
+
+            const digitsOnly = phoneNumber.replace(/\D/g, '');
+            const formattedPhoneNumber = digitsOnly.length === 10 ? `+1${digitsOnly}` : `+${digitsOnly}`;
+
+            if (!formattedPhoneNumber || !/^\+\d{11,15}$/.test(formattedPhoneNumber)) {
+                showCustomMessage('Error: Invalid phone number format for SMS.', 'error');
+                buttonElement.disabled = false;
+                buttonElement.textContent = originalText;
+                buttonElement.classList.remove('opacity-50', 'cursor-not-allowed');
+                return;
+            }
+
+            try {
+                const response = await fetch(API_URL_SMS, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ to: formattedPhoneNumber, message_body: messageContent }),
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    showCustomMessage(result.message || 'SMS sent successfully!', 'success');
+                    buttonElement.textContent = 'Sent!';
+                } else {
+                    showCustomMessage(result.error || 'Failed to send SMS.', 'error');
+                    buttonElement.disabled = false;
+                    buttonElement.textContent = originalText;
+                    buttonElement.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            } catch (error) {
+                showCustomMessage(`An error occurred while sending SMS.`, 'error');
+                buttonElement.disabled = false;
+                buttonElement.textContent = originalText;
+                buttonElement.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
 
         function formatPhotoUrl(url) {
             if (!url) return '';
             if (url.startsWith('http://') || url.startsWith('https://')) return url;
             return QUOTE_PHOTO_HOST + (url.startsWith('/') ? '' : '/') + url;
         }
-
+        
         function updateUI() {
             if (authToken) {
                 loginSection.classList.add('hidden');
@@ -142,6 +267,48 @@
             let suffix = match[3] ? match[3].toUpperCase() : (hours >= 12 ? 'PM' : 'AM');
             hours = hours % 12 || 12;
             return `${hours}:${minutes} ${suffix}`;
+        }
+
+        function formatCustomerAddress(addressString) {
+            if (!addressString || addressString === "N/A") return "N/A";
+            return addressString.replace(/, /g, ',<br>');
+        }
+
+        function formatICalDateTime(dateStr, timeStr) {
+            let yyyy = new Date().getFullYear(), mm = String(new Date().getMonth() + 1).padStart(2, '0'), dd = String(new Date().getDate()).padStart(2, '0');
+            if (dateStr && dateStr !== "N/A") {
+                const parts = String(dateStr).split('-');
+                if (parts.length === 3) {
+                    yyyy = parts[0].padStart(4, '0'); mm = parts[1].padStart(2, '0'); dd = parts[2].padStart(2, '0');
+                }
+            }
+            
+            let hh = 9, min = 0;
+            if (timeStr && timeStr !== "N/A") {
+                const match = String(timeStr).trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp][Mm])?$/);
+                if (match) {
+                    hh = parseInt(match[1], 10);
+                    min = parseInt(match[2], 10);
+                    const suf = match[3] ? match[3].toUpperCase() : null;
+                    if (suf === 'PM' && hh < 12) hh += 12;
+                    if (suf === 'AM' && hh === 12) hh = 0;
+                }
+            }
+
+            let offset = '-06:00';
+            try {
+                const checkDate = new Date(`${yyyy}-${mm}-${dd}T12:00:00Z`);
+                const formatter = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', hour: 'numeric', hour12: false });
+                if (parseInt(formatter.format(checkDate), 10) === 7) offset = '-05:00';
+            } catch (e) {}
+
+            const startStr = `${yyyy}-${mm}-${dd}T${String(hh).padStart(2, '0')}:${String(min).padStart(2, '0')}:00${offset}`;
+            const startDateTime = new Date(startStr);
+            if(isNaN(startDateTime.getTime())) throw new Error("Invalid Date");
+            const endDateTime = new Date(startDateTime.getTime() + 5 * 60 * 60 * 1000);
+
+            const toICalString = (date) => date.toISOString().replace(/[.:-]/g, '').slice(0, 15) + 'Z';
+            return { start: toICalString(startDateTime), end: toICalString(endDateTime) };
         }
 
         async function fetchJobs() {
@@ -257,8 +424,8 @@
                         <div class="bg-gray-50 px-5 py-4 border-t border-gray-100 space-y-3">
                             <div class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg text-center text-lg">${payDisplay}</div>
                             <div class="flex space-x-3">
-                                <button data-job-id="${job.id}" class="accept-button w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg">Accept Job</button>
-                                <button data-job-id="${job.id}" class="decline-button w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-lg">Decline</button>
+                                <button data-job-id="${job.id}" data-package="${job.service_level || 'Detail Service'}" data-price="${payDisplay}" class="accept-button w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out">Accept Job</button>
+                                <button data-job-id="${job.id}" class="decline-button w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out">Decline</button>
                             </div>
                         </div>`;
                 } else {
@@ -297,23 +464,75 @@
             noJobsMessage.classList.toggle('hidden', renderedJobCount > 0);
             if (renderedJobCount === 0) noJobsMessage.textContent = "No jobs available at the moment.";
 
-            document.querySelectorAll('.accept-button').forEach(btn => btn.addEventListener('click', (e) => handleJobAction(e.target.dataset.jobId, 'accept')));
+            // NEW: Updated Accept Button listeners to trigger the Warning Modal
+            document.querySelectorAll('.accept-button').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const button = e.currentTarget;
+                    const jobId = button.dataset.jobId;
+                    const pkg = button.dataset.package;
+                    const price = button.dataset.price;
+                    showAcceptModal(jobId, pkg, price);
+                });
+            });
+
             document.querySelectorAll('.decline-button').forEach(btn => btn.addEventListener('click', (e) => handleJobAction(e.target.dataset.jobId, 'decline')));
         }
 
-        async function handleJobAction(jobId, action) {
-            try {
-                const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/${action}`, {
+        // NEW: Modal functions
+        function showAcceptModal(jobId, pkg, price) {
+            pendingAcceptJobId = jobId;
+            document.getElementById('confirm-pkg').textContent = pkg;
+            document.getElementById('confirm-price').textContent = price;
+            document.getElementById('accept-confirm-modal').classList.remove('hidden');
+        }
+
+        document.getElementById('cancel-accept-btn').addEventListener('click', () => {
+            document.getElementById('accept-confirm-modal').classList.add('hidden');
+            pendingAcceptJobId = null;
+        });
+
+        document.getElementById('confirm-accept-btn').addEventListener('click', () => {
+            if (pendingAcceptJobId) {
+                document.getElementById('accept-confirm-modal').classList.add('hidden');
+                handleJobAction(pendingAcceptJobId, 'accept');
+                pendingAcceptJobId = null;
+            }
+        });
+
+        async function handleJobAction(jobId, actionType) {
+            if (!authToken) return showCustomMessage('You must be logged in.', 'error');
+            
+            // Find the specific buttons to disable them
+            const acceptBtns = document.querySelectorAll(`button.accept-button[data-job-id="${jobId}"]`);
+            const declineBtns = document.querySelectorAll(`button.decline-button[data-job-id="${jobId}"]`);
+            
+            acceptBtns.forEach(b => { b.disabled = true; b.classList.add('opacity-50'); if(actionType === 'accept') b.textContent = 'Processing...'; });
+            declineBtns.forEach(b => { b.disabled = true; b.classList.add('opacity-50'); if(actionType === 'decline') b.textContent = 'Processing...'; });
+
+            try { 
+                const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/${actionType}`, {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
                 });
+                
+                if (response.status === 401) {
+                    logoutButton.click();
+                    showCustomMessage('Account deleted or session expired. You have been logged out.', 'error');
+                    return;
+                }
+
                 if (response.ok) fetchJobs();
-                else alert('Action failed.');
+                else {
+                    const data = await response.json();
+                    showCustomMessage(data.message || 'Failed action.', 'error');
+                    // Reset buttons
+                    acceptBtns.forEach(b => { b.disabled = false; b.classList.remove('opacity-50'); b.textContent = 'Accept Job'; });
+                    declineBtns.forEach(b => { b.disabled = false; b.classList.remove('opacity-50'); b.textContent = 'Decline'; });
+                }
             } catch (error) {
-                alert('Network error.');
+                showCustomMessage('Network error occurred.', 'error');
             }
         }
-
         document.addEventListener('DOMContentLoaded', updateUI);
     </script>
 </body>
