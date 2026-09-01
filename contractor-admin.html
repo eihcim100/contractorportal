@@ -135,6 +135,14 @@
                             <input type="tel" id="new-contractor-phone" v-model="newContractor.phone_number"
                                    class="custom-input w-full">
                         </div>
+                        
+                        <!-- NEW DEEL ID INPUT FOR CREATION -->
+                        <div>
+                            <label for="new-contractor-deel-id" class="block text-sm font-medium text-gray-700">Deel Contract ID <span class="text-xs font-normal text-gray-500">(Required for auto-payouts)</span>:</label>
+                            <input type="text" id="new-contractor-deel-id" v-model="newContractor.deel_contract_id"
+                                   class="custom-input w-full" placeholder="e.g. wg5abc123">
+                        </div>
+
                         <button type="submit" :disabled="isCreatingContractor || !isNewEmailValid"
                                 class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out disabled:bg-gray-400">
                             {{ isCreatingContractor ? 'Creating...' : 'Create Contractor' }}
@@ -152,9 +160,18 @@
 
                     <div v-if="contractors.length > 0" class="space-y-4">
                         <div v-for="contractor in contractors" :key="contractor.email" class="contractor-card bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200">
-                            <h3 class="text-lg font-semibold text-gray-800">{{ contractor.first_name }} {{ contractor.last_name }}</h3>
-                            <p class="text-sm text-gray-600">{{ contractor.email }}</p>
-                            <p class="text-sm text-gray-600">Phone: {{ contractor.phone_number || 'N/A' }}</p>
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-800">{{ contractor.first_name }} {{ contractor.last_name }}</h3>
+                                    <p class="text-sm text-gray-600">{{ contractor.email }}</p>
+                                    <p class="text-sm text-gray-600">Phone: {{ contractor.phone_number || 'N/A' }}</p>
+                                    <p class="text-sm text-gray-600 mt-1">
+                                        Deel ID: 
+                                        <span v-if="contractor.deel_contract_id" class="font-mono text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">{{ contractor.deel_contract_id }}</span>
+                                        <span v-else class="font-mono text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded">Not Configured</span>
+                                    </p>
+                                </div>
+                            </div>
                             <div class="mt-4 flex space-x-2">
                                 <button @click="openEditModal(contractor)" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg text-sm transition duration-300 ease-in-out">Edit</button>
                                 <button @click="confirmDeleteContractor(contractor)" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg text-sm transition duration-300 ease-in-out">Delete</button>
@@ -196,6 +213,14 @@
                         <input type="tel" id="edit-phone" v-model="editingContractor.phone_number"
                                class="custom-input w-full">
                     </div>
+                    
+                    <!-- NEW DEEL ID INPUT FOR EDITS -->
+                    <div>
+                        <label for="edit-deel-id" class="block text-sm font-medium text-gray-700">Deel Contract ID:</label>
+                        <input type="text" id="edit-deel-id" v-model="editingContractor.deel_contract_id"
+                               class="custom-input w-full" placeholder="e.g. wg5abc123">
+                    </div>
+
                     <div class="flex justify-end space-x-2 mt-6">
                         <button type="button" @click="showEditModal = false" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out">Cancel</button>
                         <button type="submit" :disabled="isUpdatingContractor || !isEditEmailValid" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-400 transition duration-300 ease-in-out">
@@ -227,7 +252,7 @@
 
         const app = createApp({
             setup() {
-                // FIXED URL HERE! Points directly to your backend CRM database server
+                // Pointing directly to your backend CRM database server
                 const API_BASE_URL = 'https://michie-detailing-backend.onrender.com'; 
 
                 const isAdminLoggedIn = ref(false);
@@ -242,7 +267,8 @@
                     password: '',
                     first_name: '',
                     last_name: '',
-                    phone_number: ''
+                    phone_number: '',
+                    deel_contract_id: '' // New Deel ID State
                 });
                 const isCreatingContractor = ref(false);
                 const createContractorMessage = ref('');
@@ -258,7 +284,8 @@
                     new_password: '', 
                     first_name: '',
                     last_name: '',
-                    phone_number: ''
+                    phone_number: '',
+                    deel_contract_id: '' // New Deel ID State
                 });
                 const isUpdatingContractor = ref(false);
                 const updateContractorMessage = ref('');
@@ -385,12 +412,14 @@
                         return;
                     }
 
+                    // Added Deel Contract ID to the payload
                     const payload = {
                         email: newContractor.email,
                         password: newContractor.password,
                         first_name: newContractor.first_name,
                         last_name: newContractor.last_name,
-                        phone_number: newContractor.phone_number
+                        phone_number: newContractor.phone_number,
+                        deel_contract_id: newContractor.deel_contract_id 
                     };
 
                     try {
@@ -411,6 +440,7 @@
                             newContractor.first_name = '';
                             newContractor.last_name = '';
                             newContractor.phone_number = '';
+                            newContractor.deel_contract_id = ''; // Reset on success
                             fetchContractors(); 
                         } else {
                             const errorData = await response.json();
@@ -436,6 +466,7 @@
                     editingContractor.first_name = contractor.first_name;
                     editingContractor.last_name = contractor.last_name;
                     editingContractor.phone_number = contractor.phone_number;
+                    editingContractor.deel_contract_id = contractor.deel_contract_id || ''; // Load existing Deel ID
                     updateContractorMessage.value = ''; 
                     updateContractorSuccess.value = false;
                     showEditModal.value = true;
@@ -461,11 +492,13 @@
                         return;
                     }
 
+                    // Added Deel Contract ID to the payload
                     const payload = {
                         new_password: editingContractor.new_password || undefined,
                         new_first_name: editingContractor.first_name,
                         new_last_name: editingContractor.last_name,
                         new_phone_number: editingContractor.phone_number,
+                        deel_contract_id: editingContractor.deel_contract_id,
                     };
 
                     Object.keys(payload).forEach(key => payload[key] === undefined && delete payload[key]);
