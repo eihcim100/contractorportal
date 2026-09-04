@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MichieCRM Admin (Read-Only)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        [v-cloak] { display: none; }
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex; justify-content: center; align-items: flex-start;
+            z-index: 50; padding: 0.5rem; overflow-y: auto;
+        }
+        .modal-content {
+            background-color: white; padding: 1.5rem; border-radius: 1rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            width: 100%; max-width: 900px; margin-top: 2rem; margin-bottom: 2rem;
+        }
+        .custom-input {
+            width: 100%; padding: 0.75rem; border: 1px solid #d1d5db;
+            border-radius: 0.5rem; transition: all 0.2s; font-size: 16px; 
+        }
+        .custom-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.25); }
+        .readonly-field {
+            width: 100%; padding: 0.75rem; border: 1px solid #e5e7eb;
+            border-radius: 0.5rem; background-color: #f9fafb; font-size: 14px;
+            color: #374151; font-weight: 600; min-height: 46px;
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body>
+
+<div id="app" v-cloak class="min-h-screen flex flex-col">
+    <div v-if="!isLoggedIn" class="flex-grow flex items-center justify-center p-4">
+        <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
+            <div class="mb-6 flex justify-center">
+                <span class="bg-blue-100 text-blue-600 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest">Read-Only Mode</span>
+            </div>
+            <h2 class="text-3xl font-bold text-gray-800 mb-2 text-center">MichieCRM</h2>
+            <p class="text-gray-500 text-center mb-8">Admin Secure Access</p>
+            <form @submit.prevent="login">
+                <input type="password" v-model="apiKey" required class="custom-input mb-4" placeholder="Admin API Key">
+                <button type="submit" :disabled="isLoading" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-lg transition shadow-lg">
+                    {{ isLoading ? 'Authenticating...' : 'Secure Login' }}
+                </button>
+                <p v-if="error" class="text-red-500 text-sm text-center mt-4">{{ error }}</p>
+            </form>
+        </div>
+    </div>
+
+    <div v-else class="flex-grow flex flex-col">
+        <nav class="bg-white shadow-md border-b sticky top-0 z-40">
+            <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div class="flex items-center gap-2">
+                    <div class="bg-blue-600 text-white p-1.5 rounded-lg font-black text-xl leading-none">M</div>
+                    <h1 class="text-xl font-black text-gray-800 tracking-tight">MichieCRM <span class="text-xs text-gray-400 font-normal ml-2">(Read-Only)</span></h1>
+                </div>
+                
+                <div class="flex bg-gray-100 p-1 rounded-xl w-full sm:w-auto">
+                    <button @click="currentTab = 'leads'" :class="currentTab === 'leads' ? 'bg-white shadow text-blue-600' : 'text-gray-500'" class="flex-1 sm:flex-none px-4 py-2 rounded-lg font-bold text-sm transition">Jobs</button>
+                    <button @click="currentTab = 'reports'" :class="currentTab === 'reports' ? 'bg-white shadow text-blue-600' : 'text-gray-500'" class="flex-1 sm:flex-none px-4 py-2 rounded-lg font-bold text-sm transition">Reports</button>
+                </div>
+
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm text-gray-500 font-medium">Total Jobs: {{ leads.length }}</span>
+                    <button @click="logout" class="bg-red-50 hover:bg-red-100 text-red-600 font-semibold py-2 px-4 rounded-lg transition">Logout</button>
+                </div>
+            </div>
+        </nav>
+
+        <main class="flex-grow p-3 sm:p-6 max-w-7xl mx-auto w-full">
+            
+            <div v-if="currentTab === 'leads'" class="space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl shadow-sm border">
+                    <h2 class="text-lg font-black text-gray-700 uppercase tracking-wide">Jobs Database</h2>
+                    <div class="relative w-full sm:w-64">
+                        <input type="text" v-model="searchQuery" placeholder="Search clients or vehicles..." class="custom-input !py-2 pl-10 text-sm">
+                        <span class="absolute left-3 top-2.5 opacity-30">🔍</span>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200">
+                    <div class="overflow-x-auto hide-scrollbar">
+                        <table class="min-w-full divide-y divide-gray-200 text-sm">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-4 text-left font-black text-gray-400 uppercase tracking-widest text-[10px]">Appointment</th>
+                                    <th class="px-4 py-4 text-left font-black text-gray-400 uppercase tracking-widest text-[10px]">Customer</th>
+                                    <th class="hidden md:table-cell px-4 py-4 text-left font-black text-gray-400 uppercase tracking-widest text-[10px]">Vehicle</th>
+                                    <th class="hidden lg:table-cell px-4 py-4 text-left font-black text-gray-400 uppercase tracking-widest text-[10px]">Assigned To</th>
+                                    <th class="px-4 py-4 text-left font-black text-gray-400 uppercase tracking-widest text-[10px]">Status</th>
+                                    <th class="px-4 py-4 text-right font-black text-gray-400 uppercase tracking-widest text-[10px]">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-100">
+                                <tr v-if="isLoading" class="text-center"><td colspan="6" class="py-12 text-gray-400 font-medium">Loading Database...</td></tr>
+                                <tr v-for="lead in sortedFilteredLeads" :key="lead.id" class="hover:bg-blue-50/30 transition group">
+                                    <td class="px-4 py-4">
+                                        <div class="flex flex-col">
+                                            <div class="text-lg font-black text-blue-700 leading-none mb-1">{{ formatTime(lead.appointment_time) }}</div>
+                                            <div class="text-sm font-bold text-gray-900 bg-blue-100 px-2 py-0.5 rounded-md inline-block w-max">{{ formatDateForDisplay(lead.appointment_date) }}</div>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-4">
+                                        <div class="font-bold text-gray-900 truncate max-w-[120px] sm:max-w-none">{{ lead.customer_name || 'N/A' }}</div>
+                                        <div class="text-[11px] font-bold text-gray-400 uppercase">{{ lead.customer_phone || 'N/A' }}</div>
+                                    </td>
+                                    <td class="hidden md:table-cell px-4 py-4">
+                                        <div class="text-sm font-bold text-gray-700">{{ lead.vehicle_year }} {{ lead.vehicle_make }}</div>
+                                        <div class="text-[11px] font-bold text-gray-400 uppercase truncate max-w-[100px]">{{ lead.service_level || 'Detail' }}</div>
+                                    </td>
+                                    <td class="hidden lg:table-cell px-4 py-4">
+                                        <div class="text-sm font-bold text-gray-600">{{ getContractorName(lead.contractor_id_field) }}</div>
+                                    </td>
+                                    <td class="px-4 py-4">
+                                        <span :class="getStatusBadgeClass(lead)">
+                                            {{ getEffectiveStatus(lead).toUpperCase() }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-4 text-right">
+                                        <button @click="viewLead(lead)" class="bg-white text-blue-600 hover:bg-blue-600 hover:text-white font-black text-[10px] uppercase tracking-tighter border-2 border-blue-100 px-3 py-2 rounded-lg transition shadow-sm">View Details</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="currentTab === 'reports'" class="space-y-4">
+                
+                <div class="bg-white p-5 rounded-2xl shadow-sm border flex flex-col md:flex-row gap-4">
+                    <div class="flex-1">
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Timeframe</label>
+                        <select v-model="reportTimeframe" class="custom-input !py-2 bg-gray-50">
+                            <option value="7days">Last 7 Days</option>
+                            <option value="30days">Last 30 Days</option>
+                            <option value="3months">Last 3 Months</option>
+                            <option value="custom">Custom Range</option>
+                        </select>
+                    </div>
+                    <div v-if="reportTimeframe === 'custom'" class="flex gap-2 flex-1">
+                        <div class="flex-1 text-center">
+                            <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">From</label>
+                            <input type="date" v-model="reportCustomStart" class="custom-input !py-2 text-xs">
+                        </div>
+                        <div class="flex-1 text-center">
+                            <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">To</label>
+                            <input type="date" v-model="reportCustomEnd" class="custom-input !py-2 text-xs">
+                        </div>
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Contractor</label>
+                        <select v-model="reportContractor" class="custom-input !py-2 bg-gray-50">
+                            <option value="ALL">All Staff</option>
+                            <option v-for="c in contractors" :key="c.email" :value="c.email">{{ c.first_name }} {{ c.last_name }}</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border-b-4 border-blue-500">
+                        <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Total Jobs</h3>
+                        <p class="text-4xl font-black text-gray-800">{{ generatedReport.jobCount }}</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border-b-4 border-green-500">
+                        <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Gross Profit</h3>
+                        <p class="text-4xl font-black text-green-600">${{ generatedReport.totalProfit.toFixed(2) }}</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border-b-4 border-purple-500">
+                        <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Avg Ticket</h3>
+                        <p class="text-4xl font-black text-gray-800">${{ generatedReport.avgTicket.toFixed(2) }}</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border overflow-hidden mt-6">
+                    <div class="p-4 border-b bg-gray-50">
+                        <h2 class="text-sm font-black text-gray-700 uppercase tracking-wide">Job Breakdown</h2>
+                    </div>
+                    <div class="overflow-x-auto hide-scrollbar">
+                        <table class="min-w-full divide-y divide-gray-200 text-sm">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left font-black text-gray-400 uppercase tracking-widest text-[10px]">Date</th>
+                                    <th class="px-4 py-3 text-left font-black text-gray-400 uppercase tracking-widest text-[10px]">Customer</th>
+                                    <th class="hidden sm:table-cell px-4 py-3 text-left font-black text-gray-400 uppercase tracking-widest text-[10px]">Staff</th>
+                                    <th class="px-4 py-3 text-right font-black text-gray-400 uppercase tracking-widest text-[10px]">Price</th>
+                                    <th class="px-4 py-3 text-right font-black text-gray-400 uppercase tracking-widest text-[10px]">Pay</th>
+                                    <th class="px-4 py-3 text-right font-black text-green-600 uppercase tracking-widest text-[10px]">Profit</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-100">
+                                <tr v-for="row in generatedReport.rows" :key="row.id" class="hover:bg-gray-50 transition">
+                                    <td class="px-4 py-3 whitespace-nowrap text-xs font-bold text-gray-600">{{ formatDateForDisplay(row.appointment_date) }}</td>
+                                    <td class="px-4 py-3 text-xs font-bold text-gray-900">{{ row.customer_name || 'N/A' }}</td>
+                                    <td class="hidden sm:table-cell px-4 py-3 text-xs font-bold text-gray-500">{{ getContractorName(row.contractor_id_field) }}</td>
+                                    <td class="px-4 py-3 text-right text-xs font-bold text-gray-700">${{ row.revenue.toFixed(2) }}</td>
+                                    <td class="px-4 py-3 text-right text-xs font-bold text-red-500">-${{ row.expense.toFixed(2) }}</td>
+                                    <td class="px-4 py-3 text-right text-sm font-black text-green-600">${{ row.profit.toFixed(2) }}</td>
+                                </tr>
+                                <tr v-if="generatedReport.rows && generatedReport.rows.length === 0">
+                                    <td colspan="6" class="px-4 py-8 text-center text-gray-400 font-medium">No jobs found for this timeframe.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <div v-if="showModal" class="modal-overlay" @click.self="showModal = false">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h3 class="text-2xl font-black text-gray-800 leading-tight">Job Details <span class="text-sm text-gray-400 font-normal ml-2">(Read-Only)</span></h3>
+                    <p class="text-xs font-bold text-blue-600 uppercase tracking-widest">ID #{{ activeLead.id }}</p>
+                </div>
+                <button @click="showModal = false" class="bg-gray-100 text-gray-400 hover:text-gray-800 p-2 rounded-full transition">✕</button>
+            </div>
+            
+            <div class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Column 1 -->
+                    <div class="space-y-4">
+                        <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                            <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-3">Client Information</p>
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="text-[10px] font-black text-gray-400 uppercase mb-1">Full Name</label>
+                                    <div class="readonly-field">{{ activeLead.customer_name || 'N/A' }}</div>
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-black text-gray-400 uppercase mb-1">Phone Number</label>
+                                    <div class="readonly-field">{{ activeLead.customer_phone || 'N/A' }}</div>
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-black text-gray-400 uppercase mb-1">Full Address</label>
+                                    <div class="readonly-field">{{ activeLead.customer_address || 'N/A' }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                            <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-3">Assigned Contractor</p>
+                            <div class="readonly-field text-gray-700">
+                                {{ getContractorName(activeLead.contractor_id_field) }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Column 2 -->
+                    <div class="space-y-4">
+                        <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                            <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-3">Scheduling</p>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="text-[10px] font-black text-gray-400 uppercase mb-1">Date</label>
+                                    <div class="readonly-field">{{ activeLead.display_date || 'N/A' }}</div>
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-black text-gray-400 uppercase mb-1">Time</label>
+                                    <div class="readonly-field">{{ activeLead.appointment_time || 'N/A' }}</div>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <label class="text-[10px] font-black text-gray-400 uppercase mb-1">Current Status</label>
+                                <div class="readonly-field capitalize">{{ activeLead.status || getEffectiveStatus(activeLead) }}</div>
+                            </div>
+                        </div>
+
+                        <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                            <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-3">Service & Legacy Pay</p>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="text-[10px] font-black text-gray-400 uppercase mb-1">Service Level</label>
+                                    <div class="readonly-field">{{ activeLead.service_level || 'N/A' }}</div>
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-black text-gray-400 uppercase mb-1">Legacy Pay Text</label>
+                                    <div class="readonly-field">{{ activeLead.pay || 'N/A' }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-green-50 p-4 rounded-xl border border-green-100">
+                            <p class="text-[10px] font-black text-green-600 uppercase tracking-widest mb-3">Financials</p>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="text-[10px] font-black text-green-700 uppercase mb-1">Package Price ($)</label>
+                                    <div class="readonly-field bg-white !border-green-200">${{ parseFloat(activeLead.service_cost || 0).toFixed(2) }}</div>
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-black text-red-700 uppercase mb-1">Contractor Pay ($)</label>
+                                    <div class="readonly-field bg-white !border-red-200">${{ parseFloat(activeLead.contractor_expense || 0).toFixed(2) }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 mt-4">
+                    <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-3">Job & Vehicle Notes</p>
+                    <div class="grid grid-cols-3 gap-3 mb-3">
+                        <div>
+                            <label class="text-[10px] font-black text-gray-400 uppercase mb-1">Year</label>
+                            <div class="readonly-field">{{ activeLead.vehicle_year || 'N/A' }}</div>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-black text-gray-400 uppercase mb-1">Make</label>
+                            <div class="readonly-field">{{ activeLead.vehicle_make || 'N/A' }}</div>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-black text-gray-400 uppercase mb-1">Model</label>
+                            <div class="readonly-field">{{ activeLead.vehicle_model || 'N/A' }}</div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-black text-gray-400 uppercase mb-1">Job Notes</label>
+                        <div class="readonly-field h-auto min-h-[80px] whitespace-pre-wrap">{{ activeLead.job_notes || 'No specific instructions provided.' }}</div>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 pt-4 border-t">
+                    <button type="button" @click="showModal = false" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-xl shadow-lg transition transform active:scale-95">Close Details</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const { createApp, ref, computed, onMounted } = Vue;
+    const API_BASE_URL = 'https://michie-detailing-backend.onrender.com';
+
+    function formatPhone(phone) {
+        if (!phone) return phone;
+        let cleaned = phone.replace(/\D/g, '');
+        if (cleaned.length === 10) return '+1' + cleaned;
+        if (cleaned.length === 11 && cleaned.startsWith('1')) return '+' + cleaned;
+        return phone;
+    }
+
+    function formatDateForDisplay(dateStr) {
+        if (!dateStr || dateStr === 'N/A') return '';
+        const parts = String(dateStr).split('-');
+        if (parts.length === 3) return `${parts[1]}/${parts[2]}/${parts[0]}`;
+        return dateStr;
+    }
+
+    function formatTime(timeStr) {
+        if (!timeStr || timeStr === 'N/A') return 'N/A';
+        const match = String(timeStr).trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp][Mm])?$/);
+        if (!match) return timeStr;
+        let hours = parseInt(match[1]);
+        let minutes = match[2];
+        let suffix = match[3] ? match[3].toUpperCase() : (hours >= 12 ? 'PM' : 'AM');
+        hours = hours % 12 || 12;
+        return `${hours}:${minutes} ${suffix}`;
+    }
+
+    function extractPrice(str) {
+        if (!str) return 0;
+        const s = String(str).trim();
+        const dollarMatch = s.match(/\$\s*([0-9]+(?:\.[0-9]{2})?)/);
+        if (dollarMatch) return parseFloat(dollarMatch[1]);
+        const numberMatch = s.match(/^([0-9]+(?:\.[0-9]{2})?)/);
+        if (numberMatch) return parseFloat(numberMatch[1]);
+        return 0;
+    }
+
+    createApp({
+        setup() {
+            const apiKey = ref(localStorage.getItem('crmApiKey') || '');
+            const isLoggedIn = ref(false);
+            const isLoading = ref(false);
+            const error = ref('');
+            const leads = ref([]);
+            const contractors = ref([]);
+            const searchQuery = ref('');
+            const currentTab = ref('leads');
+            const showModal = ref(false);
+            const activeLead = ref({});
+            const reportTimeframe = ref('30days');
+            const reportCustomStart = ref('');
+            const reportCustomEnd = ref('');
+            const reportContractor = ref('ALL');
+
+            const getEffectiveStatus = (lead) => {
+                if (!lead.contractor_id_field || lead.contractor_id_field === '') return 'unassigned';
+                try {
+                    const apptDateStr = lead.appointment_date; 
+                    const apptTimeStr = lead.appointment_time; 
+                    if (!apptDateStr || !apptTimeStr) return 'accepted';
+
+                    const match = String(apptTimeStr).trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp][Mm])?$/);
+                    if (!match) return 'accepted';
+                    let hours = parseInt(match[1], 10);
+                    const minutes = parseInt(match[2], 10);
+                    const suffix = match[3] ? match[3].toUpperCase() : null;
+                    if (suffix === 'PM' && hours < 12) hours += 12;
+                    if (suffix === 'AM' && hours === 12) hours = 0;
+
+                    const dateParts = String(apptDateStr).split('-');
+                    const apptTimeValue = new Date(dateParts[0], dateParts[1]-1, dateParts[2], hours, minutes).getTime();
+                    
+                    const formatter = new Intl.DateTimeFormat('en-US', {
+                        timeZone: 'America/Chicago',
+                        year: 'numeric', month: 'numeric', day: 'numeric',
+                        hour: 'numeric', minute: 'numeric', second: 'numeric',
+                        hour12: false
+                    });
+                    
+                    const chicagoParts = formatter.formatToParts(new Date());
+                    const cYear = parseInt(chicagoParts.find(p => p.type === 'year').value, 10);
+                    const cMonth = parseInt(chicagoParts.find(p => p.type === 'month').value, 10);
+                    const cDay = parseInt(chicagoParts.find(p => p.type === 'day').value, 10);
+                    const cHour = parseInt(chicagoParts.find(p => p.type === 'hour').value, 10);
+                    const cMinute = parseInt(chicagoParts.find(p => p.type === 'minute').value, 10);
+                    
+                    const nowChicagoValue = new Date(cYear, cMonth - 1, cDay, cHour, cMinute).getTime();
+                    const completionThresholdValue = apptTimeValue + (5 * 60 * 60 * 1000);
+                    
+                    if (nowChicagoValue > completionThresholdValue) return 'completed';
+                    return 'accepted';
+                } catch (e) { 
+                    return 'accepted'; 
+                }
+            };
+
+            const getStatusBadgeClass = (lead) => {
+                const status = getEffectiveStatus(lead);
+                const b = "px-2 py-1 text-[9px] font-black rounded uppercase tracking-widest border-2 ";
+                if (status === 'unassigned') return b + "bg-yellow-50 text-yellow-600 border-yellow-200";
+                if (status === 'accepted') return b + "bg-blue-50 text-blue-600 border-blue-200";
+                if (status === 'completed') return b + "bg-purple-50 text-purple-600 border-purple-200";
+                return b + "bg-gray-50 text-gray-400 border-gray-200";
+            };
+
+            const getContractorName = (email) => {
+                if (!email) return 'Unassigned';
+                const c = contractors.value.find(u => u.email === email);
+                return c ? `${c.first_name} ${c.last_name}` : email.split('@')[0];
+            };
+
+            const login = async () => {
+                isLoading.value = true; error.value = '';
+                try {
+                    const h = { 'Authorization': `Bearer ${apiKey.value}`, 'X-Admin-API-Key': apiKey.value };
+                    const res = await fetch(`${API_BASE_URL}/admin/leads`, { headers: h });
+                    if (res.ok) {
+                        leads.value = await res.json();
+                        isLoggedIn.value = true;
+                        localStorage.setItem('crmApiKey', apiKey.value);
+                        const cRes = await fetch(`${API_BASE_URL}/admin/users`, { headers: h });
+                        if (cRes.ok) contractors.value = await cRes.json();
+                    } else { error.value = 'Invalid Key'; }
+                } catch (e) { error.value = 'Server Error'; }
+                isLoading.value = false;
+            };
+
+            const viewLead = (lead) => {
+                activeLead.value = JSON.parse(JSON.stringify(lead));
+                activeLead.value.display_date = formatDateForDisplay(lead.appointment_date);
+                if (!activeLead.value.service_cost) activeLead.value.service_cost = extractPrice(lead.deal_name);
+                if (!activeLead.value.contractor_expense) activeLead.value.contractor_expense = extractPrice(lead.pay);
+                showModal.value = true;
+            };
+
+            const logout = () => { localStorage.removeItem('crmApiKey'); location.reload(); };
+
+            const sortedFilteredLeads = computed(() => {
+                let r = leads.value;
+                if (searchQuery.value) {
+                    const q = searchQuery.value.toLowerCase();
+                    r = r.filter(l => (l.customer_name||'').toLowerCase().includes(q) || (l.customer_phone||'').toLowerCase().includes(q) || (l.vehicle_make||'').toLowerCase().includes(q));
+                }
+                return r.sort((a,b) => new Date(b.appointment_date || '1970-01-01') - new Date(a.appointment_date || '1970-01-01'));
+            });
+
+            const generatedReport = computed(() => {
+                let f = leads.value.filter(l => getEffectiveStatus(l) === 'completed' || l.service_cost > 0 || extractPrice(l.pay) > 0);
+                if (reportContractor.value !== 'ALL') f = f.filter(l => l.contractor_id_field === reportContractor.value);
+                
+                const now = new Date();
+                let start = new Date();
+                if (reportTimeframe.value === '7days') start.setDate(now.getDate() - 7);
+                else if (reportTimeframe.value === '30days') start.setDate(now.getDate() - 30);
+                else if (reportTimeframe.value === '3months') start.setMonth(now.getMonth() - 3);
+                else if (reportTimeframe.value === 'custom') start = new Date(reportCustomStart.value || '1970-01-01');
+                
+                f = f.filter(l => {
+                    const d = new Date(l.appointment_date);
+                    return d >= start && d <= (reportTimeframe.value === 'custom' ? new Date(reportCustomEnd.value + 'T23:59:59') : now);
+                });
+                
+                let totalRevenue = 0;
+                let totalExpense = 0;
+                
+                const rows = f.map(l => {
+                    const rev = parseFloat(l.service_cost) || extractPrice(l.deal_name) || 0;
+                    const exp = parseFloat(l.contractor_expense) || extractPrice(l.pay) || 0;
+                    totalRevenue += rev;
+                    totalExpense += exp;
+                    return { ...l, revenue: rev, expense: exp, profit: rev - exp };
+                });
+
+                rows.sort((a,b) => new Date(b.appointment_date || '1970-01-01') - new Date(a.appointment_date || '1970-01-01'));
+
+                return { 
+                    rows,
+                    jobCount: rows.length, 
+                    totalRevenue,
+                    totalExpense,
+                    totalProfit: totalRevenue - totalExpense, 
+                    avgTicket: rows.length ? (totalRevenue / rows.length) : 0 
+                };
+            });
+
+            onMounted(() => { if (apiKey.value) login(); });
+
+            return { 
+                apiKey, isLoggedIn, isLoading, error, leads, contractors, searchQuery, sortedFilteredLeads, 
+                currentTab, showModal, activeLead, reportTimeframe, reportCustomStart, reportCustomEnd, reportContractor, generatedReport,
+                login, logout, viewLead, getContractorName, formatDateForDisplay, formatTime, getEffectiveStatus, getStatusBadgeClass
+            };
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>
