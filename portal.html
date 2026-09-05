@@ -521,23 +521,31 @@
                 let totalProfit = 0;
                 
                 const rows = f.map(l => {
-                    const baseRev = parseFloat(l.service_cost) || extractPrice(l.deal_name) || 0;
-                    
+                    // Extract exactly from the Legacy Pay text (Source of Truth)
                     const parsedPay = extractPayAndTips(l.pay);
-                    const baseExp = parseFloat(l.contractor_expense) || parsedPay.exp || 0;
-                    const tips = parseFloat(l.tips) || parsedPay.tips || 0;
+                    const tips = parsedPay.tips || 0;
                     
-                    // 1. "Price" adds the tip
+                    // 1. PAYMENT AMOUNT: Use strictly the first number from the pay box to prevent double-counting.
+                    // (Only falls back to the database override if the text box is completely empty)
+                    const basePay = parsedPay.exp > 0 ? parsedPay.exp : (parseFloat(l.contractor_expense) || 0);
+                    
+                    // 2. DETAIL AMOUNT: Pull base service cost.
+                    let baseRev = parseFloat(l.service_cost) || extractPrice(l.deal_name) || 0;
+                    const dealPrice = extractPrice(l.deal_name);
+                    
+                    // Guard: If the saved service_cost accidentally already includes the tip, revert it to the base deal price
+                    if (dealPrice > 0 && baseRev === dealPrice + tips) {
+                        baseRev = dealPrice;
+                    }
+                    
+                    // 3. Price Tab: Detail Amount + Tips
                     const totalRev = baseRev + tips;
                     
-                    // 2. "Labor Cost" adds the tip to the base payment
-                    const laborCost = baseExp + tips;
+                    // 4. Pay Tab: Payment Amount + Tips
+                    const laborCost = basePay + tips;
                     
-                    // 3. Gross Profit = (Total Rev * 0.80) - Labor Cost
-                    const grossProfit = (totalRev * 0.80) - laborCost;
-                    
-                    // 4. Net Profit = Gross Profit - $80 Google Ads fee
-                    const netProfit = grossProfit - 80;
+                    // 5. NET PROFIT Formula: ((Detail + Tips) * 0.80) - Base Payment - Tips - $80
+                    const netProfit = (totalRev * 0.80) - laborCost - 80;
 
                     totalRevenue += totalRev;
                     totalExpense += laborCost;
