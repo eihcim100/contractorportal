@@ -521,20 +521,29 @@
                 let totalProfit = 0;
                 
                 const rows = f.map(l => {
-                    const rev = parseFloat(l.service_cost) || extractPrice(l.deal_name) || 0;
+                    const baseRev = parseFloat(l.service_cost) || extractPrice(l.deal_name) || 0;
                     
                     const parsedPay = extractPayAndTips(l.pay);
-                    const exp = parseFloat(l.contractor_expense) || parsedPay.exp || 0;
+                    const baseExp = parseFloat(l.contractor_expense) || parsedPay.exp || 0;
                     const tips = parseFloat(l.tips) || parsedPay.tips || 0;
                     
-                    // ((Detail amount + tips) * .80) - Payment amount - Tips - $80
-                    const profit = ((rev + tips) * 0.80) - exp - tips - 80;
+                    // 1. "Price" adds the tip
+                    const totalRev = baseRev + tips;
+                    
+                    // 2. "Labor Cost" adds the tip to the base payment
+                    const laborCost = baseExp + tips;
+                    
+                    // 3. Gross Profit = (Total Rev * 0.80) - Labor Cost
+                    const grossProfit = (totalRev * 0.80) - laborCost;
+                    
+                    // 4. Net Profit = Gross Profit - $80 Google Ads fee
+                    const netProfit = grossProfit - 80;
 
-                    totalRevenue += rev;
-                    totalExpense += exp;
-                    totalProfit += profit;
+                    totalRevenue += totalRev;
+                    totalExpense += laborCost;
+                    totalProfit += netProfit;
 
-                    return { ...l, revenue: rev, expense: exp, tips: tips, profit: profit };
+                    return { ...l, revenue: totalRev, expense: laborCost, tips: tips, profit: netProfit };
                 });
 
                 rows.sort((a,b) => new Date(b.appointment_date || '1970-01-01') - new Date(a.appointment_date || '1970-01-01'));
