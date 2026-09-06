@@ -6,7 +6,6 @@
     <title>MichieCRM Admin</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <!-- Replace YOUR_GOOGLE_MAPS_API_KEY below with your actual API key -->
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB133ISKHPtat18iloHDlqm2QHBv133sOk&libraries=places"></script>
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
@@ -34,7 +33,6 @@
 <body>
 
 <div id="app" v-cloak class="min-h-screen flex flex-col">
-    <!-- Login Screen -->
     <div v-if="!isLoggedIn" class="flex-grow flex items-center justify-center p-4">
         <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
             <h2 class="text-3xl font-bold text-gray-800 mb-2 text-center">MichieCRM</h2>
@@ -49,7 +47,6 @@
         </div>
     </div>
 
-    <!-- Main Dashboard -->
     <div v-else class="flex-grow flex flex-col">
         <nav class="bg-white shadow-md border-b sticky top-0 z-40">
             <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -72,7 +69,6 @@
 
         <main class="flex-grow p-3 sm:p-6 max-w-7xl mx-auto w-full">
             
-            <!-- LEADS TAB -->
             <div v-if="currentTab === 'leads'" class="space-y-4">
                 <div class="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl shadow-sm border">
                     <h2 class="text-lg font-black text-gray-700 uppercase tracking-wide">Jobs Database</h2>
@@ -130,10 +126,8 @@
                 </div>
             </div>
 
-            <!-- REPORTS TAB -->
             <div v-if="currentTab === 'reports'" class="space-y-4">
                 
-                <!-- Report Filters -->
                 <div class="bg-white p-5 rounded-2xl shadow-sm border flex flex-col md:flex-row gap-4">
                     <div class="flex-1">
                         <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Timeframe</label>
@@ -163,15 +157,16 @@
                     </div>
                 </div>
 
-                <!-- Report Summary Cards -->
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div class="bg-white p-6 rounded-2xl shadow-sm border-b-4 border-blue-500">
                         <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Total Jobs</h3>
                         <p class="text-4xl font-black text-gray-800">{{ generatedReport.jobCount }}</p>
                     </div>
                     <div class="bg-white p-6 rounded-2xl shadow-sm border-b-4 border-green-500">
-                        <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Gross Profit</h3>
-                        <p class="text-4xl font-black text-green-600">${{ generatedReport.totalProfit.toFixed(2) }}</p>
+                        <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Net Profit</h3>
+                        <p class="text-4xl font-black" :class="generatedReport.totalProfit >= 0 ? 'text-green-600' : 'text-red-600'">
+                            {{ generatedReport.totalProfit < 0 ? '-' : '' }}${{ Math.abs(generatedReport.totalProfit).toFixed(2) }}
+                        </p>
                     </div>
                     <div class="bg-white p-6 rounded-2xl shadow-sm border-b-4 border-purple-500">
                         <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Avg Ticket</h3>
@@ -179,7 +174,6 @@
                     </div>
                 </div>
 
-                <!-- RESTORED: Report Table -->
                 <div class="bg-white rounded-2xl shadow-sm border overflow-hidden mt-6">
                     <div class="p-4 border-b bg-gray-50">
                         <h2 class="text-sm font-black text-gray-700 uppercase tracking-wide">Job Breakdown</h2>
@@ -203,7 +197,9 @@
                                     <td class="hidden sm:table-cell px-4 py-3 text-xs font-bold text-gray-500">{{ getContractorName(row.contractor_id_field) }}</td>
                                     <td class="px-4 py-3 text-right text-xs font-bold text-gray-700">${{ row.revenue.toFixed(2) }}</td>
                                     <td class="px-4 py-3 text-right text-xs font-bold text-red-500">-${{ row.expense.toFixed(2) }}</td>
-                                    <td class="px-4 py-3 text-right text-sm font-black text-green-600">${{ row.profit.toFixed(2) }}</td>
+                                    <td class="px-4 py-3 text-right text-sm font-black" :class="row.profit >= 0 ? 'text-green-600' : 'text-red-500'">
+                                        {{ row.profit < 0 ? '-' : '' }}${{ Math.abs(row.profit).toFixed(2) }}
+                                    </td>
                                 </tr>
                                 <tr v-if="generatedReport.rows && generatedReport.rows.length === 0">
                                     <td colspan="6" class="px-4 py-8 text-center text-gray-400 font-medium">No jobs found for this timeframe.</td>
@@ -217,7 +213,6 @@
         </main>
     </div>
 
-    <!-- Edit Lead Modal -->
     <div v-if="showModal" class="modal-overlay" @click.self="showModal = false">
         <div class="modal-content">
             <div class="flex justify-between items-center mb-6">
@@ -254,7 +249,7 @@
                             <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-3">Assigned Contractor</p>
                             <select v-model="activeLead.contractor_id_field" class="custom-input font-bold text-gray-700">
                                 <option value="">Select a Contractor</option>
-                                <option v-for="c in contractors" :key="c.email" :value="c.email">{{ c.first_name }} {{ c.last_name }} ({{ c.email }})</option>
+                                <option v-for="c in contractors" :key="c.email" :value="c.email">{{ c.first_name }} {{ c.last_name }}</option>
                             </select>
                         </div>
                     </div>
@@ -274,7 +269,7 @@
                                 </div>
                             </div>
                             <div class="mt-3">
-                                <label class="text-[10px] font-black text-gray-400 uppercase mb-1">Status Override</label>
+                                <label class="text-[10px] font-black text-gray-400 uppercase mb-1">Current Status</label>
                                 <select v-model="activeLead.status" class="custom-input">
                                     <option value="pending">Pending / Open</option>
                                     <option value="accepted">Accepted / Claimed</option>
@@ -284,7 +279,6 @@
                             </div>
                         </div>
 
-                        <!-- Legacy Fields -->
                         <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
                             <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-3">Service & Legacy Pay</p>
                             <div class="grid grid-cols-2 gap-3">
@@ -299,7 +293,6 @@
                             </div>
                         </div>
 
-                        <!-- Financials -->
                         <div class="bg-green-50 p-4 rounded-xl border border-green-100">
                             <p class="text-[10px] font-black text-green-600 uppercase tracking-widest mb-3">Financials</p>
                             <div class="grid grid-cols-2 gap-3">
@@ -319,16 +312,32 @@
                 <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 mt-4">
                     <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-3">Job & Vehicle Notes</p>
                     <div class="grid grid-cols-3 gap-3 mb-3">
-                        <input type="text" v-model="activeLead.vehicle_year" class="custom-input !py-2 text-sm" placeholder="Year">
-                        <input type="text" v-model="activeLead.vehicle_make" class="custom-input !py-2 text-sm" placeholder="Make">
-                        <input type="text" v-model="activeLead.vehicle_model" class="custom-input !py-2 text-sm" placeholder="Model">
+                        <div>
+                            <label class="text-[10px] font-black text-gray-400 uppercase mb-1">Year</label>
+                            <input type="text" v-model="activeLead.vehicle_year" class="custom-input !py-2 text-sm" placeholder="Year">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-black text-gray-400 uppercase mb-1">Make</label>
+                            <input type="text" v-model="activeLead.vehicle_make" class="custom-input !py-2 text-sm" placeholder="Make">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-black text-gray-400 uppercase mb-1">Model</label>
+                            <input type="text" v-model="activeLead.vehicle_model" class="custom-input !py-2 text-sm" placeholder="Model">
+                        </div>
                     </div>
-                    <textarea v-model="activeLead.job_notes" rows="3" class="custom-input" placeholder="Any specific instructions..."></textarea>
+                    <div>
+                        <label class="text-[10px] font-black text-gray-400 uppercase mb-1">Job Notes</label>
+                        <textarea v-model="activeLead.job_notes" rows="3" class="custom-input" placeholder="Any specific instructions..."></textarea>
+                    </div>
                 </div>
+
+                <p v-if="activeLead._error" class="text-red-500 text-sm font-bold mt-2">{{ activeLead._error }}</p>
 
                 <div class="flex flex-col sm:flex-row gap-3 pt-4 border-t">
                     <button type="submit" class="w-full sm:flex-1 bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-xl shadow-lg transition transform active:scale-95">Save Job Details</button>
-                    <button type="button" @click="deleteLead" class="w-full sm:w-auto px-6 py-4 text-red-500 font-black text-[10px] uppercase tracking-widest hover:bg-red-50 rounded-xl transition">Delete Record</button>
+                    <button type="button" @click="deleteLead" :class="activeLead._confirmDelete ? 'bg-red-500 text-white' : 'text-red-500 hover:bg-red-50'" class="w-full sm:w-auto px-6 py-4 font-black text-[10px] uppercase tracking-widest rounded-xl transition">
+                        {{ activeLead._confirmDelete ? 'Confirm Delete' : 'Delete Record' }}
+                    </button>
                 </div>
             </form>
         </div>
@@ -384,6 +393,17 @@
         const numberMatch = s.match(/^([0-9]+(?:\.[0-9]{2})?)/);
         if (numberMatch) return parseFloat(numberMatch[1]);
         return 0;
+    }
+
+    function extractPayAndTips(str) {
+        let exp = 0;
+        let tips = 0;
+        if (!str) return { exp, tips };
+        // Find all numbers (including decimals) in the string
+        const matches = [...String(str).replace(/,/g, '').matchAll(/[0-9]+(?:\.[0-9]+)?/g)];
+        if (matches.length > 0) exp = parseFloat(matches[0][0]);
+        if (matches.length > 1) tips = parseFloat(matches[1][0]);
+        return { exp, tips };
     }
 
     createApp({
@@ -457,7 +477,7 @@
             const getContractorName = (email) => {
                 if (!email) return 'Unassigned';
                 const c = contractors.value.find(u => u.email === email);
-                return c ? `${c.first_name}` : email.split('@')[0];
+                return c ? `${c.first_name} ${c.last_name}` : email.split('@')[0];
             };
 
             const login = async () => {
@@ -479,12 +499,14 @@
             const editLead = (lead) => {
                 activeLead.value = JSON.parse(JSON.stringify(lead));
                 activeLead.value.display_date = formatDateForDisplay(lead.appointment_date);
+                activeLead.value._confirmDelete = false;
+                activeLead.value._error = '';
                 if (!activeLead.value.service_cost) activeLead.value.service_cost = extractPrice(lead.deal_name);
                 if (!activeLead.value.contractor_expense) activeLead.value.contractor_expense = extractPrice(lead.pay);
                 showModal.value = true;
                 setTimeout(() => {
                     const inp = document.getElementById('autocomplete-address');
-                    if (inp && window.google) {
+                    if (inp && window.google && window.google.maps && window.google.maps.places) {
                         const auto = new google.maps.places.Autocomplete(inp);
                         auto.addListener('place_changed', () => {
                             const p = auto.getPlace();
@@ -505,18 +527,23 @@
                         body: JSON.stringify(activeLead.value)
                     });
                     if (res.ok) { showModal.value = false; login(); }
-                } catch (e) { alert('Save Failed'); }
+                    else { activeLead.value._error = 'Failed to save changes.'; }
+                } catch (e) { activeLead.value._error = 'Network error while saving.'; }
             };
 
             const deleteLead = async () => {
-                if(!confirm("Delete this record permanently?")) return;
+                if (!activeLead.value._confirmDelete) {
+                    activeLead.value._confirmDelete = true;
+                    return;
+                }
                 try {
-                    await fetch(`${API_BASE_URL}/admin/leads/${activeLead.value.id}`, {
+                    const res = await fetch(`${API_BASE_URL}/admin/leads/${activeLead.value.id}`, {
                         method: 'DELETE',
                         headers: { 'Authorization': `Bearer ${apiKey.value}`, 'X-Admin-API-Key': apiKey.value }
                     });
-                    showModal.value = false; login();
-                } catch (e) { alert('Delete Failed'); }
+                    if (res.ok) { showModal.value = false; login(); }
+                    else { activeLead.value._error = 'Failed to delete record.'; }
+                } catch (e) { activeLead.value._error = 'Network error while deleting.'; }
             };
 
             const logout = () => { localStorage.removeItem('crmApiKey'); location.reload(); };
@@ -530,7 +557,6 @@
                 return r.sort((a,b) => new Date(b.appointment_date || '1970-01-01') - new Date(a.appointment_date || '1970-01-01'));
             });
 
-            // CRITICAL FIX: Restore job rows mapped for the table
             const generatedReport = computed(() => {
                 let f = leads.value.filter(l => getEffectiveStatus(l) === 'completed' || l.service_cost > 0 || extractPrice(l.pay) > 0);
                 if (reportContractor.value !== 'ALL') f = f.filter(l => l.contractor_id_field === reportContractor.value);
@@ -549,17 +575,42 @@
                 
                 let totalRevenue = 0;
                 let totalExpense = 0;
+                let totalProfit = 0;
                 
-                // Map the filtered leads to create rows for the table
                 const rows = f.map(l => {
-                    const rev = parseFloat(l.service_cost) || extractPrice(l.deal_name) || 0;
-                    const exp = parseFloat(l.contractor_expense) || extractPrice(l.pay) || 0;
-                    totalRevenue += rev;
-                    totalExpense += exp;
-                    return { ...l, revenue: rev, expense: exp, profit: rev - exp };
+                    // Extract exactly from the Legacy Pay text (Source of Truth)
+                    const parsedPay = extractPayAndTips(l.pay);
+                    const tips = parsedPay.tips || 0;
+                    
+                    // 1. PAYMENT AMOUNT: Use strictly the first number from the pay box to prevent double-counting.
+                    // (Only falls back to the database override if the text box is completely empty)
+                    const basePay = parsedPay.exp > 0 ? parsedPay.exp : (parseFloat(l.contractor_expense) || 0);
+                    
+                    // 2. DETAIL AMOUNT: Pull base service cost.
+                    let baseRev = parseFloat(l.service_cost) || extractPrice(l.deal_name) || 0;
+                    const dealPrice = extractPrice(l.deal_name);
+                    
+                    // Guard: If the saved service_cost accidentally already includes the tip, revert it to the base deal price
+                    if (dealPrice > 0 && baseRev === dealPrice + tips) {
+                        baseRev = dealPrice;
+                    }
+                    
+                    // 3. Price Tab: Detail Amount + Tips
+                    const totalRev = baseRev + tips;
+                    
+                    // 4. Pay Tab: Payment Amount + Tips
+                    const laborCost = basePay + tips;
+                    
+                    // 5. NET PROFIT Formula: ((Detail + Tips) * 0.80) - Base Payment - Tips - $80
+                    const netProfit = (totalRev * 0.80) - laborCost - 80;
+
+                    totalRevenue += totalRev;
+                    totalExpense += laborCost;
+                    totalProfit += netProfit;
+
+                    return { ...l, revenue: totalRev, expense: laborCost, tips: tips, profit: netProfit };
                 });
 
-                // Sort the table rows descending by date
                 rows.sort((a,b) => new Date(b.appointment_date || '1970-01-01') - new Date(a.appointment_date || '1970-01-01'));
 
                 return { 
@@ -567,7 +618,7 @@
                     jobCount: rows.length, 
                     totalRevenue,
                     totalExpense,
-                    totalProfit: totalRevenue - totalExpense, 
+                    totalProfit: totalProfit, 
                     avgTicket: rows.length ? (totalRevenue / rows.length) : 0 
                 };
             });
