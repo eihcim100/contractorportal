@@ -61,7 +61,7 @@
                 </div>
 
                 <div class="flex items-center space-x-4">
-                    <span class="text-sm text-gray-500 font-medium">Total Jobs: {{ leads.length }}</span>
+                    <span class="text-sm text-gray-500 font-medium">Total Jobs: {{ sortedFilteredLeads.length }}</span>
                     <button @click="logout" class="bg-red-50 hover:bg-red-100 text-red-600 font-semibold py-2 px-4 rounded-lg transition">Logout</button>
                 </div>
             </div>
@@ -120,6 +120,9 @@
                                         <button @click="editLead(lead)" class="bg-white text-blue-600 hover:bg-blue-600 hover:text-white font-black text-[10px] uppercase tracking-tighter border-2 border-blue-100 px-3 py-2 rounded-lg transition shadow-sm">View All</button>
                                     </td>
                                 </tr>
+                                <tr v-if="sortedFilteredLeads.length === 0 && !isLoading" class="text-center">
+                                    <td colspan="6" class="py-12 text-gray-400 font-medium">No active jobs found.</td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -127,7 +130,6 @@
             </div>
 
             <div v-if="currentTab === 'reports'" class="space-y-4">
-                
                 <div class="bg-white p-5 rounded-2xl shadow-sm border flex flex-col md:flex-row gap-4">
                     <div class="flex-1">
                         <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Timeframe</label>
@@ -202,13 +204,12 @@
                                     </td>
                                 </tr>
                                 <tr v-if="generatedReport.rows && generatedReport.rows.length === 0">
-                                    <td colspan="6" class="px-4 py-8 text-center text-gray-400 font-medium">No jobs found for this timeframe.</td>
+                                    <td colspan="6" class="px-4 py-8 text-center text-gray-400 font-medium">No completed jobs found for this timeframe.</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
-
             </div>
         </main>
     </div>
@@ -225,7 +226,6 @@
             
             <form @submit.prevent="saveLead" class="space-y-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- Column 1 -->
                     <div class="space-y-4">
                         <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
                             <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-3">Client Information</p>
@@ -254,7 +254,6 @@
                         </div>
                     </div>
 
-                    <!-- Column 2 -->
                     <div class="space-y-4">
                         <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
                             <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-3">Scheduling</p>
@@ -275,6 +274,7 @@
                                     <option value="accepted">Accepted / Claimed</option>
                                     <option value="completed">Completed</option>
                                     <option value="declined">Declined / Lost</option>
+                                    <option value="voided">Voided / Hidden</option>
                                 </select>
                             </div>
                         </div>
@@ -336,7 +336,7 @@
                 <div class="flex flex-col sm:flex-row gap-3 pt-4 border-t">
                     <button type="submit" class="w-full sm:flex-1 bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-xl shadow-lg transition transform active:scale-95">Save Job Details</button>
                     <button type="button" @click="deleteLead" :class="activeLead._confirmDelete ? 'bg-red-500 text-white' : 'text-red-500 hover:bg-red-50'" class="w-full sm:w-auto px-6 py-4 font-black text-[10px] uppercase tracking-widest rounded-xl transition">
-                        {{ activeLead._confirmDelete ? 'Confirm Delete' : 'Delete Record' }}
+                        {{ activeLead._confirmDelete ? 'Confirm Void' : 'Void Record' }}
                     </button>
                 </div>
             </form>
@@ -399,7 +399,6 @@
         let exp = 0;
         let tips = 0;
         if (!str) return { exp, tips };
-        // Find all numbers (including decimals) in the string
         const matches = [...String(str).replace(/,/g, '').matchAll(/[0-9]+(?:\.[0-9]+)?/g)];
         if (matches.length > 0) exp = parseFloat(matches[0][0]);
         if (matches.length > 1) tips = parseFloat(matches[1][0]);
@@ -424,6 +423,7 @@
             const reportContractor = ref('ALL');
 
             const getEffectiveStatus = (lead) => {
+                if (lead.status === 'voided') return 'voided'; // Automatically trap voided status
                 if (!lead.contractor_id_field || lead.contractor_id_field === '') return 'unassigned';
                 try {
                     const apptDateStr = lead.appointment_date; 
@@ -468,6 +468,7 @@
             const getStatusBadgeClass = (lead) => {
                 const status = getEffectiveStatus(lead);
                 const b = "px-2 py-1 text-[9px] font-black rounded uppercase tracking-widest border-2 ";
+                if (status === 'voided') return b + "bg-red-50 text-red-600 border-red-200";
                 if (status === 'unassigned') return b + "bg-yellow-50 text-yellow-600 border-yellow-200";
                 if (status === 'accepted') return b + "bg-blue-50 text-blue-600 border-blue-200";
                 if (status === 'completed') return b + "bg-purple-50 text-purple-600 border-purple-200";
@@ -537,19 +538,22 @@
                     return;
                 }
                 try {
+                    // This route points to the DELETE route which now safely updates the status to 'voided' in the DB
                     const res = await fetch(`${API_BASE_URL}/admin/leads/${activeLead.value.id}`, {
                         method: 'DELETE',
                         headers: { 'Authorization': `Bearer ${apiKey.value}`, 'X-Admin-API-Key': apiKey.value }
                     });
                     if (res.ok) { showModal.value = false; login(); }
-                    else { activeLead.value._error = 'Failed to delete record.'; }
-                } catch (e) { activeLead.value._error = 'Network error while deleting.'; }
+                    else { activeLead.value._error = 'Failed to void record.'; }
+                } catch (e) { activeLead.value._error = 'Network error while voiding.'; }
             };
 
             const logout = () => { localStorage.removeItem('crmApiKey'); location.reload(); };
 
             const sortedFilteredLeads = computed(() => {
-                let r = leads.value;
+                // EXPLICITLY FILTER OUT VOIDED JOBS FROM THE MAIN UI
+                let r = leads.value.filter(l => l.status !== 'voided');
+                
                 if (searchQuery.value) {
                     const q = searchQuery.value.toLowerCase();
                     r = r.filter(l => (l.customer_name||'').toLowerCase().includes(q) || (l.customer_phone||'').toLowerCase().includes(q) || (l.vehicle_make||'').toLowerCase().includes(q));
@@ -558,7 +562,9 @@
             });
 
             const generatedReport = computed(() => {
-                let f = leads.value.filter(l => getEffectiveStatus(l) === 'completed' || l.service_cost > 0 || extractPrice(l.pay) > 0);
+                // EXPLICITLY FILTER OUT VOIDED JOBS FROM THE ANALYTICS REPORT
+                let f = leads.value.filter(l => l.status !== 'voided' && (getEffectiveStatus(l) === 'completed' || l.service_cost > 0 || extractPrice(l.pay) > 0));
+                
                 if (reportContractor.value !== 'ALL') f = f.filter(l => l.contractor_id_field === reportContractor.value);
                 
                 const now = new Date();
@@ -578,30 +584,19 @@
                 let totalProfit = 0;
                 
                 const rows = f.map(l => {
-                    // Extract exactly from the Legacy Pay text (Source of Truth)
                     const parsedPay = extractPayAndTips(l.pay);
                     const tips = parsedPay.tips || 0;
-                    
-                    // 1. PAYMENT AMOUNT: Use strictly the first number from the pay box to prevent double-counting.
-                    // (Only falls back to the database override if the text box is completely empty)
                     const basePay = parsedPay.exp > 0 ? parsedPay.exp : (parseFloat(l.contractor_expense) || 0);
                     
-                    // 2. DETAIL AMOUNT: Pull base service cost.
                     let baseRev = parseFloat(l.service_cost) || extractPrice(l.deal_name) || 0;
                     const dealPrice = extractPrice(l.deal_name);
                     
-                    // Guard: If the saved service_cost accidentally already includes the tip, revert it to the base deal price
                     if (dealPrice > 0 && baseRev === dealPrice + tips) {
                         baseRev = dealPrice;
                     }
                     
-                    // 3. Price Tab: Detail Amount + Tips
                     const totalRev = baseRev + tips;
-                    
-                    // 4. Pay Tab: Payment Amount + Tips
                     const laborCost = basePay + tips;
-                    
-                    // 5. NET PROFIT Formula: ((Detail + Tips) * 0.80) - Base Payment - Tips - $80
                     const netProfit = (totalRev * 0.80) - laborCost - 80;
 
                     totalRevenue += totalRev;
