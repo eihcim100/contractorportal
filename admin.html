@@ -106,7 +106,6 @@
                                     </td>
                                     <td class="hidden md:table-cell px-4 py-4">
                                         <div class="text-sm font-bold text-gray-700">{{ lead.vehicle_year }} {{ lead.vehicle_make }}</div>
-                                        <!-- FIX: Removed max-w/truncate from service level so "Interior Level X" is fully visible -->
                                         <div class="text-[11px] font-bold text-gray-400 uppercase">{{ lead.service_level || 'Detail' }}</div>
                                     </td>
                                     <td class="hidden lg:table-cell px-4 py-4">
@@ -479,7 +478,6 @@
                 return b + "bg-gray-50 text-gray-400 border-gray-200";
             };
 
-            // FIX: Gracefully handle incomplete names to prevent empty space bugs
             const getContractorName = (email) => {
                 if (!email) return 'Unassigned';
                 const c = contractors.value.find(u => u.email === email);
@@ -494,14 +492,12 @@
                 isLoading.value = true; error.value = '';
                 try {
                     const h = { 'Authorization': `Bearer ${apiKey.value}`, 'X-Admin-API-Key': apiKey.value };
-                    // Fetch jobs from the CRM backend
                     const res = await fetch(`${API_BASE_URL}/admin/leads`, { headers: h });
                     if (res.ok) {
                         leads.value = await res.json();
                         isLoggedIn.value = true;
                         localStorage.setItem('crmApiKey', apiKey.value);
                         
-                        // FIX: Fetch users/contractors from the correct Admin Backend to map their names
                         const cRes = await fetch(`${ADMIN_API_BASE_URL}/admin/users`, { headers: h });
                         if (cRes.ok) contractors.value = await cRes.json();
                     } else { error.value = 'Invalid Key'; }
