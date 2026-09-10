@@ -106,7 +106,8 @@
                                     </td>
                                     <td class="hidden md:table-cell px-4 py-4">
                                         <div class="text-sm font-bold text-gray-700">{{ lead.vehicle_year }} {{ lead.vehicle_make }}</div>
-                                        <div class="text-[11px] font-bold text-gray-400 uppercase truncate max-w-[100px]">{{ lead.service_level || 'Detail' }}</div>
+                                        <!-- FIX: Removed max-w/truncate from service level so "Interior Level X" is fully visible -->
+                                        <div class="text-[11px] font-bold text-gray-400 uppercase">{{ lead.service_level || 'Detail' }}</div>
                                     </td>
                                     <td class="hidden lg:table-cell px-4 py-4">
                                         <div class="text-sm font-bold text-gray-600">{{ getContractorName(lead.contractor_id_field) }}</div>
@@ -346,7 +347,10 @@
 
 <script>
     const { createApp, ref, computed, onMounted } = Vue;
+    // CRM Backend URL (For Jobs/Leads)
     const API_BASE_URL = 'https://michie-detailing-backend.onrender.com';
+    // Admin Backend URL (For Contractors/Users)
+    const ADMIN_API_BASE_URL = 'https://michie-detailing-admin.onrender.com';
 
     function formatPhone(phone) {
         if (!phone) return phone;
@@ -423,7 +427,7 @@
             const reportContractor = ref('ALL');
 
             const getEffectiveStatus = (lead) => {
-                if (lead.status === 'voided') return 'voided'; // Automatically trap voided status
+                if (lead.status === 'voided') return 'voided'; 
                 if (!lead.contractor_id_field || lead.contractor_id_field === '') return 'unassigned';
                 try {
                     const apptDateStr = lead.appointment_date; 
@@ -475,22 +479,30 @@
                 return b + "bg-gray-50 text-gray-400 border-gray-200";
             };
 
+            // FIX: Gracefully handle incomplete names to prevent empty space bugs
             const getContractorName = (email) => {
                 if (!email) return 'Unassigned';
                 const c = contractors.value.find(u => u.email === email);
-                return c ? `${c.first_name} ${c.last_name}` : email.split('@')[0];
+                if (c) {
+                    const fullName = `${c.first_name || ''} ${c.last_name || ''}`.trim();
+                    return fullName !== '' ? fullName : email.split('@')[0];
+                }
+                return email.split('@')[0];
             };
 
             const login = async () => {
                 isLoading.value = true; error.value = '';
                 try {
                     const h = { 'Authorization': `Bearer ${apiKey.value}`, 'X-Admin-API-Key': apiKey.value };
+                    // Fetch jobs from the CRM backend
                     const res = await fetch(`${API_BASE_URL}/admin/leads`, { headers: h });
                     if (res.ok) {
                         leads.value = await res.json();
                         isLoggedIn.value = true;
                         localStorage.setItem('crmApiKey', apiKey.value);
-                        const cRes = await fetch(`${API_BASE_URL}/admin/users`, { headers: h });
+                        
+                        // FIX: Fetch users/contractors from the correct Admin Backend to map their names
+                        const cRes = await fetch(`${ADMIN_API_BASE_URL}/admin/users`, { headers: h });
                         if (cRes.ok) contractors.value = await cRes.json();
                     } else { error.value = 'Invalid Key'; }
                 } catch (e) { error.value = 'Server Error'; }
@@ -538,7 +550,6 @@
                     return;
                 }
                 try {
-                    // This route points to the DELETE route which now safely updates the status to 'voided' in the DB
                     const res = await fetch(`${API_BASE_URL}/admin/leads/${activeLead.value.id}`, {
                         method: 'DELETE',
                         headers: { 'Authorization': `Bearer ${apiKey.value}`, 'X-Admin-API-Key': apiKey.value }
@@ -551,7 +562,6 @@
             const logout = () => { localStorage.removeItem('crmApiKey'); location.reload(); };
 
             const sortedFilteredLeads = computed(() => {
-                // EXPLICITLY FILTER OUT VOIDED JOBS FROM THE MAIN UI
                 let r = leads.value.filter(l => l.status !== 'voided');
                 
                 if (searchQuery.value) {
@@ -562,7 +572,6 @@
             });
 
             const generatedReport = computed(() => {
-                // EXPLICITLY FILTER OUT VOIDED JOBS FROM THE ANALYTICS REPORT
                 let f = leads.value.filter(l => l.status !== 'voided' && (getEffectiveStatus(l) === 'completed' || l.service_cost > 0 || extractPrice(l.pay) > 0));
                 
                 if (reportContractor.value !== 'ALL') f = f.filter(l => l.contractor_id_field === reportContractor.value);
