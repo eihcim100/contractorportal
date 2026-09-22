@@ -247,10 +247,24 @@
 
                         <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
                             <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-3">Assigned Contractor</p>
-                            <select v-model="activeLead.contractor_id_field" class="custom-input font-bold text-gray-700">
+                            <select v-model="activeLead.contractor_id_field" class="custom-input font-bold text-gray-700 mb-2">
                                 <option value="">Select a Contractor</option>
                                 <option v-for="c in contractors" :key="c.email" :value="c.email">{{ c.first_name }} {{ c.last_name }}</option>
                             </select>
+                            
+                            <div v-if="activeLead.contractor_id_field" class="mt-2 pt-2 border-t border-gray-200">
+                                <button type="button" @click="triggerManualCall(activeLead.id)"
+                                        :disabled="activeLead._isCalling"
+                                        class="w-full text-xs font-bold py-3 rounded-lg border transition shadow-sm flex items-center justify-center gap-2"
+                                        :class="activeLead._callSuccess ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100' : 'bg-white text-blue-600 hover:bg-blue-50 border-blue-200'">
+                                    
+                                    <span v-if="!activeLead._callSuccess && !activeLead._isCalling">📞</span>
+                                    <span v-if="activeLead._callSuccess">✅</span>
+                                    <span v-if="activeLead._isCalling">⏳</span>
+                                    
+                                    {{ activeLead._callSuccess ? 'Reminder Sent!' : (activeLead._isCalling ? 'Triggering Call...' : 'Call contractor to remind them') }}
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -510,6 +524,8 @@
                 activeLead.value.display_date = formatDateForDisplay(lead.appointment_date);
                 activeLead.value._confirmDelete = false;
                 activeLead.value._error = '';
+                activeLead.value._isCalling = false;
+                activeLead.value._callSuccess = false;
                 if (!activeLead.value.service_cost) activeLead.value.service_cost = extractPrice(lead.deal_name);
                 if (!activeLead.value.contractor_expense) activeLead.value.contractor_expense = extractPrice(lead.pay);
                 showModal.value = true;
@@ -538,6 +554,44 @@
                     if (res.ok) { showModal.value = false; login(); }
                     else { activeLead.value._error = 'Failed to save changes.'; }
                 } catch (e) { activeLead.value._error = 'Network error while saving.'; }
+            };
+
+            const triggerManualCall = async (leadId) => {
+                activeLead.value._isCalling = true;
+                activeLead.value._callSuccess = false;
+                activeLead.value._error = '';
+
+                // Prompt user to save first if they just assigned someone but haven't hit save
+                const originalLead = leads.value.find(l => l.id === leadId);
+                if (originalLead && originalLead.contractor_id_field !== activeLead.value.contractor_id_field) {
+                     activeLead.value._error = 'Please save the new assigned contractor first before calling.';
+                     activeLead.value._isCalling = false;
+                     return;
+                }
+
+                try {
+                    const res = await fetch(`${API_BASE_URL}/admin/leads/${leadId}/trigger-call`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${apiKey.value}`, 'X-Admin-API-Key': apiKey.value }
+                    });
+                    
+                    if (res.ok) {
+                        activeLead.value._callSuccess = true;
+                        // Visual success confirmation for 3 seconds
+                        setTimeout(() => {
+                            if (activeLead.value.id === leadId) {
+                                activeLead.value._callSuccess = false;
+                            }
+                        }, 3000);
+                    } else {
+                        const data = await res.json();
+                        activeLead.value._error = data.message || 'Failed to trigger call.';
+                    }
+                } catch (e) {
+                    activeLead.value._error = 'Network error while triggering manual call.';
+                } finally {
+                    activeLead.value._isCalling = false;
+                }
             };
 
             const deleteLead = async () => {
@@ -628,7 +682,7 @@
             return { 
                 apiKey, isLoggedIn, isLoading, error, leads, contractors, searchQuery, sortedFilteredLeads, 
                 currentTab, showModal, activeLead, reportTimeframe, reportCustomStart, reportCustomEnd, reportContractor, generatedReport,
-                login, logout, editLead, saveLead, deleteLead, getContractorName, formatDateForDisplay, formatTime, getEffectiveStatus, getStatusBadgeClass
+                login, logout, editLead, saveLead, deleteLead, triggerManualCall, getContractorName, formatDateForDisplay, formatTime, getEffectiveStatus, getStatusBadgeClass
             };
         }
     }).mount('#app');
