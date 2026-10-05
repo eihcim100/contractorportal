@@ -8,7 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <!-- Google Places API configured with your restricted key -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCDfR7Vv_UgVUyhzdv6CmESubuV1MwufIw&libraries=places"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCDfR7Vv_UgVUyhzdv6CmESubuV1MwufIw&libraries=places&v=weekly"></script>
     <style>
         body { font-family: 'Inter', sans-serif; }
         [v-cloak] { display: none; }
@@ -49,6 +49,19 @@
         /* AutoComplete Dropdown Fix for Modals */
         .pac-container { z-index: 2000 !important; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); font-family: 'Inter', sans-serif;}
         
+        /* New Google Places Web Component Styling */
+        gmp-place-autocomplete {
+            width: 100%;
+            display: block;
+        }
+        gmp-place-autocomplete::part(input) {
+            padding: 0.75rem 1rem; border: 1px solid #d1d5db; border-radius: 0.5rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); 
+            background-color: #f9fafb; color: #1f2937; transition: all 0.2s ease-in-out; width: 100%; font-family: 'Inter', sans-serif;
+        }
+        gmp-place-autocomplete::part(input):focus {
+            outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25); background-color: #ffffff; 
+        }
+
         table { width: 100%; border-collapse: collapse; }
         th, td { padding: 12px 16px; border-bottom: 1px solid #e2e8f0; text-align: left; }
         th { background: #f8fafc; font-size: 0.85em; text-transform: uppercase; color: #64748b; font-weight: 700; }
@@ -221,7 +234,7 @@
                                 <label class="block text-sm font-bold text-emerald-800 mb-2">Service Coverage Areas (Cities)</label>
                                 <p class="text-xs text-gray-500 mb-3 font-medium">Type a city name (e.g., "Dallas, TX") to assign a 20-mile operational radius.</p>
                                 
-                                <input type="text" id="create-city-input" placeholder="Search for a city..." class="custom-input w-full border-emerald-300 focus:border-emerald-500 bg-white" @keydown.enter.prevent>
+                                <div id="create-city-input-container" class="w-full" @keydown.enter.prevent></div>
                                 
                                 <div class="flex flex-wrap gap-2 mt-4">
                                     <span v-for="(city, idx) in newContractor.service_cities" :key="idx" class="bg-emerald-100 text-emerald-800 text-sm font-bold px-3 py-1.5 rounded-lg flex items-center shadow-sm border border-emerald-200">
@@ -371,7 +384,7 @@
                     <!-- Radius Input for Edit -->
                     <div class="mt-4 pt-4 border-t border-gray-200">
                         <label class="block text-sm font-bold text-emerald-800 mb-2">Service Coverage Areas (Cities)</label>
-                        <input type="text" id="edit-city-input" placeholder="Search for a city..." class="custom-input w-full border-emerald-300 focus:border-emerald-500" @keydown.enter.prevent>
+                        <div id="edit-city-input-container" class="w-full" @keydown.enter.prevent></div>
                         
                         <div class="flex flex-wrap gap-2 mt-4">
                             <span v-for="(city, idx) in editingContractor.service_cities" :key="idx" class="bg-emerald-100 text-emerald-800 text-sm font-bold px-3 py-1.5 rounded-lg flex items-center shadow-sm border border-emerald-200">
@@ -705,22 +718,37 @@
                 };
 
                 // --- GOOGLE PLACES API INITIALIZATION LOGIC ---
-                const initPlacesAPI = (inputId, targetArray) => {
-                    const input = document.getElementById(inputId);
-                    if(!input) return;
+                const initPlacesAPI = (containerId, targetArray) => {
+                    const container = document.getElementById(containerId);
+                    if(!container) return;
                     
                     // Prevent multiple initializations if already done
-                    if (input.dataset.placesLoaded) return;
-                    input.dataset.placesLoaded = "true";
+                    if (container.dataset.placesLoaded) return;
+                    container.dataset.placesLoaded = "true";
 
-                    const autocomplete = new google.maps.places.Autocomplete(input, { types: ['(cities)'], componentRestrictions: { country: 'us' }});
-                    autocomplete.addListener('place_changed', () => {
-                        const place = autocomplete.getPlace();
-                        if (place.formatted_address) {
-                            if(!targetArray.includes(place.formatted_address)) {
-                                targetArray.push(place.formatted_address);
+                    // Use the new Web Component (PlaceAutocompleteElement)
+                    const autocompleteElement = new google.maps.places.PlaceAutocompleteElement();
+                    autocompleteElement.componentRestrictions = { country: 'us' };
+                    autocompleteElement.types = ['(cities)'];
+                    
+                    container.appendChild(autocompleteElement);
+
+                    autocompleteElement.addEventListener('gmp-placeselect', async (event) => {
+                        const place = event.place;
+                        if (!place) return;
+                        
+                        try {
+                            // fetchFields is required to obtain address text natively in the new API
+                            await place.fetchFields({ fields: ['formattedAddress'] });
+                            if (place.formattedAddress) {
+                                if(!targetArray.includes(place.formattedAddress)) {
+                                    targetArray.push(place.formattedAddress);
+                                }
+                                // Reset input after adding
+                                autocompleteElement.value = null; 
                             }
-                            input.value = ''; // Reset input after adding
+                        } catch (e) {
+                            console.error("Failed to fetch place details", e);
                         }
                     });
                 };
@@ -728,17 +756,17 @@
                 // Watchers to trigger Google Places script binding when elements become visible
                 watch(() => contractorTab.value, (newVal) => {
                     if (newVal === 'create' && activeMainTab.value === 'contractors') {
-                        nextTick(() => initPlacesAPI('create-city-input', newContractor.service_cities));
+                        nextTick(() => initPlacesAPI('create-city-input-container', newContractor.service_cities));
                     }
                 });
                 watch(() => activeMainTab.value, (newVal) => {
                     if (newVal === 'contractors' && contractorTab.value === 'create') {
-                        nextTick(() => initPlacesAPI('create-city-input', newContractor.service_cities));
+                        nextTick(() => initPlacesAPI('create-city-input-container', newContractor.service_cities));
                     }
                 });
                 watch(() => showEditModal.value, (newVal) => {
                     if (newVal) {
-                        nextTick(() => initPlacesAPI('edit-city-input', editingContractor.service_cities));
+                        nextTick(() => initPlacesAPI('edit-city-input-container', editingContractor.service_cities));
                     }
                 });
 
