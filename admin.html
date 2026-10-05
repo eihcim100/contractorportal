@@ -339,9 +339,13 @@
                             <input type="text" v-model="activeLead.vehicle_model" class="custom-input !py-2 text-sm" placeholder="Model">
                         </div>
                     </div>
+                    <div class="mb-3">
+                        <label class="text-[10px] font-black text-gray-400 uppercase mb-1">Job Notes (Contractors See This)</label>
+                        <textarea v-model="activeLead.job_notes" rows="2" class="custom-input" placeholder="Any specific instructions..."></textarea>
+                    </div>
                     <div>
-                        <label class="text-[10px] font-black text-gray-400 uppercase mb-1">Job Notes</label>
-                        <textarea v-model="activeLead.job_notes" rows="3" class="custom-input" placeholder="Any specific instructions..."></textarea>
+                        <label class="text-[10px] font-black text-blue-600 uppercase mb-1">AI & Admin Internal Notes (Hidden from Pros)</label>
+                        <textarea v-model="activeLead.ai_notes" rows="3" class="custom-input !border-blue-300 bg-blue-50/50" placeholder="AI interactions and admin notes..."></textarea>
                     </div>
                 </div>
 
@@ -689,3 +693,1499 @@
 </script>
 </body>
 </html>
+```eof
+
+```python:app.py
+# IMPORTANT: gevent monkey-patching must happen as early as possible
+from gevent import monkey; monkey.patch_all()
+
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+import os
+import uuid
+import sys
+import json
+import traceback
+import re
+import threading
+import requests
+import time
+from datetime import datetime, timezone, timedelta
+import pytz
+import psycopg2 
+import psycopg2.extras 
+from bcrypt import checkpw, hashpw, gensalt
+from functools import wraps
+from twilio.rest import Client 
+from twilio.twiml.messaging_response import MessagingResponse
+
+# ---> IMPORT NEW GOOGLE ADS HELPER <---
+from google_ads_sync import send_conversion_to_google
+
+# ---> IMPORT GEMINI AI AGENT <---
+from ai_agent import generate_gemini_reply, parse_lsa_message
+
+app = Flask(__name__)
+
+# --- CORS Configuration ---
+CORS(app, resources={r"/*": {
+    "origins": [
+        "https://jobs.michieauto.com",
+        "https://michieauto.com",
+        "https://michie-detailing-admin.onrender.com",
+        "https://quote.michieauto.com"
+    ],
+    "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    "allow_headers": ["Authorization", "Content-Type", "X-Admin-API-Key"]
+}}, supports_credentials=True)
+
+# --- Configuration ---
+DATABASE_URL = os.environ.get('DATABASE_URL')
+TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID')
+TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN')
+TWILIO_SMS_NUMBER = os.environ.get('TWILIO_SMS_NUMBER')
+OWNER_PHONE_NUMBER = os.environ.get('OWNER_PHONE_NUMBER')
+ADMIN_API_KEY = os.environ.get('ADMIN_API_KEY')
+CRON_JOB_SECRET = os.environ.get('CRON_JOB_SECRET') 
+APPOINTMENT_TIMEZONE = pytz.timezone('America/Chicago')
+
+# --- Retell AI Configs ---
+RETELL_API_KEY = os.environ.get('RETELL_API_KEY')
+RETELL_AGENT_ID = os.environ.get('RETELL_AGENT_ID')
+RETELL_FROM_NUMBER = os.environ.get('RETELL_FROM_NUMBER', TWILIO_SMS_NUMBER)
+
+# --- Twilio Setup ---
+twilio_client = None
+if all([TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_SMS_NUMBER]):
+    try:
+        twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+    except Exception as e:
+        print(f"ERROR: Failed to init Twilio: {e}", file=sys.stderr)
+
+def get_db_connection():
+    if not DATABASE_URL:
+        raise RuntimeError("DATABASE_URL environment variable is not set.")
+    return psycopg2.connect(DATABASE_URL)
+
+def extract_numeric(val):
+    if val is None: return 0.0
+    s_val = str(val).strip()
+    if not s_val: return 0.0
+    try:
+        cleaned = s_val.replace(',', '').replace('$', '')
+        res = re.findall(r"[-+]?\d*\.\d+|\d+", cleaned)
+        return float(res[0]) if res else 0.0
+    except:
+        return 0.0
+
+def parse_appointment_datetime(date_str, time_str):
+    if not date_str or date_str == 'N/A': return None
+    try:
+        dt_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        dt_time = None
+        if time_str and time_str != 'N/A':
+            for fmt in ('%H:%M:%S', '%H:%M', '%I:%M %p', '%I:%M:%S %p'):
+                try:
+                    dt_time = datetime.strptime(time_str, fmt).time()
+                    break
+                except ValueError: pass
+        
+        if not dt_time:
+            dt_time = datetime.strptime("23:59:59", "%H:%M:%S").time()
+        
+        unaware = datetime.combine(dt_date, dt_time)
+        return APPOINTMENT_TIMEZONE.localize(unaware)
+    except Exception:
+        return None
+
+def format_time_ampm(time_str):
+    if not time_str or time_str == "N/A": return "N/A"
+    for fmt in ('%H:%M:%S', '%H:%M', '%I:%M %p', '%I:%M:%S %p'):
+        try: return datetime.strptime(time_str, fmt).strftime('%I:%M %p')
+        except ValueError: pass
+    return time_str
+
+def format_date_mmddyyyy(date_str):
+    if not date_str or date_str == "N/A": return "N/A"
+    try: return datetime.strptime(date_str, '%Y-%m-%d').strftime('%m/%d/%Y')
+    except ValueError: return date_str
+
+def send_sms_notification(to_phone_number, message_body):
+    if not twilio_client or not to_phone_number: return False
+    try:
+        twilio_client.messages.create(from_=TWILIO_SMS_NUMBER, to=to_phone_number, body=message_body)
+        return True
+    except Exception as e:
+        print(f"ERROR: Failed to send SMS: {e}", file=sys.stderr)
+        return False
+
+def send_owner_job_accepted_sms(contractor_name, date_of_service, time_of_service, customer_name):
+    if not OWNER_PHONE_NUMBER: return False
+    message = (f"{contractor_name} has accepted a detail job for {format_date_mmddyyyy(date_of_service)} at "
+               f"{format_time_ampm(time_of_service)} for {customer_name}.")
+    return send_sms_notification(OWNER_PHONE_NUMBER, message)
+
+def initiate_retell_call(contractor_phone, contractor_name, appt_time, lead_id, contractor_job_type, appointment_date, contractorjob_year_make_model):
+    if not RETELL_API_KEY or not RETELL_AGENT_ID:
+        print("Missing Retell AI configuration, skipping AI call.")
+        return None
+        
+    url = "https://api.retellai.com/v2/create-phone-call"
+    headers = {
+        "Authorization": f"Bearer {RETELL_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "from_number": RETELL_FROM_NUMBER,
+        "to_number": contractor_phone,
+        "override_agent_id": RETELL_AGENT_ID,
+        "retell_llm_dynamic_variables": {
+            "contractor_name": contractor_name,
+            "contractor_job_type": contractor_job_type,
+            "appointment_date": appointment_date,
+            "appointment_time": appt_time,
+            "contractorjob_year_make_model": contractorjob_year_make_model
+        }
+    }
+    try:
+        resp = requests.post(url, json=data, headers=headers)
+        if resp.status_code in [200, 201]:
+            call_id = resp.json().get('call_id')
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("UPDATE leads SET retell_call_id = %s WHERE id = %s", (call_id, lead_id))
+            conn.commit()
+            conn.close()
+            return call_id
+    except Exception as e:
+        print(f"Retell Call Error: {e}")
+    return None
+
+def retell_retry_task(lead_id, contractor_phone, contractor_name, appt_time, contractor_job_type, appointment_date, contractorjob_year_make_model):
+    for attempt in range(4):
+        if attempt > 0:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT contractor_confirmed, reminder_3h_call_status FROM leads WHERE id = %s", (lead_id,))
+            record = cursor.fetchone()
+            conn.close()
+
+            if record:
+                confirmed, call_status = record
+                if confirmed or call_status == 'answered':
+                    return
+
+        initiate_retell_call(contractor_phone, contractor_name, appt_time, lead_id, contractor_job_type, appointment_date, contractorjob_year_make_model)
+        time.sleep(300) 
+        
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT contractor_confirmed, reminder_3h_call_status FROM leads WHERE id = %s", (lead_id,))
+    record = cursor.fetchone()
+    
+    if record:
+        confirmed, call_status = record
+        if not confirmed and call_status != 'answered':
+            msg = f"Hi {contractor_name}, we tried calling to confirm your detail job at {appt_time} but couldn't reach you. Please reply Y immediately to confirm you are still arriving on time."
+            send_sms_notification(contractor_phone, msg)
+            cursor.execute("UPDATE leads SET reminder_3h_fail_sms_sent = TRUE WHERE id = %s", (lead_id,))
+            conn.commit()
+    conn.close()
+
+def cron_job_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        auth_header = request.headers.get('Authorization')
+        if not CRON_JOB_SECRET: return jsonify({"message": "Endpoint not configured."}), 500
+        if not auth_header or auth_header != f'Bearer {CRON_JOB_SECRET}': return jsonify({"message": "Unauthorized"}), 403
+        return f(*args, **kwargs)
+    return decorated_function
+
+def authenticate_contractor(req):
+    auth_header = req.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '): return None
+    token = auth_header.split(' ')[1]
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT s.contractor_email 
+            FROM sessions s
+            JOIN users u ON s.contractor_email = u.email
+            WHERE s.token = %s
+        ''', (token,))
+        record = cursor.fetchone()
+        return record[0] if record else None
+    except: return None
+    finally:
+        if conn: conn.close()
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        auth_header = request.headers.get('Authorization')
+        x_key = request.headers.get('X-Admin-API-Key')
+        token = None
+        if auth_header and 'Bearer ' in auth_header:
+            token = auth_header.split(' ')[1]
+        elif x_key:
+            token = x_key
+        if not ADMIN_API_KEY or token != ADMIN_API_KEY:
+            return jsonify({"message": "Unauthorized access."}), 403
+        return f(*args, **kwargs)
+    return decorated_function
+
+# ==========================================
+# --- CONTRACTOR PORTAL ROUTES (/jobs) ---
+# ==========================================
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    username, password = data.get('username'), data.get('password')
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute("SELECT email, password_hash FROM users WHERE email = %s", (username,))
+        user = cursor.fetchone()
+        if user and checkpw(password.encode('utf-8'), user['password_hash'].encode('utf-8')):
+            token = uuid.uuid4().hex
+            cursor.execute("INSERT INTO sessions (token, contractor_email) VALUES (%s, %s)", (token, username))
+            conn.commit()
+            return jsonify({"token": token}), 200
+        return jsonify({"message": "Invalid credentials"}), 401
+    finally:
+        if conn: conn.close()
+
+@app.route('/jobs', methods=['GET'])
+def get_jobs():
+    contractor_email = authenticate_contractor(request)
+    if not contractor_email: return jsonify({"message": "Unauthorized"}), 401
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        query = """
+            SELECT * FROM leads 
+            WHERE (status = 'pending' AND id::text NOT IN (SELECT job_id FROM declined_jobs WHERE contractor_email = %s))
+            OR (status = 'accepted' AND contractor_id_field = %s)
+            ORDER BY appointment_date ASC, appointment_time ASC
+        """
+        cursor.execute(query, (contractor_email, contractor_email))
+        jobs = cursor.fetchall()
+        now_chicago = datetime.now(APPOINTMENT_TIMEZONE)
+        today_str = now_chicago.strftime('%Y-%m-%d')
+        filtered = []
+        for job in jobs:
+            appt_dt = parse_appointment_datetime(job['appointment_date'], job['appointment_time'])
+            if job['status'] == 'pending':
+                if job['appointment_date'] and job['appointment_date'] >= today_str:
+                    job['customer_name'] = job['customer_phone'] = job['customer_address'] = "N/A"
+                    filtered.append(job)
+            elif job['status'] == 'accepted':
+                if appt_dt:
+                    expiration = appt_dt + timedelta(hours=5)
+                    if now_chicago <= expiration: filtered.append(job)
+                elif job['appointment_date'] and job['appointment_date'] >= today_str:
+                    filtered.append(job)
+        for job in filtered:
+            if job.get('created_at'): job['created_at'] = str(job['created_at'])
+        return jsonify(filtered), 200
+    finally:
+        if conn: conn.close()
+
+@app.route('/jobs/<int:job_id>/accept', methods=['POST'])
+def accept_job(job_id):
+    contractor_email = authenticate_contractor(request)
+    if not contractor_email: return jsonify({"message": "Unauthorized"}), 401
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute("SELECT * FROM leads WHERE id = %s AND status = 'pending'", (job_id,))
+        job = cursor.fetchone()
+        if not job: return jsonify({"message": "Job taken or unavailable"}), 400
+        
+        cursor.execute("UPDATE leads SET status = 'accepted', contractor_id_field = %s WHERE id = %s", (contractor_email, job_id))
+        
+        cursor.execute("SELECT first_name, last_name FROM users WHERE email = %s", (contractor_email,))
+        user = cursor.fetchone()
+        c_name = f"{user['first_name']} {user['last_name']}".strip() if user else contractor_email
+        
+        send_owner_job_accepted_sms(c_name, job.get('appointment_date'), job.get('appointment_time'), job.get('customer_name'))
+        
+        conn.commit()
+        return jsonify({"message": "Job accepted"}), 200
+    except Exception as e:
+        if conn: conn.rollback()
+        return jsonify({"message": str(e)}), 500
+    finally:
+        if conn: conn.close()
+
+@app.route('/jobs/<int:job_id>/decline', methods=['POST'])
+def decline_job(job_id):
+    contractor_email = authenticate_contractor(request)
+    if not contractor_email: return jsonify({"message": "Unauthorized"}), 401
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO declined_jobs (contractor_email, job_id) VALUES (%s, %s) ON CONFLICT DO NOTHING", (contractor_email, str(job_id)))
+        conn.commit()
+        return jsonify({"message": "Declined"}), 200
+    finally:
+        if conn: conn.close()
+
+# ==========================================
+# --- CONTRACTOR AVAILABILITY ROUTES ---
+# ==========================================
+@app.route('/contractor/availability', methods=['GET'])
+def get_availability():
+    contractor_email = authenticate_contractor(request)
+    if not contractor_email: return jsonify({"message": "Unauthorized"}), 401
+
+    now_cst = datetime.now(APPOINTMENT_TIMEZONE)
+    today = now_cst.date()
+
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        # Get existing availability
+        cursor.execute("SELECT available_date, time_slots FROM contractor_availability WHERE contractor_email = %s AND available_date >= %s", (contractor_email, today))
+        avail_records = {str(r['available_date']): r['time_slots'] for r in cursor.fetchall()}
+
+        # Get accepted jobs for lock validation
+        cursor.execute("SELECT appointment_date FROM leads WHERE contractor_id_field = %s AND status = 'accepted' AND appointment_date >= %s", (contractor_email, today.strftime('%Y-%m-%d')))
+        job_dates = set([str(r['appointment_date']) for r in cursor.fetchall()])
+
+        days = []
+        for i in range(7):
+            d = today + timedelta(days=i)
+            d_str = d.strftime('%Y-%m-%d')
+            
+            has_job = (d_str in job_dates)
+            slots = avail_records.get(d_str, [])
+            
+            locked_slots_for_day = []
+            for s in ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00']:
+                try:
+                    slot_dt = APPOINTMENT_TIMEZONE.localize(datetime.strptime(f"{d_str} {s}", "%Y-%m-%d %H:%M"))
+                    time_diff_hours = (slot_dt - now_cst).total_seconds() / 3600.0
+                    
+                    # Lock if within strictly 48.0 hours OR if day has a job
+                    if time_diff_hours < 48.0 or has_job:
+                        locked_slots_for_day.append(s)
+                except:
+                    pass
+
+            days.append({
+                "date": d_str,
+                "display_date": d.strftime('%A, %b %d'),
+                "locked_slots": locked_slots_for_day,
+                "slots": slots
+            })
+        
+        return jsonify({"availability": days}), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+    finally:
+        if conn: conn.close()
+
+@app.route('/contractor/availability', methods=['POST'])
+def save_availability():
+    contractor_email = authenticate_contractor(request)
+    if not contractor_email: return jsonify({"message": "Unauthorized"}), 401
+
+    data = request.get_json()
+    updates = data.get('availability', {}) 
+
+    now_cst = datetime.now(APPOINTMENT_TIMEZONE)
+    today = now_cst.date()
+
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        cursor.execute('''CREATE TABLE IF NOT EXISTS contractor_availability (
+            contractor_email VARCHAR(255),
+            available_date DATE,
+            time_slots JSONB,
+            PRIMARY KEY (contractor_email, available_date)
+        )''')
+
+        cursor.execute("SELECT appointment_date FROM leads WHERE contractor_id_field = %s AND status = 'accepted' AND appointment_date >= %s", (contractor_email, today.strftime('%Y-%m-%d')))
+        job_dates = set([str(r['appointment_date']) for r in cursor.fetchall()])
+        
+        cursor.execute("SELECT available_date, time_slots FROM contractor_availability WHERE contractor_email = %s AND available_date >= %s", (contractor_email, today))
+        existing_avail = {str(r['available_date']): r['time_slots'] for r in cursor.fetchall()}
+
+        for date_str, incoming_slots in updates.items():
+            target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+            has_job = (date_str in job_dates)
+            
+            existing_slots = existing_avail.get(date_str, [])
+            final_slots = []
+            
+            # Check existing slots against exact 48-hour rule
+            for slot in existing_slots:
+                try:
+                    slot_dt = APPOINTMENT_TIMEZONE.localize(datetime.strptime(f"{date_str} {slot}", "%Y-%m-%d %H:%M"))
+                    time_diff_hours = (slot_dt - now_cst).total_seconds() / 3600.0
+                    
+                    if time_diff_hours < 48.0 or has_job:
+                        # LOCKED! They cannot remove this slot.
+                        final_slots.append(slot)
+                    else:
+                        # NOT LOCKED! Only keep if they checked it on the frontend.
+                        if slot in incoming_slots:
+                            final_slots.append(slot)
+                except:
+                    pass
+
+            # Add any new slots they checked (even if < 48 hrs, they can ALWAYS add availability)
+            for slot in incoming_slots:
+                if slot not in final_slots:
+                    final_slots.append(slot)
+
+            final_slots = sorted(list(set(final_slots)))
+
+            cursor.execute("""
+                INSERT INTO contractor_availability (contractor_email, available_date, time_slots)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (contractor_email, available_date)
+                DO UPDATE SET time_slots = EXCLUDED.time_slots
+            """, (contractor_email, target_date, json.dumps(final_slots)))
+        
+        conn.commit()
+        return jsonify({"message": "Availability updated successfully"}), 200
+    except Exception as e:
+        if conn: conn.rollback()
+        return jsonify({"message": str(e)}), 500
+    finally:
+        if conn: conn.close()
+
+# ==========================================
+# --- AUTOMATION & SMS ROUTES ---
+# ==========================================
+def log_interaction_to_crm(phone, customer_msg, ai_reply):
+    """Silently logs all back-and-forth SMS interactions to the customer's CRM record (ai_notes)."""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        digits = "".join(filter(str.isdigit, phone))[-10:]
+        cursor.execute("SELECT id, ai_notes FROM leads WHERE customer_phone LIKE %s ORDER BY created_at DESC LIMIT 1", (f"%{digits}%",))
+        lead = cursor.fetchone()
+        
+        if lead:
+            tz = pytz.timezone('America/Chicago')
+            timestamp = datetime.now(tz).strftime('%m/%d %I:%M %p')
+            new_entry = f"[{timestamp}] SMS - Cust: '{customer_msg}' | AI: '{ai_reply}'"
+            
+            existing_notes = lead.get('ai_notes') or ""
+            updated_notes = (existing_notes + "\n" + new_entry).strip()
+            
+            cursor.execute("UPDATE leads SET ai_notes = %s WHERE id = %s", (updated_notes, lead['id']))
+            conn.commit()
+    except Exception as e:
+        print(f"CRM Log Error: {e}")
+    finally:
+        if conn: conn.close()
+
+@app.route('/webhook/twilio', methods=['POST'])
+def handle_incoming_sms():
+    incoming_phone = request.values.get('From', '')
+    incoming_body = request.values.get('Body', '')
+    
+    print(f"LSA/Text Message Received from {incoming_phone}: {incoming_body}")
+
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        resp = MessagingResponse()
+
+        # 1. Check if the sender is a contractor
+        cursor.execute("SELECT email, first_name, last_name, phone_number FROM users WHERE phone_number = %s", (incoming_phone,))
+        contractor = cursor.fetchone()
+
+        if contractor:
+            c_email = contractor['email']
+            c_name = f"{contractor['first_name']} {contractor['last_name']}".strip()
+            c_phone = contractor['phone_number']
+            
+            # Check if they are responding "Y" or "Yes" to confirm an appointment
+            if incoming_body.strip().lower() in ['y', 'yes']:
+                now_date_str = datetime.now(APPOINTMENT_TIMEZONE).strftime('%Y-%m-%d')
+                
+                # Find their next unconfirmed job today or in the future
+                cursor.execute("""
+                    SELECT id, appointment_date, appointment_time, customer_name, vehicle_year, vehicle_make, vehicle_model, service_level
+                    FROM leads 
+                    WHERE contractor_id_field = %s 
+                      AND status = 'accepted'
+                      AND contractor_confirmed IS NOT TRUE
+                      AND appointment_date >= %s
+                    ORDER BY appointment_date ASC, appointment_time ASC LIMIT 1
+                """, (c_email, now_date_str))
+                
+                lead = cursor.fetchone()
+                
+                if lead:
+                    # They confirmed! Stop AI calls by setting 'answered' as well.
+                    cursor.execute("UPDATE leads SET contractor_confirmed = TRUE, reminder_3h_call_status = 'answered' WHERE id = %s", (lead['id'],))
+                    conn.commit()
+                    resp.message("Thank you for confirming your arrival! Have a great detail.")
+
+                    # Send structured confirmation text to the owner
+                    appt_date = format_date_mmddyyyy(lead.get('appointment_date'))
+                    appt_time = format_time_ampm(lead.get('appointment_time'))
+                    client_name = lead.get('customer_name', 'Unknown')
+                    
+                    v_year = lead.get('vehicle_year', '') or ''
+                    v_make = lead.get('vehicle_make', '') or ''
+                    v_model = lead.get('vehicle_model', '') or ''
+                    vehicle_info = f"{v_year} {v_make} {v_model}".strip() or "N/A"
+                    pkg_type = lead.get('service_level', 'Detailing')
+
+                    owner_conf_msg = (
+                        f"{c_name} has confirmed they will be at the appointment for {client_name} on schedule,\n"
+                        f"Appointment Time: {appt_date} at {appt_time}\n"
+                        f"Vehicle: {vehicle_info}\n"
+                        f"Service type: {pkg_type}"
+                    )
+                    send_sms_notification(OWNER_PHONE_NUMBER, owner_conf_msg)
+
+                    return str(resp), 200, {'Content-Type': 'text/xml'}
+            else:
+                # If they say something else (like "No"), we MUST halt future AI dials for their next job
+                now_date_str = datetime.now(APPOINTMENT_TIMEZONE).strftime('%Y-%m-%d')
+                cursor.execute("""
+                    SELECT id FROM leads 
+                    WHERE contractor_id_field = %s 
+                      AND status = 'accepted'
+                      AND contractor_confirmed IS NOT TRUE
+                      AND appointment_date >= %s
+                    ORDER BY appointment_date ASC, appointment_time ASC LIMIT 1
+                """, (c_email, now_date_str))
+                lead_to_stop = cursor.fetchone()
+                
+                if lead_to_stop:
+                    # Mark as answered to stop the AI, but DO NOT set 'contractor_confirmed' so the CRM is accurate
+                    cursor.execute("UPDATE leads SET reminder_3h_call_status = 'answered' WHERE id = %s", (lead_to_stop['id'],))
+                    conn.commit()
+            
+                # Forward to owner to handle the cancellation/delay
+                owner_msg = f"🚨 URGENT: Contractor {c_name} ({c_phone}) sent a message: '{incoming_body}'"
+                send_sms_notification(OWNER_PHONE_NUMBER, owner_msg)
+                
+                resp.message("Your message has been forwarded to our support team. We will review your concern and contact you shortly.")
+                return str(resp), 200, {'Content-Type': 'text/xml'}
+
+        # ---> AI CUSTOMER BACKGROUND THREAD LOGIC <---
+        def process_ai_reply_in_background(body, phone):
+            try:
+                # Let Gemini take 20-30 seconds to check tools if needed
+                dynamic_reply = generate_gemini_reply(body, phone)
+                if dynamic_reply and twilio_client:
+                    # Push the message back out using the REST API
+                    twilio_client.messages.create(
+                        from_=TWILIO_SMS_NUMBER, 
+                        to=phone, 
+                        body=dynamic_reply
+                    )
+                    # Silently log the interaction to the client's CRM file if they have one
+                    log_interaction_to_crm(phone, body, dynamic_reply)
+                    
+            except Exception as ai_err:
+                print(f"Background AI Error: {ai_err}")
+
+        # Spawn the thread immediately
+        threading.Thread(target=process_ai_reply_in_background, args=(incoming_body, incoming_phone)).start()
+        
+        # Return an empty 200 OK instantly so Twilio doesn't time out
+        return str(resp), 200, {'Content-Type': 'text/xml'}
+        
+    except Exception as e:
+        print(f"Webhook error: {e}")
+        return str(MessagingResponse()), 200, {'Content-Type': 'text/xml'}
+    finally:
+        if conn: conn.close()
+
+@app.route('/webhook/retell', methods=['POST'])
+def handle_retell_webhook():
+    try:
+        data = request.get_json()
+        event = data.get('event')
+        call_id = data.get('call', {}).get('call_id')
+        
+        if event in ['call_ended', 'call_analyzed']:
+            reason = data.get('call', {}).get('disconnection_reason', '')
+            call_analysis = data.get('call', {}).get('call_analysis', {})
+            custom_data = call_analysis.get('custom_analysis_data', {})
+            
+            # Map Retell reasons to status: dial_no_answer, voicemail_reached, dial_failed = failed
+            if reason in ['dial_no_answer', 'dial_busy', 'dial_failed', 'voicemail_reached', 'machine_detected']:
+                status = 'failed'
+            else:
+                # user_hangup, agent_hangup means they actually answered and spoke
+                status = 'answered'
+                
+            # Failsafe: If AI successfully gathered data, a human definitely spoke, stop dialing.
+            if custom_data and 'detailer_on_time' in custom_data:
+                status = 'answered'
+                
+            conn = get_db_connection()
+            # Upgrade to dict cursor to securely grab detailed job/user records below
+            cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            
+            # Update the call status in our CRM (this halts future calls automatically)
+            cursor.execute("UPDATE leads SET reminder_3h_call_status = %s WHERE retell_call_id = %s", (status, call_id))
+            conn.commit()
+
+            # SEND SUMMARY TEXT TO OWNER ONLY ON FULL ANALYSIS & ANSWERED CALL
+            if event == 'call_analyzed' and status == 'answered':
+                cursor.execute("""
+                    SELECT l.appointment_date, l.appointment_time, l.vehicle_year, 
+                           l.vehicle_make, l.vehicle_model, u.first_name, u.last_name
+                    FROM leads l
+                    LEFT JOIN users u ON l.contractor_id_field = u.email
+                    WHERE l.retell_call_id = %s
+                """, (call_id,))
+                
+                job = cursor.fetchone()
+                
+                if job:
+                    c_name = f"{job.get('first_name', '')} {job.get('last_name', '')}".strip() or "Unknown Detailer"
+                    appt_date = format_date_mmddyyyy(job.get('appointment_date'))
+                    appt_time = format_time_ampm(job.get('appointment_time'))
+                    
+                    v_year = job.get('vehicle_year', '') or ''
+                    v_make = job.get('vehicle_make', '') or ''
+                    v_model = job.get('vehicle_model', '') or ''
+                    vehicle_info = f"{v_year} {v_make} {v_model}".strip() or "N/A"
+                    
+                    summary = call_analysis.get('call_summary', 'No summary generated by AI.')
+                    
+                    # Estimate if they are arriving on time based on Retell's custom analysis variable 'detailer_on_time'
+                    on_time_status = "Unknown"
+                    is_confirmed = False
+                    
+                    if custom_data and 'detailer_on_time' in custom_data:
+                        on_time_val = str(custom_data.get('detailer_on_time', '')).strip().lower()
+                        if on_time_val == 'yes':
+                            on_time_status = "Yes"
+                            is_confirmed = True
+                        elif on_time_val == 'no':
+                            on_time_status = "No (WARNING - See Summary)"
+                        else:
+                            # In case the AI returns something slightly different
+                            on_time_status = str(custom_data.get('detailer_on_time'))
+                    else:
+                        # Fallback if the variable wasn't generated by Retell
+                        lower_sum = summary.lower()
+                        if any(word in lower_sum for word in ['late', 'delay', 'cancel', 'cannot make', 'reschedule', "won't make"]):
+                            on_time_status = "WARNING: See Summary (Might be late/canceled)"
+                        else:
+                            on_time_status = "Yes (Assumed by successful call)"
+                            is_confirmed = True
+
+                    # ONLY mark confirmed if they actually answered Yes
+                    if is_confirmed:
+                        cursor.execute("UPDATE leads SET contractor_confirmed = TRUE WHERE retell_call_id = %s", (call_id,))
+                        conn.commit()
+
+                    msg = (
+                        f"DETAIL REMINDER CALL SUMMARY\n"
+                        f"Detailer: {c_name}\n"
+                        f"Job: {appt_date} @ {appt_time}\n"
+                        f"Vehicle: {vehicle_info}\n"
+                        f"On Time: {on_time_status}\n"
+                        f"Summary: {summary}"
+                    )
+                    send_sms_notification(OWNER_PHONE_NUMBER, msg)
+            
+            conn.close()
+            
+        return jsonify({"status": "ok"}), 200
+    except Exception as e:
+        print(f"Retell Webhook error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/send-reminders', methods=['POST'])
+@cron_job_required
+def send_reminders():
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        # Database updates to hold our new tracking criteria (Linking it into the CRM)
+        try:
+            cursor.execute("ALTER TABLE leads ADD COLUMN IF NOT EXISTS reminder_12h_sent BOOLEAN DEFAULT FALSE;")
+            cursor.execute("ALTER TABLE leads ADD COLUMN IF NOT EXISTS reminder_6h_sms_sent BOOLEAN DEFAULT FALSE;")
+            cursor.execute("ALTER TABLE leads ADD COLUMN IF NOT EXISTS reminder_4h_sms_sent BOOLEAN DEFAULT FALSE;")
+            cursor.execute("ALTER TABLE leads ADD COLUMN IF NOT EXISTS reminder_3h_sms_sent BOOLEAN DEFAULT FALSE;")
+            cursor.execute("ALTER TABLE leads ADD COLUMN IF NOT EXISTS reminder_3h_sent BOOLEAN DEFAULT FALSE;") # For customer SMS
+            cursor.execute("ALTER TABLE leads ADD COLUMN IF NOT EXISTS reminder_3h_call_initiated BOOLEAN DEFAULT FALSE;")
+            cursor.execute("ALTER TABLE leads ADD COLUMN IF NOT EXISTS reminder_3h_fail_sms_sent BOOLEAN DEFAULT FALSE;")
+            cursor.execute("ALTER TABLE leads ADD COLUMN IF NOT EXISTS contractor_confirmed BOOLEAN DEFAULT FALSE;")
+            cursor.execute("ALTER TABLE leads ADD COLUMN IF NOT EXISTS retell_call_id VARCHAR(255);")
+            cursor.execute("ALTER TABLE leads ADD COLUMN IF NOT EXISTS reminder_3h_call_status VARCHAR(50);")
+            
+            cursor.execute('''CREATE TABLE IF NOT EXISTS contractor_availability (
+                contractor_email VARCHAR(255),
+                available_date DATE,
+                time_slots JSONB,
+                PRIMARY KEY (contractor_email, available_date)
+            )''')
+            conn.commit()
+        except: 
+            conn.rollback()
+
+        now_chicago = datetime.now(APPOINTMENT_TIMEZONE)
+
+        query = """
+            SELECT l.*, u.phone_number as contractor_phone, u.first_name as contractor_fname
+            FROM leads l
+            LEFT JOIN users u ON l.contractor_id_field = u.email
+            WHERE l.status = 'accepted' 
+              AND (
+                  l.reminder_12h_sent IS NOT TRUE 
+                  OR l.reminder_6h_sms_sent IS NOT TRUE
+                  OR l.reminder_4h_sms_sent IS NOT TRUE
+                  OR l.reminder_3h_sms_sent IS NOT TRUE
+                  OR l.reminder_3h_sent IS NOT TRUE 
+                  OR l.reminder_3h_call_initiated IS NOT TRUE
+              )
+        """
+        cursor.execute(query)
+        jobs = cursor.fetchall()
+        
+        messages_sent = 0
+        ai_calls_triggered = 0
+        
+        for job in jobs:
+            appt_dt = parse_appointment_datetime(job['appointment_date'], job['appointment_time'])
+            if not appt_dt:
+                continue
+            
+            time_diff = appt_dt - now_chicago
+            hours_until_appt = time_diff.total_seconds() / 3600.0
+
+            if hours_until_appt <= 0:
+                continue
+
+            appt_time = format_time_ampm(job.get('appointment_time'))
+            appt_date_formatted = format_date_mmddyyyy(job.get('appointment_date'))
+            
+            c_fname = job.get('contractor_fname', 'One of our pros')
+            cust_fname = job.get('customer_name', 'there').split(' ')[0]
+            contractor_phone = job.get('contractor_phone')
+            customer_phone = job.get('customer_phone')
+            pkg_type = job.get('service_level', 'Detailing')
+            v_year = job.get('vehicle_year', '')
+            v_make = job.get('vehicle_make', '')
+            v_model = job.get('vehicle_model', '')
+            
+            vehicle_info = f"{v_year} {v_make} {v_model}".strip()
+
+            # The reminder message for the contractor
+            contractor_reminder_msg = f"This is a reminder that you have an upcoming {pkg_type} job at {appt_time} in {job.get('zip_code')} login to the portal to see the job address, and make sure to arrive on time! Please reply Y to confirm you will arrive on time for this job. Otherwise - please contact support as soon as possible by replying to this message."
+
+            # --- 3 HOUR AI CALL (CONTRACTOR) & REMINDER SMS (CONTRACTOR & CUSTOMER) ---
+            if hours_until_appt <= 3.0:
+                
+                # Customer SMS Logic
+                if not job.get('reminder_3h_sent'):
+                    if customer_phone and customer_phone != 'N/A':
+                        cust_msg = f"Michie Auto Detailing: Hi {cust_fname}, {c_fname} will be arriving in ~3 hours for your detail appointment. Please reminder to remove all valuables and personal items from your vehicle before we arrive!"
+                        if send_sms_notification(customer_phone, cust_msg):
+                            messages_sent += 1
+                    # Mark all previous as sent just in case
+                    cursor.execute("UPDATE leads SET reminder_3h_sent = TRUE, reminder_12h_sent = TRUE, reminder_6h_sms_sent = TRUE, reminder_4h_sms_sent = TRUE WHERE id = %s", (job['id'],))
+                    conn.commit()
+                
+                # Contractor 3h SMS Logic (If not confirmed)
+                if not job.get('reminder_3h_sms_sent') and not job.get('contractor_confirmed'):
+                     if contractor_phone:
+                        if send_sms_notification(contractor_phone, contractor_reminder_msg):
+                            messages_sent += 1
+                     cursor.execute("UPDATE leads SET reminder_3h_sms_sent = TRUE WHERE id = %s", (job['id'],))
+                     conn.commit()
+
+                # Retell AI Call to Contractor Logic
+                if contractor_phone and not job.get('reminder_3h_call_initiated'):
+                    cursor.execute("UPDATE leads SET reminder_3h_call_initiated = TRUE WHERE id = %s", (job['id'],))
+                    conn.commit()
+                    # Spawn Background thread to handle 4x Retell calls without blocking the cron endpoint
+                    threading.Thread(target=retell_retry_task, args=(
+                        job['id'], contractor_phone, c_fname, appt_time, 
+                        pkg_type, appt_date_formatted, vehicle_info
+                    )).start()
+                    ai_calls_triggered += 1
+
+            # --- 4 HOUR SMS REMINDER (CONTRACTOR) ---
+            elif hours_until_appt <= 4.0 and not job.get('reminder_4h_sms_sent'):
+                if contractor_phone and not job.get('contractor_confirmed'):
+                    if send_sms_notification(contractor_phone, contractor_reminder_msg):
+                        messages_sent += 1
+                
+                cursor.execute("UPDATE leads SET reminder_4h_sms_sent = TRUE, reminder_6h_sms_sent = TRUE, reminder_12h_sent = TRUE WHERE id = %s", (job['id'],))
+                conn.commit()
+
+            # --- 6 HOUR SMS REMINDER (CONTRACTOR) ---
+            elif hours_until_appt <= 6.0 and not job.get('reminder_6h_sms_sent'):
+                if contractor_phone and not job.get('contractor_confirmed'):
+                    if send_sms_notification(contractor_phone, contractor_reminder_msg):
+                        messages_sent += 1
+                
+                cursor.execute("UPDATE leads SET reminder_6h_sms_sent = TRUE, reminder_12h_sent = TRUE WHERE id = %s", (job['id'],))
+                conn.commit()
+
+            # --- 12 HOUR SMS REMINDER (CONTRACTOR) ---
+            elif hours_until_appt <= 12.0 and not job.get('reminder_12h_sent'):
+                if contractor_phone and not job.get('contractor_confirmed'):
+                    if send_sms_notification(contractor_phone, contractor_reminder_msg):
+                        messages_sent += 1
+                
+                cursor.execute("UPDATE leads SET reminder_12h_sent = TRUE WHERE id = %s", (job['id'],))
+                conn.commit()
+
+        return jsonify({
+            "message": "Reminders processed.",
+            "sms_sent": messages_sent,
+            "ai_calls_triggered": ai_calls_triggered
+        }), 200
+
+    except Exception as e:
+        print(f"ERROR in /send-reminders: {e}", file=sys.stderr)
+        return jsonify({"message": str(e)}), 500
+    finally:
+        if conn: conn.close()
+
+@app.route('/public/appointment', methods=['POST', 'OPTIONS'])
+def public_book_appointment():
+    if request.method == 'OPTIONS': return jsonify({}), 200
+    data = request.get_json()
+    
+    full_name = data.get('full_name')
+    email = data.get('email')
+    phone = data.get('phone')
+    address = data.get('address')
+    zip_code = data.get('zip_code')
+    year = data.get('vehicle_year')
+    make = data.get('vehicle_make')
+    model = data.get('vehicle_model')
+    b_date = data.get('date')
+    b_time = data.get('time')
+    pkg = data.get('package_type')
+    deal = data.get('deal_name')
+    notes = data.get('job_notes')
+    
+    ai_notes = data.get('ai_notes', '')
+    before_photos = data.get('before_photos', '[]')
+    
+    if isinstance(before_photos, list):
+        before_photos = json.dumps(before_photos)
+    
+    raw_price = data.get('package_price')
+    raw_pay = data.get('contractor_pay')
+
+    if not all([full_name, email, phone, address, zip_code, year, make, model, b_date, b_time, pkg]):
+        return jsonify({"message": "Missing required booking information."}), 400
+
+    conn = None
+    lead_id = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute("ALTER TABLE leads ADD COLUMN IF NOT EXISTS deal_name TEXT;")
+            cursor.execute("ALTER TABLE leads ADD COLUMN IF NOT EXISTS pay TEXT;")
+            cursor.execute("ALTER TABLE leads ADD COLUMN IF NOT EXISTS service_cost NUMERIC(10,2) DEFAULT 0;")
+            cursor.execute("ALTER TABLE leads ADD COLUMN IF NOT EXISTS contractor_expense NUMERIC(10,2) DEFAULT 0;")
+            cursor.execute("ALTER TABLE leads ADD COLUMN IF NOT EXISTS ai_notes TEXT;")
+            cursor.execute("ALTER TABLE leads ADD COLUMN IF NOT EXISTS before_photos JSONB;")
+        except: conn.rollback()
+
+        cursor.execute("SELECT id FROM customers WHERE email = %s", (email,))
+        cust_rec = cursor.fetchone()
+        if cust_rec:
+            customer_id = cust_rec[0]
+            cursor.execute("UPDATE customers SET full_name=%s, phone=%s, address=%s, zip_code=%s WHERE id=%s", (full_name, phone, address, zip_code, customer_id))
+        else:
+            cursor.execute("INSERT INTO customers (full_name, email, phone, address, zip_code, password_hash) VALUES (%s,%s,%s,%s,%s,%s) RETURNING id", (full_name, email, phone, address, zip_code, ""))
+            customer_id = cursor.fetchone()[0]
+        
+        cursor.execute("INSERT INTO vehicles (customer_id, year, make, model, is_primary) VALUES (%s,%s,%s,%s,%s)", (customer_id, year, make, model, True))
+
+        numeric_cost = extract_numeric(raw_price)
+        numeric_expense = extract_numeric(raw_pay)
+
+        cursor.execute("""
+            INSERT INTO leads (
+                customer_name, customer_phone, customer_address, zip_code,
+                vehicle_year, vehicle_make, vehicle_model,
+                appointment_date, appointment_time, service_level, job_notes, 
+                pay, deal_name, service_cost, contractor_expense, status,
+                ai_notes, before_photos
+            ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending',%s,%s)
+            RETURNING id
+        """, (
+            full_name, phone, address, zip_code, year, make, model,
+            b_date, b_time, pkg, notes, str(raw_pay), str(deal), numeric_cost, numeric_expense,
+            ai_notes, before_photos
+        ))
+        
+        result = cursor.fetchone()
+        if result:
+            lead_id = result[0]
+        
+        conn.commit()
+
+        def run_google_sync():
+            try:
+                send_conversion_to_google(phone_number=phone, order_id=lead_id, conversion_value=numeric_cost)
+            except Exception as e:
+                print(f"Background Google Ads sync failed: {e}")
+                
+        threading.Thread(target=run_google_sync).start()
+
+        cursor.execute("SELECT phone_number FROM users WHERE phone_number IS NOT NULL AND phone_number != ''")
+        for num in cursor.fetchall():
+            msg = f"New detail job is available in {zip_code} on {format_date_mmddyyyy(b_date)} at {format_time_ampm(b_time)}. Login now to claim! https://jobs.michieauto.com/"
+            send_sms_notification(num[0], msg)
+
+        return jsonify({"message": "Appointment booked successfully!"}), 201
+    except Exception as e:
+        if conn: conn.rollback()
+        return jsonify({"message": str(e)}), 500
+    finally:
+        if conn: conn.close()
+
+# ==========================================
+# --- INTERNAL API & CRM (LEAD) ROUTES ---
+# ==========================================
+@app.route('/api/internal/lead/<int:lead_id>', methods=['GET'])
+@admin_required
+def internal_get_lead(lead_id):
+    """Internal Endpoint used by QA Server to retrieve Before Photos/Notes & Details"""
+    conn = None
+    try:
+        conn = get_db_connection()
+        
+        try:
+            mig_cursor = conn.cursor()
+            mig_cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS deel_contract_id VARCHAR(255);")
+            conn.commit()
+            mig_cursor.close()
+        except Exception as e:
+            conn.rollback()
+
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        
+        # Pulling back the new CRM data parameters included
+        cursor.execute("""
+            SELECT l.id, l.before_photos, l.ai_notes, 
+                   l.customer_name, l.customer_phone, l.service_cost, l.contractor_expense,
+                   l.contractor_confirmed, l.reminder_3h_call_status, l.reminder_6h_sms_sent,
+                   u.deel_contract_id
+            FROM leads l
+            LEFT JOIN users u ON l.contractor_id_field = u.email
+            WHERE l.id = %s AND l.status != 'voided'
+        """, (lead_id,))
+        
+        lead = cursor.fetchone()
+        if not lead: return jsonify({"error": "Lead not found"}), 404
+        return jsonify(dict(lead)), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn: conn.close()
+
+@app.route('/admin/leads', methods=['GET'])
+@admin_required
+def admin_get_all_leads():
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute("SELECT * FROM leads WHERE status != 'voided' ORDER BY appointment_date DESC, created_at DESC")
+        leads = cursor.fetchall()
+        for lead in leads:
+            if lead.get('created_at'): lead['created_at'] = str(lead['created_at'])
+        return jsonify(leads), 200
+    finally:
+        if conn: conn.close()
+
+@app.route('/admin/leads/<int:lead_id>', methods=['PUT'])
+@admin_required
+def admin_update_lead(lead_id):
+    data = request.get_json()
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # 1. Fetch current date/time to see if it's being rescheduled
+        cursor.execute("SELECT appointment_date, appointment_time FROM leads WHERE id=%s", (lead_id,))
+        current_lead = cursor.fetchone()
+        
+        date_time_changed = False
+        if current_lead:
+            old_date = str(current_lead[0]) if current_lead[0] else None
+            old_time = str(current_lead[1]) if current_lead[1] else None
+            new_date = data.get('appointment_date')
+            new_time = data.get('appointment_time')
+            
+            if old_date != new_date or old_time != new_time:
+                date_time_changed = True
+
+        # If admin interface wants to override the confirmed status, we allow it
+        contractor_confirmed = data.get('contractor_confirmed')
+        if contractor_confirmed is None: contractor_confirmed = False
+
+        # 2. If rescheduled, reset all reminder flags so the cycle starts over
+        if date_time_changed:
+            query = """
+                UPDATE leads SET 
+                    customer_name=%s, customer_phone=%s, customer_address=%s, zip_code=%s,
+                    vehicle_year=%s, vehicle_make=%s, vehicle_model=%s,
+                    appointment_date=%s, appointment_time=%s,
+                    pay=%s, service_level=%s, job_notes=%s, status=%s, contractor_id_field=%s,
+                    service_cost=%s, contractor_expense=%s, contractor_confirmed=%s, ai_notes=%s,
+                    reminder_12h_sent=FALSE, reminder_6h_sms_sent=FALSE, 
+                    reminder_4h_sms_sent=FALSE, reminder_3h_sms_sent=FALSE,
+                    reminder_3h_sent=FALSE, reminder_3h_call_initiated=FALSE, 
+                    reminder_3h_fail_sms_sent=FALSE, reminder_3h_call_status=NULL
+                WHERE id=%s
+            """
+            # Force them to re-confirm the new date/time
+            contractor_confirmed = False
+        else:
+            query = """
+                UPDATE leads SET 
+                    customer_name=%s, customer_phone=%s, customer_address=%s, zip_code=%s,
+                    vehicle_year=%s, vehicle_make=%s, vehicle_model=%s,
+                    appointment_date=%s, appointment_time=%s,
+                    pay=%s, service_level=%s, job_notes=%s, status=%s, contractor_id_field=%s,
+                    service_cost=%s, contractor_expense=%s, contractor_confirmed=%s, ai_notes=%s
+                WHERE id=%s
+            """
+
+        cursor.execute(query, (
+            data.get('customer_name'), data.get('customer_phone'), data.get('customer_address'), data.get('zip_code'),
+            data.get('vehicle_year'), data.get('vehicle_make'), data.get('vehicle_model'),
+            data.get('appointment_date'), data.get('appointment_time'),
+            data.get('pay'), data.get('service_level'), data.get('job_notes'), data.get('status'), data.get('contractor_id_field'),
+            data.get('service_cost', 0) or 0, data.get('contractor_expense', 0) or 0,
+            contractor_confirmed, data.get('ai_notes', ''),
+            lead_id
+        ))
+        conn.commit()
+        return jsonify({"message": "Lead updated"}), 200
+    except Exception as e:
+        if conn: conn.rollback()
+        return jsonify({"message": str(e)}), 500
+    finally:
+        if conn: conn.close()
+
+@app.route('/admin/leads/<int:lead_id>/trigger-call', methods=['POST'])
+@admin_required
+def admin_trigger_manual_call(lead_id):
+    """
+    Manually triggers the Retell AI contractor call via the 4-times retry logic.
+    Forces reset on their confirmation status if requested.
+    """
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        # 1. Gather all info required to make the AI call
+        cursor.execute("""
+            SELECT l.*, u.phone_number as contractor_phone, u.first_name as contractor_fname
+            FROM leads l
+            LEFT JOIN users u ON l.contractor_id_field = u.email
+            WHERE l.id = %s
+        """, (lead_id,))
+        job = cursor.fetchone()
+
+        if not job:
+            return jsonify({"message": "Job not found"}), 404
+        
+        if not job.get('contractor_phone'):
+            return jsonify({"message": "No contractor assigned or contractor is missing a phone number."}), 400
+
+        # 2. Reset the flags so the retell retry task naturally runs up to 4 times
+        #    instead of seeing "confirmed" and exiting instantly.
+        cursor.execute("""
+            UPDATE leads 
+            SET contractor_confirmed = FALSE, 
+                reminder_3h_call_status = NULL,
+                reminder_3h_fail_sms_sent = FALSE,
+                reminder_3h_call_initiated = TRUE
+            WHERE id = %s
+        """, (lead_id,))
+        conn.commit()
+
+        # 3. Process dynamic fields to match Retell variables
+        appt_time = format_time_ampm(job.get('appointment_time'))
+        appt_date_formatted = format_date_mmddyyyy(job.get('appointment_date'))
+        c_fname = job.get('contractor_fname', 'One of our pros')
+        contractor_phone = job.get('contractor_phone')
+        pkg_type = job.get('service_level', 'Detailing')
+        
+        v_year = job.get('vehicle_year', '')
+        v_make = job.get('vehicle_make', '')
+        v_model = job.get('vehicle_model', '')
+        vehicle_info = f"{v_year} {v_make} {v_model}".strip()
+
+        # 4. Spin up the background thread to handle the dial(s)
+        threading.Thread(target=retell_retry_task, args=(
+            job['id'], contractor_phone, c_fname, appt_time, 
+            pkg_type, appt_date_formatted, vehicle_info
+        )).start()
+
+        return jsonify({"message": "Reminder Sent!"}), 200
+
+    except Exception as e:
+        if conn: conn.rollback()
+        print(f"Manual Retell Trigger Error: {e}")
+        return jsonify({"message": str(e)}), 500
+    finally:
+        if conn: conn.close()
+
+@app.route('/admin/leads/<int:lead_id>', methods=['DELETE'])
+@admin_required
+def admin_delete_lead(lead_id):
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE leads SET status = 'voided' WHERE id=%s", (lead_id,))
+        conn.commit()
+        return jsonify({"message": "Lead voided successfully"}), 200
+    finally:
+        if conn: conn.close()
+
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
+```eof
+
+```python:ai_agent.py
+import os
+import requests
+import psycopg2
+import psycopg2.extras
+from datetime import datetime
+import pytz
+from google import genai
+from google.genai import types
+from twilio.rest import Client
+
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
+TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID')
+TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN')
+TWILIO_SMS_NUMBER = os.environ.get('TWILIO_SMS_NUMBER')
+OWNER_PHONE_NUMBER = os.environ.get('OWNER_PHONE_NUMBER')
+DATABASE_URL = os.environ.get('DATABASE_URL')
+CALENDAR_SERVER_URL = os.environ.get("CALENDAR_SERVER_URL", "https://calendar-system-l6vb.onrender.com")
+
+ai_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
+twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN) if all([TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN]) else None
+
+def check_availability(date: str, zip_code: str) -> str:
+    """
+    Checks the calendar for available appointment slots. 
+    Args:
+        date: The date to check MUST be in EXACTLY 'YYYY-MM-DD' format (e.g., '2026-10-06').
+        zip_code: The customer's zip code (REQUIRED to check availability).
+    """
+    try:
+        datetime.strptime(date, "%Y-%m-%d")
+        if not zip_code:
+            return "ERROR: You must collect the zip code from the customer before using this tool."
+            
+        target_url = f"{CALENDAR_SERVER_URL.rstrip('/')}/api/available_slots"
+        params = {"date": date, "zip_code": zip_code}
+            
+        resp = requests.get(target_url, params=params, timeout=10)
+        
+        if resp.status_code == 200:
+            return str(resp.json())
+        else:
+            return f"Error: Calendar server returned status {resp.status_code}. Response: {resp.text}"
+            
+    except ValueError:
+        return f"CRITICAL ERROR: You passed '{date}'. You MUST pass the date in 'YYYY-MM-DD' format. Recalculate and try again."
+    except Exception as e:
+        return f"Error checking calendar: {str(e)}"
+
+def check_quote_status(phone: str) -> str:
+    """
+    Checks if a customer has completed an AI vehicle scan/quote.
+    Args:
+        phone: The customer's 10-digit phone number.
+    """
+    try:
+        leads_url = "https://quote.michieauto.com/admin/leads"
+        resp = requests.get(leads_url, timeout=10)
+        if resp.status_code == 200:
+            leads = resp.json()
+            digits = "".join(filter(str.isdigit, phone))[-10:]
+            for l in leads:
+                if digits in "".join(filter(str.isdigit, str(l.get('phone', '')))):
+                    report = l.get('report', {})
+                    return f"Quote found! Package: {report.get('name')}, Price: {report.get('price')}. Link: https://quote.michieauto.com/book?quote_id={l.get('id')}"
+            return "No quote found for that phone number."
+        return "Could not reach quote server."
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+def check_booking_status(phone: str) -> str:
+    """
+    Checks the CRM database for the customer's active booking, customer notes, and AI vehicle condition notes. Use this if the customer asks about their vehicle, notes they left, or booking status.
+    Args:
+        phone: The customer's 10-digit phone number.
+    """
+    conn = None
+    try:
+        if not DATABASE_URL: return "Database not configured."
+        conn = psycopg2.connect(DATABASE_URL)
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        digits = "".join(filter(str.isdigit, phone))[-10:]
+        cursor.execute("SELECT * FROM leads WHERE customer_phone LIKE %s ORDER BY created_at DESC LIMIT 1", (f"%{digits}%",))
+        lead = cursor.fetchone()
+        if lead:
+            # We explicitly pull job_notes and ai_notes to provide context on vehicle condition
+            return f"Record found! Status: {lead.get('status')}, Date: {lead.get('appointment_date')}, Time: {lead.get('appointment_time')}, Service: {lead.get('service_level')}, Customer Notes: '{lead.get('job_notes', 'None')}', AI Condition Notes: '{lead.get('ai_notes', 'None')}'."
+        return "No booking or notes found for that phone number."
+    except Exception as e:
+        return f"Database error: {str(e)}"
+    finally:
+        if conn: conn.close()
+
+def send_booking_confirmation(phone: str) -> str:
+    """
+    Sends the official booking confirmation SMS to the customer. 
+    Use this ONLY after the customer has explicitly confirmed they paid.
+    """
+    if not twilio_client: return "Twilio not configured."
+    conn = None
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        digits = "".join(filter(str.isdigit, phone))[-10:]
+        cursor.execute("SELECT * FROM leads WHERE customer_phone LIKE %s ORDER BY created_at DESC LIMIT 1", (f"%{digits}%",))
+        lead = cursor.fetchone()
+        
+        if not lead:
+            return "Error: No CRM booking found for this phone number."
+        
+        # Check if future date
+        cst = pytz.timezone('America/Chicago')
+        today_str = datetime.now(cst).strftime('%Y-%m-%d')
+        appt_date = str(lead.get('appointment_date', ''))
+        
+        if appt_date < today_str:
+            return "Error: The booking found is in the past. Cannot send confirmation."
+            
+        name = str(lead.get('customer_name', 'Customer')).split(' ')[0]
+        date = appt_date
+        time = lead.get('appointment_time', 'TBD')
+        
+        msg = (f"Hi {name} it's Michie Auto Detailing! Thanks for booking with us, "
+               f"your detail is confirmed for {date} at {time}. \n\n"
+               f"Please remove all valuables before we arrive. "
+               f"We will need access to a power outlet. "
+               f"Questions? Call (405) 295-5189")
+               
+        twilio_client.messages.create(
+            from_=TWILIO_SMS_NUMBER,
+            to=phone,
+            body=msg
+        )
+        return "SUCCESS: Booking confirmation SMS has been sent to the customer."
+    except Exception as e:
+        return f"Error sending confirmation: {e}"
+    finally:
+        if conn: conn.close()
+
+def add_internal_note(phone: str, note: str) -> str:
+    """
+    Adds a private note to the CRM for this customer (hidden from contractors).
+    Use this to log specific preferences, details, or your internal thoughts for future reference.
+    Args:
+        phone: The customer's 10-digit phone number.
+        note: The internal note to append.
+    """
+    conn = None
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        digits = "".join(filter(str.isdigit, phone))[-10:]
+        cursor.execute("SELECT id, ai_notes FROM leads WHERE customer_phone LIKE %s ORDER BY created_at DESC LIMIT 1", (f"%{digits}%",))
+        lead = cursor.fetchone()
+        
+        if not lead:
+            return "Error: No lead found to add notes to."
+            
+        tz = pytz.timezone('America/Chicago')
+        timestamp = datetime.now(tz).strftime('%m/%d %I:%M %p')
+        new_entry = f"[{timestamp}] AI Note: {note}"
+        
+        existing_notes = lead.get('ai_notes') or ""
+        updated_notes = (existing_notes + "\n\n" + new_entry).strip()
+        
+        cursor.execute("UPDATE leads SET ai_notes = %s WHERE id = %s", (updated_notes, lead['id']))
+        conn.commit()
+        return "SUCCESS: Internal note added."
+    except Exception as e:
+        return f"Error adding note: {e}"
+    finally:
+        if conn: conn.close()
+
+def get_quote_website_link() -> str:
+    """Returns the URL link where customers can scan their vehicle and get a price quote."""
+    return "https://quote.michieauto.com/"
+
+def escalate_to_owner(phone: str, reason: str) -> str:
+    """
+    Alerts the business owner via SMS when you cannot help the customer, there is a problem, or human intervention is required.
+    Args:
+        phone: The customer's 10-digit phone number.
+        reason: A brief explanation of why you are escalating this to the owner.
+    """
+    if not twilio_client or not OWNER_PHONE_NUMBER:
+        return "Failed to alert owner: missing Twilio configuration."
+    try:
+        msg = f"🚨 AI ESCALATION\nCustomer: {phone}\nReason: {reason}"
+        twilio_client.messages.create(
+            from_=TWILIO_SMS_NUMBER,
+            to=OWNER_PHONE_NUMBER,
+            body=msg
+        )
+        return "Successfully alerted the owner. Tell the customer that the owner will reach out to them shortly."
+    except Exception as e:
+        return f"Error alerting owner: {str(e)}"
+
+def get_conversation_history(phone: str) -> str:
+    """Fetches the last 10 messages from Twilio for full context. Returns empty string if no history."""
+    if not twilio_client: return ""
+    try:
+        messages = twilio_client.messages.list(to=phone, limit=5)
+        messages.extend(twilio_client.messages.list(from_=phone, limit=5))
+        
+        # If no messages exist between us, return empty string so we know it's a new interaction
+        if not messages:
+            return ""
+            
+        messages.sort(key=lambda x: x.date_sent if x.date_sent else datetime.min)
+        
+        history_text = "Recent Text Message History:\n"
+        for m in messages: 
+            sender = "Customer" if m.from_ == phone else "Michie Auto AI"
+            history_text += f"[{sender}]: {m.body}\n"
+        return history_text
+    except Exception as e:
+        print(f"Twilio history error: {e}")
+        return ""
+
+def generate_gemini_reply(incoming_body: str, incoming_phone: str) -> str:
+    if not ai_client:
+        return "We're currently experiencing technical difficulties. Please call us at (405) 295-5189."
+        
+    cst = pytz.timezone('America/Chicago')
+    current_time = datetime.now(cst)
+    today_date = current_time.strftime('%Y-%m-%d')
+    today_weekday = current_time.strftime('%A')
+    
+    # Get the complete conversation history
+    history = get_conversation_history(incoming_phone)
+    
+    # Determine if we need to force the initial greeting
+    is_new_interaction = True if not history else False
+    greeting_instruction = ""
+    if is_new_interaction:
+        greeting_instruction = "This is a brand new interaction. You MUST start your reply with exactly: 'Hi there! Welcome to Michie Auto Detailing.'"
+    
+    system_instruction = f"""You are the friendly, helpful AI text assistant for Michie Auto Detailing.
+Current Date: {today_date} ({today_weekday}).
+Current Time: {current_time.strftime('%I:%M %p')}.
+
+{greeting_instruction}
+
+CRITICAL RULES FOR CHECKING AVAILABILITY:
+1. BEFORE checking availability, you MUST collect the customer's zip code. 
+2. If they ask for availability and haven't provided a zip code, explain that we are a 100% mobile detail service (we come to your home or office) and availability varies from city to city, so you need their zip code to check which detailer to assign.
+3. NEVER call `check_availability` without a real zip code.
+4. When checking relative days like "tomorrow" or "Friday", calculate the exact YYYY-MM-DD based on today's date ({today_date}) before calling the tool.
+
+CRITICAL RULES FOR BOOKING CONFIRMATIONS:
+1. If a customer is trying to book, you MUST ask if they have paid their deposit yet.
+2. ONCE the client confirms they have paid, use `send_booking_confirmation` tool to verify the future booking in the CRM and officially send them their appointment confirmation text.
+3. ONLY trigger the confirmation once. Do not loop.
+
+CRITICAL RULES FOR CRM DATA:
+- You have access to customer CRM records via `check_booking_status`. If a customer asks about notes they left (e.g. stains, biohazards, dogs) or vehicle condition, USE THIS TOOL to read their `job_notes` and `ai_notes`.
+- If you notice important preferences or details about the client, use the `add_internal_note` tool to save your thoughts directly to their CRM file for future reference.
+
+ESCALATION RULES:
+You have an `escalate_to_owner` tool. USE IT ONLY IF:
+- The customer is upset, irate, or complaining.
+- The customer asks a highly specific/complex question you do not know the answer to.
+- You encounter a recurring technical error.
+Do NOT use this tool for routine inquiries, booking requests, or simple questions.
+
+{history}
+
+Customer's new message: "{incoming_body}"
+
+Your goal is to answer the customer's question concisely via SMS. Be extremely polite and conversational, but KEEP IT SHORT (1-3 sentences max). Use tools when appropriate to fetch actual data. Do not use markdown formatting.
+"""
+
+    tools = [check_availability, check_quote_status, check_booking_status, send_booking_confirmation, add_internal_note, get_quote_website_link, escalate_to_owner]
+    
+    try:
+        config = types.GenerateContentConfig(
+            system_instruction=system_instruction,
+            tools=tools,
+            temperature=0.3
+        )
+        
+        response = ai_client.models.generate_content(
+            model='gemini-1.5-flash',
+            contents=incoming_body,
+            config=config
+        )
+        
+        return response.text.strip()
+    except Exception as e:
+        print(f"Gemini AI Generation Error: {e}")
+        return "I'm having a little trouble checking our system right now! Give us a quick call at (405) 295-5189 and we'll get you sorted."
+
+def parse_lsa_message(body: str) -> dict:
+    """Legacy parser to prevent ImportErrors in app.py"""
+    if "Google Local Services Ads" not in body:
+        return None
+    import re
+    pattern = r"Customer Name:\s*(.*?),\s*Location:\s*(.*?),\s*Service:\s*(.*?),\s*Message:\s*(.*)"
+    match = re.search(pattern, body, re.IGNORECASE | re.DOTALL)
+    if match:
+        name = match.group(1).strip()
+        return {
+            "name": name if name else "there",
+            "location": match.group(2).strip(),
+            "service": match.group(3).strip(),
+            "message": match.group(4).strip()
+        }
+    return None
+```eof
