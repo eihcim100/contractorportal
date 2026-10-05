@@ -821,4 +821,15 @@
                 }
                 else {
                     const data = await response.json();
-                    showCustomMessage(data.message || 'Failed action.', 'error
+                    showCustomMessage(data.message || 'Failed action.', 'error');
+                    acceptBtns.forEach(b => { b.disabled = false; b.classList.remove('opacity-50'); b.textContent = 'Accept Job'; });
+                    declineBtns.forEach(b => { b.disabled = false; b.classList.remove('opacity-50'); b.textContent = 'Decline'; });
+                }
+            } catch (error) {
+                showCustomMessage('Network error occurred.', 'error');
+            }
+        }
+        document.addEventListener('DOMContentLoaded', updateUI);
+    </script>
+</body>
+</html>
