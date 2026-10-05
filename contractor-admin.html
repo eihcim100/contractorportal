@@ -8,8 +8,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     
-    <!-- Google Places API configured with your restricted key, using loading=async to fix the warning -->
-    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCDfR7Vv_UgVUyhzdv6CmESubuV1MwufIw&libraries=places&loading=async"></script>
+    <!-- Updated Google Places API to use a callback like Interior(1).html -->
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCDfR7Vv_UgVUyhzdv6CmESubuV1MwufIw&libraries=places&callback=initGoogleMaps"></script>
     
     <style>
         body { font-family: 'Inter', sans-serif; }
@@ -224,7 +224,6 @@
                                 <label class="block text-sm font-bold text-emerald-800 mb-2">Service Coverage Areas (Cities)</label>
                                 <p class="text-xs text-gray-500 mb-3 font-medium">Type a city name (e.g., "Dallas, TX") to assign a 20-mile operational radius.</p>
                                 
-                                <!-- Restored Standard Input for classic Google Maps Autocomplete -->
                                 <div class="flex gap-2 mb-4">
                                     <input type="text" id="create-city-autocomplete" placeholder="Search for a city..." class="custom-input flex-grow">
                                     <button type="button" @click="fallbackAddCity('create')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-sm transition">Add</button>
@@ -379,7 +378,6 @@
                     <div class="mt-4 pt-4 border-t border-gray-200">
                         <label class="block text-sm font-bold text-emerald-800 mb-2">Service Coverage Areas (Cities)</label>
                         
-                        <!-- Restored Standard Input for classic Google Maps Autocomplete -->
                         <div class="flex gap-2 mb-4">
                             <input type="text" id="edit-city-autocomplete" placeholder="Search for a city..." class="custom-input flex-grow">
                             <button type="button" @click="fallbackAddCity('edit')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-sm transition">Add</button>
@@ -425,6 +423,11 @@
     </div>
 
     <script>
+        // Set up the global callback mimicking the structure from interior(1).html
+        window.initGoogleMaps = function() {
+            window.isGoogleMapsLoaded = true;
+        };
+
         const { createApp, ref, reactive, onMounted, computed, watch, nextTick } = Vue;
 
         const app = createApp({
@@ -620,24 +623,29 @@
                     finally { isLoadingContractors.value = false; }
                 };
 
+                // Updated to match Interior (1).html logic while preserving necessary Vue integrations
                 const initClassicPlaces = (elementId, targetArray) => {
                     const inputEl = document.getElementById(elementId);
                     if (!inputEl) return;
                     
                     if (inputEl._mapsInitialized) return;
-                    inputEl._mapsInitialized = true;
 
+                    // If API is ready via the callback
                     if (window.google && window.google.maps && window.google.maps.places) {
+                        inputEl._mapsInitialized = true;
+
+                        // Structured like the interior autocomplete, ensuring strict data requests to stop bugs/crashes
                         const autocomplete = new google.maps.places.Autocomplete(inputEl, {
-                            types: ['(cities)'],
-                            componentRestrictions: { country: "us" }
+                            componentRestrictions: { country: "us" },
+                            fields: ["name", "formatted_address"], // Mimicking fields usage from Interior
+                            types: ["(cities)"] // Still restricting to cities to enforce area radius mapping
                         });
 
                         autocomplete.addListener('place_changed', () => {
                             const place = autocomplete.getPlace();
                             let cityName = '';
                             
-                            // STRICT EXTRACTION: Force split by comma to prevent "Dallas, TX, USA" from saving as 3 badges
+                            // STRICT EXTRACTION: Force split by comma
                             if (place.name) {
                                 cityName = place.name.split(',')[0].trim();
                             } else if (inputEl.value) {
@@ -651,6 +659,9 @@
                             // Let the DOM update, then clear the input box
                             setTimeout(() => { inputEl.value = ''; }, 10);
                         });
+                    } else {
+                        // Safety fallback if the tab renders before the asynchronous Google callback fires
+                        setTimeout(() => initClassicPlaces(elementId, targetArray), 500);
                     }
                 };
 
