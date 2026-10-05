@@ -28,7 +28,7 @@
         }
         /* --- CUSTOM CLASS FOR SEMI-TRANSPARENT WHITE BACKGROUND --- */
         .bg-white-77 {
-            background-color: rgba(255, 255, 255, 0.77);
+            background-color: rgba(255, 255, 255, 0.85); /* Slightly increased opacity for better readability */
         }
 
         .address-display {
@@ -100,7 +100,7 @@
         </div>
 
         <!-- Jobs Section -->
-        <div id="jobs-section" class="hidden p-4 md:p-8 md:bg-white-77 md:rounded-2xl md:shadow-xl">
+        <div id="jobs-section" class="hidden p-4 md:p-8 bg-white-77 rounded-2xl shadow-xl">
             <div class="mb-4">
                 <h2 class="text-3xl font-bold text-gray-800">Available Jobs</h2>
             </div>
@@ -128,7 +128,7 @@
         </div>
 
         <!-- Availability Section -->
-        <div id="availability-section" class="hidden p-4 md:p-8 md:bg-white-77 md:rounded-2xl md:shadow-xl">
+        <div id="availability-section" class="hidden p-4 md:p-8 bg-white-77 rounded-2xl shadow-xl">
             <div class="mb-6 border-b border-gray-300 pb-4">
                 <h2 class="text-3xl font-bold text-gray-800 mb-2">Manage Availability</h2>
                 <p class="text-gray-700 font-medium leading-relaxed">
@@ -207,7 +207,7 @@
                 currentMessageBox = null;
             }
             const messageBox = document.createElement('div');
-            messageBox.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4';
+            messageBox.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-[200] p-4';
             let bgColor = type === 'success' ? 'bg-green-100' : type === 'error' ? 'bg-red-100' : 'bg-blue-100';
             let textColor = type === 'success' ? 'text-green-800' : type === 'error' ? 'text-red-800' : 'text-blue-800';
             let btnStyle = 'bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg mt-4';
@@ -821,15 +821,4 @@
                 }
                 else {
                     const data = await response.json();
-                    showCustomMessage(data.message || 'Failed action.', 'error');
-                    acceptBtns.forEach(b => { b.disabled = false; b.classList.remove('opacity-50'); b.textContent = 'Accept Job'; });
-                    declineBtns.forEach(b => { b.disabled = false; b.classList.remove('opacity-50'); b.textContent = 'Decline'; });
-                }
-            } catch (error) {
-                showCustomMessage('Network error occurred.', 'error');
-            }
-        }
-        document.addEventListener('DOMContentLoaded', updateUI);
-    </script>
-</body>
-</html>
+                    showCustomMessage(data.message || 'Failed action.', 'error
