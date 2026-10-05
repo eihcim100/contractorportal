@@ -340,12 +340,12 @@
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label class="text-[10px] font-black text-gray-400 uppercase mb-1">Job Notes (Contractors See This)</label>
-                        <textarea v-model="activeLead.job_notes" rows="2" class="custom-input" placeholder="Any specific instructions..."></textarea>
+                        <label class="text-[10px] font-black text-gray-400 uppercase mb-1">Job Notes</label>
+                        <textarea v-model="activeLead.job_notes" rows="3" class="custom-input" placeholder="Any specific instructions..."></textarea>
                     </div>
                     <div>
-                        <label class="text-[10px] font-black text-blue-600 uppercase mb-1">AI & Admin Internal Notes (Hidden from Pros)</label>
-                        <textarea v-model="activeLead.ai_notes" rows="3" class="custom-input !border-blue-300 bg-blue-50/50" placeholder="AI interactions and admin notes..."></textarea>
+                        <label class="text-[10px] font-black text-gray-400 uppercase mb-1">Customer Service Notes (Admin/AI Internal Only)</label>
+                        <textarea v-model="activeLead.customer_service_notes" rows="4" class="custom-input bg-yellow-50 !border-yellow-200" placeholder="Internal notes... (AI logs here)"></textarea>
                     </div>
                 </div>
 
