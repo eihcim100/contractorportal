@@ -7,8 +7,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <!-- Google Places API configured with your restricted key -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCDfR7Vv_UgVUyhzdv6CmESubuV1MwufIw&libraries=places&v=weekly"></script>
+    
+    <!-- Google Places API configured with your restricted key, using loading=async to fix the warning -->
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCDfR7Vv_UgVUyhzdv6CmESubuV1MwufIw&libraries=places&loading=async&v=weekly"></script>
+    
     <style>
         body { font-family: 'Inter', sans-serif; }
         [v-cloak] { display: none; }
@@ -71,6 +73,7 @@
 
     <div id="app" v-cloak class="container mx-auto max-w-6xl p-4 sm:p-8 my-6">
         
+        <!-- LOGIN SECTION -->
         <div v-if="!isAdminLoggedIn" class="max-w-md mx-auto p-8 bg-white rounded-2xl shadow-xl mt-10">
             <h2 class="text-3xl font-black text-slate-800 mb-2 text-center">Master Admin</h2>
             <p class="text-slate-500 text-center mb-8 font-medium">Log in to manage operations</p>
@@ -183,7 +186,7 @@
                     </div>
                 </div>
 
-                <!-- TAB 2: CONTRACTOR MANAGEMENT (Retained exactly as requested, plus service cities) -->
+                <!-- TAB 2: CONTRACTOR MANAGEMENT -->
                 <div v-show="activeMainTab === 'contractors'" class="animate-fade-in">
                     
                     <div class="flex space-x-4 mb-8">
@@ -234,7 +237,13 @@
                                 <label class="block text-sm font-bold text-emerald-800 mb-2">Service Coverage Areas (Cities)</label>
                                 <p class="text-xs text-gray-500 mb-3 font-medium">Type a city name (e.g., "Dallas, TX") to assign a 20-mile operational radius.</p>
                                 
-                                <div id="create-city-input-container" class="w-full" @keydown.enter.prevent></div>
+                                <!-- Google Places Component directly in HTML -->
+                                <div class="flex gap-2 mb-4">
+                                    <div class="flex-grow">
+                                        <gmp-place-autocomplete id="create-city-autocomplete" placeholder="Search for a city..." component-restrictions='{"country":["us"]}' types='["(cities)"]'></gmp-place-autocomplete>
+                                    </div>
+                                    <button type="button" @click="fallbackAddCity('create')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-sm transition">Add</button>
+                                </div>
                                 
                                 <div class="flex flex-wrap gap-2 mt-4">
                                     <span v-for="(city, idx) in newContractor.service_cities" :key="idx" class="bg-emerald-100 text-emerald-800 text-sm font-bold px-3 py-1.5 rounded-lg flex items-center shadow-sm border border-emerald-200">
@@ -384,7 +393,14 @@
                     <!-- Radius Input for Edit -->
                     <div class="mt-4 pt-4 border-t border-gray-200">
                         <label class="block text-sm font-bold text-emerald-800 mb-2">Service Coverage Areas (Cities)</label>
-                        <div id="edit-city-input-container" class="w-full" @keydown.enter.prevent></div>
+                        
+                        <!-- Google Places Component directly in HTML -->
+                        <div class="flex gap-2 mb-4">
+                            <div class="flex-grow">
+                                <gmp-place-autocomplete id="edit-city-autocomplete" placeholder="Search for a city..." component-restrictions='{"country":["us"]}' types='["(cities)"]'></gmp-place-autocomplete>
+                            </div>
+                            <button type="button" @click="fallbackAddCity('edit')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-sm transition">Add</button>
+                        </div>
                         
                         <div class="flex flex-wrap gap-2 mt-4">
                             <span v-for="(city, idx) in editingContractor.service_cities" :key="idx" class="bg-emerald-100 text-emerald-800 text-sm font-bold px-3 py-1.5 rounded-lg flex items-center shadow-sm border border-emerald-200">
@@ -718,55 +734,60 @@
                 };
 
                 // --- GOOGLE PLACES API INITIALIZATION LOGIC ---
-                const initPlacesAPI = (containerId, targetArray) => {
-                    const container = document.getElementById(containerId);
-                    if(!container) return;
+                const attachGmpListener = (elementId, targetArray) => {
+                    const el = document.getElementById(elementId);
+                    if (!el) return;
                     
-                    // Prevent multiple initializations if already done
-                    if (container.dataset.placesLoaded) return;
-                    container.dataset.placesLoaded = "true";
+                    if (el._gmpListener) {
+                        el.removeEventListener('gmp-placeselect', el._gmpListener);
+                    }
 
-                    // Use the new Web Component (PlaceAutocompleteElement)
-                    const autocompleteElement = new google.maps.places.PlaceAutocompleteElement();
-                    autocompleteElement.componentRestrictions = { country: 'us' };
-                    autocompleteElement.types = ['(cities)'];
-                    
-                    container.appendChild(autocompleteElement);
-
-                    autocompleteElement.addEventListener('gmp-placeselect', async (event) => {
+                    el._gmpListener = (event) => {
                         const place = event.place;
                         if (!place) return;
                         
-                        try {
-                            // fetchFields is required to obtain address text natively in the new API
-                            await place.fetchFields({ fields: ['formattedAddress'] });
-                            if (place.formattedAddress) {
-                                if(!targetArray.includes(place.formattedAddress)) {
-                                    targetArray.push(place.formattedAddress);
-                                }
-                                // Reset input after adding
-                                autocompleteElement.value = null; 
+                        // Safely extract the city name without calling fetchFields() to prevent API version errors
+                        const cityName = (place && place.name) || (event.target && event.target.inputValue);
+                        
+                        if (cityName) {
+                            if (!targetArray.includes(cityName)) {
+                                targetArray.push(cityName);
                             }
-                        } catch (e) {
-                            console.error("Failed to fetch place details", e);
+                            // Clear input after adding
+                            setTimeout(() => { el.value = ''; }, 50); 
                         }
-                    });
+                    };
+
+                    el.addEventListener('gmp-placeselect', el._gmpListener);
+                };
+
+                const fallbackAddCity = (mode) => {
+                    const elId = mode === 'create' ? 'create-city-autocomplete' : 'edit-city-autocomplete';
+                    const el = document.getElementById(elId);
+                    if (el && el.value && el.value.trim()) {
+                        const val = el.value.trim();
+                        const targetArray = mode === 'create' ? newContractor.service_cities : editingContractor.service_cities;
+                        if (!targetArray.includes(val)) {
+                            targetArray.push(val);
+                        }
+                        el.value = ''; 
+                    }
                 };
 
                 // Watchers to trigger Google Places script binding when elements become visible
                 watch(() => contractorTab.value, (newVal) => {
                     if (newVal === 'create' && activeMainTab.value === 'contractors') {
-                        nextTick(() => initPlacesAPI('create-city-input-container', newContractor.service_cities));
+                        nextTick(() => attachGmpListener('create-city-autocomplete', newContractor.service_cities));
                     }
                 });
                 watch(() => activeMainTab.value, (newVal) => {
                     if (newVal === 'contractors' && contractorTab.value === 'create') {
-                        nextTick(() => initPlacesAPI('create-city-input-container', newContractor.service_cities));
+                        nextTick(() => attachGmpListener('create-city-autocomplete', newContractor.service_cities));
                     }
                 });
                 watch(() => showEditModal.value, (newVal) => {
                     if (newVal) {
-                        nextTick(() => initPlacesAPI('edit-city-input-container', editingContractor.service_cities));
+                        nextTick(() => attachGmpListener('edit-city-autocomplete', editingContractor.service_cities));
                     }
                 });
 
@@ -792,7 +813,7 @@
                 return {
                     isAdminLoggedIn, adminApiKey, isLoggingIn, loginMessage, loginAdmin, logoutAdmin, 
                     activeMainTab, calendar, ruleForm, updateDefaultCap, addRule, deleteRule, reschedule, cancelAppt, format12Hr,
-                    checker, runDiagnostics,
+                    checker, runDiagnostics, fallbackAddCity,
                     contractorTab, newContractor, isCreatingContractor, createContractorMessage, createContractorSuccess, createContractor, isNewEmailValid,
                     contractors, isLoadingContractors, contractorListMessage, fetchContractors,
                     showEditModal, editingContractor, isUpdatingContractor, updateContractorMessage, updateContractorSuccess, openEditModal, updateContractor, isEditEmailValid, 
