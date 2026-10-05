@@ -282,8 +282,9 @@
                                 </div>
                                 
                                 <div class="mt-6 flex space-x-2 border-t border-gray-100 pt-4">
-                                    <button @click="openEditModal(contractor)" class="bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-5 rounded-lg text-sm transition duration-300 ease-in-out shadow-sm w-1/2">Edit</button>
-                                    <button @click="confirmDeleteContractor(contractor)" class="bg-rose-500 hover:bg-rose-600 text-white font-bold py-2 px-5 rounded-lg text-sm transition duration-300 ease-in-out shadow-sm w-1/2">Delete</button>
+                                    <button @click="openScheduleModal(contractor)" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-3 rounded-lg text-sm transition duration-300 ease-in-out shadow-sm flex-1">Schedule</button>
+                                    <button @click="openEditModal(contractor)" class="bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-3 rounded-lg text-sm transition duration-300 ease-in-out shadow-sm flex-1">Edit</button>
+                                    <button @click="confirmDeleteContractor(contractor)" class="bg-rose-500 hover:bg-rose-600 text-white font-bold py-2 px-3 rounded-lg text-sm transition duration-300 ease-in-out shadow-sm flex-1">Delete</button>
                                 </div>
                             </div>
                         </div>
@@ -331,6 +332,55 @@
                     </div>
                 </div>
 
+            </div>
+        </div>
+
+        <!-- NEW: MANAGE SCHEDULE MODAL -->
+        <div v-if="showScheduleModal" class="modal-overlay" style="z-index: 1500;">
+            <div class="modal-content" style="max-width: 800px; max-height: 85vh;">
+                <div class="flex justify-between items-center mb-4 border-b pb-2">
+                    <h3 class="text-xl font-bold text-gray-800">Manage Schedule: {{ scheduleContractor?.first_name }} {{ scheduleContractor?.last_name }}</h3>
+                    <button @click="showScheduleModal = false" class="text-gray-500 hover:text-gray-800 font-bold text-xl">&times;</button>
+                </div>
+                
+                <div v-if="isLoadingSchedule" class="text-center py-10 text-slate-500 font-medium">
+                    Pulling schedule data from CRM...
+                </div>
+                
+                <div v-else class="space-y-6 mt-4">
+                    <div v-for="day in scheduleDays" :key="day.date" class="border border-slate-200 rounded-xl p-5 bg-slate-50 shadow-sm">
+                        <div class="flex justify-between items-center mb-3">
+                            <h4 class="font-bold text-lg text-slate-800">{{ day.display_date }}</h4>
+                            <span v-if="day.jobs && day.jobs.length" class="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1.5 rounded-md uppercase tracking-wider">{{ day.jobs.length }} Job(s) Assigned</span>
+                        </div>
+                        
+                        <!-- Jobs List -->
+                        <div v-if="day.jobs && day.jobs.length" class="mb-5 space-y-2">
+                            <div v-for="job in day.jobs" class="bg-white border-l-4 border-blue-500 p-3 rounded shadow-sm text-sm">
+                                <span class="font-black text-blue-700">{{ format12Hr(job.appointment_time) }}</span> - <span class="font-bold text-slate-800">{{ job.customer_name }}</span>
+                                <span class="text-slate-500 ml-2">({{ job.service_level }} / {{ job.vehicle_make }})</span>
+                            </div>
+                        </div>
+
+                        <!-- Availability Slots -->
+                        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Available Time Slots</p>
+                        <div class="flex flex-wrap gap-2">
+                            <label v-for="slot in standardSlots" :key="slot" 
+                                   class="cursor-pointer border px-3 py-1.5 rounded-lg text-sm font-bold transition-all"
+                                   :class="day.slots.includes(slot) ? 'bg-emerald-100 border-emerald-300 text-emerald-800 shadow-sm' : 'bg-white border-slate-300 text-slate-400 hover:bg-slate-100'">
+                                <input type="checkbox" :value="slot" v-model="day.slots" class="hidden">
+                                {{ format12Hr(slot) }}
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 border-t pt-5 flex justify-end gap-3 sticky bottom-0 bg-white">
+                    <button @click="showScheduleModal = false" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-2.5 px-5 rounded-lg transition duration-300">Cancel</button>
+                    <button @click="saveSchedule" :disabled="isSavingSchedule" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-lg disabled:opacity-50 transition duration-300 shadow-md">
+                        {{ isSavingSchedule ? 'Saving Overrides...' : 'Save Schedule' }}
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -487,6 +537,14 @@
                 const isDeletingContractor = ref(false);
                 const deleteContractorMessage = ref('');
                 const deleteContractorSuccess = ref(false);
+                
+                // NEW: Contractor Schedule Modals state
+                const showScheduleModal = ref(false);
+                const isLoadingSchedule = ref(false);
+                const isSavingSchedule = ref(false);
+                const scheduleContractor = ref(null);
+                const scheduleDays = ref([]);
+                const standardSlots = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
 
                 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                 const isNewEmailValid = computed(() => emailRegex.test(newContractor.email));
@@ -621,6 +679,65 @@
                         }
                     } catch (error) { contractorListMessage.value = 'An error occurred while fetching contractors.'; } 
                     finally { isLoadingContractors.value = false; }
+                };
+                
+                // NEW: Admin Scheduling System Calls
+                const openScheduleModal = async (contractor) => {
+                    scheduleContractor.value = contractor;
+                    showScheduleModal.value = true;
+                    isLoadingSchedule.value = true;
+                    
+                    try {
+                        const response = await fetch(`${ADMIN_API_URL}/admin/contractor/${contractor.email}/schedule`, {
+                            method: 'GET',
+                            headers: { 'Authorization': `Bearer ${adminApiKey.value}` }
+                        });
+                        if (response.ok) {
+                            const data = await response.json();
+                            scheduleDays.value = data.schedule;
+                        } else {
+                            alert("Failed to fetch contractor schedule data.");
+                            showScheduleModal.value = false;
+                        }
+                    } catch (error) {
+                        alert("Network error fetching schedule.");
+                        showScheduleModal.value = false;
+                    } finally {
+                        isLoadingSchedule.value = false;
+                    }
+                };
+
+                const saveSchedule = async () => {
+                    if(!scheduleContractor.value) return;
+                    isSavingSchedule.value = true;
+                    
+                    const availabilityData = {};
+                    scheduleDays.value.forEach(day => {
+                        availabilityData[day.date] = day.slots;
+                    });
+                    
+                    try {
+                        const response = await fetch(`${ADMIN_API_URL}/admin/contractor/${scheduleContractor.value.email}/availability`, {
+                            method: 'POST',
+                            headers: { 
+                                'Authorization': `Bearer ${adminApiKey.value}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ availability: availabilityData })
+                        });
+                        
+                        if (response.ok) {
+                            showScheduleModal.value = false;
+                            // Optionally re-fetch the main calendar data since things changed
+                            fetchCalendarData();
+                        } else {
+                            alert("Failed to save schedule overrides.");
+                        }
+                    } catch (error) {
+                        alert("Network error while saving schedule.");
+                    } finally {
+                        isSavingSchedule.value = false;
+                    }
                 };
 
                 // Updated to match Interior (1).html logic while preserving necessary Vue integrations
@@ -816,7 +933,8 @@
                     contractorTab, newContractor, isCreatingContractor, createContractorMessage, createContractorSuccess, createContractor, isNewEmailValid,
                     contractors, isLoadingContractors, contractorListMessage, fetchContractors,
                     showEditModal, editingContractor, isUpdatingContractor, updateContractorMessage, updateContractorSuccess, openEditModal, updateContractor, isEditEmailValid, 
-                    showDeleteConfirmModal, contractorToDelete, isDeletingContractor, deleteContractorMessage, deleteContractorSuccess, confirmDeleteContractor, deleteContractor
+                    showDeleteConfirmModal, contractorToDelete, isDeletingContractor, deleteContractorMessage, deleteContractorSuccess, confirmDeleteContractor, deleteContractor,
+                    showScheduleModal, isLoadingSchedule, isSavingSchedule, scheduleContractor, scheduleDays, standardSlots, openScheduleModal, saveSchedule
                 };
             }
         });
