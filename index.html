@@ -128,7 +128,7 @@
         </div>
 
         <!-- Availability Section -->
-        <div id="availability-section" class="hidden p-4 md:p-8 bg-white-77 rounded-2xl shadow-xl">
+        <div id="availability-section" class="hidden p-4 md:p-8 bg-white-77 rounded-2xl shadow-xl relative">
             <div class="mb-6 border-b border-gray-300 pb-4">
                 <h2 class="text-3xl font-bold text-gray-800 mb-2">Manage Availability</h2>
                 <p class="text-gray-700 font-medium leading-relaxed">
@@ -137,14 +137,17 @@
                 </p>
             </div>
 
-            <div id="schedule-grid" class="space-y-4 mb-6">
+            <div id="schedule-grid" class="space-y-4 mb-4 pb-24">
                 <!-- 7 days of availability blocks will be injected here -->
                 <p class="text-center text-gray-600 font-medium">Loading schedule...</p>
             </div>
 
-            <button id="save-availability-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-wide py-4 px-4 rounded-xl shadow-lg transition duration-300 ease-in-out text-lg">
-                Save Availability
-            </button>
+            <!-- Sticky Save Button Container -->
+            <div class="sticky bottom-4 z-50">
+                <button id="save-availability-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-wide py-4 px-4 rounded-xl shadow-[0_10px_25px_-5px_rgba(37,99,235,0.6)] transition duration-300 ease-in-out text-lg border-2 border-white ring-4 ring-blue-600/30">
+                    Save Availability
+                </button>
+            </div>
         </div>
     </div>
 
@@ -175,9 +178,24 @@
         let authToken = localStorage.getItem('authToken');
         let currentMessageBox = null;
         let pendingAcceptJobId = null; 
+        
+        // Track unsaved changes
+        let isAvailabilityDirty = false;
+
+        // --- BROWSER NAVIGATION GUARD ---
+        window.addEventListener('beforeunload', (e) => {
+            if (isAvailabilityDirty) {
+                e.preventDefault();
+                e.returnValue = ''; // Required for browser default unsaved changes prompt
+            }
+        });
 
         // --- NAVIGATION LOGIC ---
         navJobs.addEventListener('click', () => {
+            if (isAvailabilityDirty) {
+                showCustomMessage('You have unsaved changes to your schedule! Please click "Save Availability" at the bottom of the screen before leaving.', 'error');
+                return;
+            }
             jobsSection.classList.remove('hidden');
             availSection.classList.add('hidden');
             navJobs.classList.replace('bg-white', 'bg-green-600');
@@ -190,6 +208,10 @@
         });
 
         navSchedule.addEventListener('click', () => {
+            if (isAvailabilityDirty) {
+                showCustomMessage('You have unsaved changes to your schedule! Please click "Save Availability" at the bottom of the screen before leaving.', 'error');
+                return;
+            }
             jobsSection.classList.add('hidden');
             availSection.classList.remove('hidden');
             navSchedule.classList.replace('bg-white', 'bg-green-600');
@@ -210,11 +232,11 @@
             messageBox.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-[200] p-4';
             let bgColor = type === 'success' ? 'bg-green-100' : type === 'error' ? 'bg-red-100' : 'bg-blue-100';
             let textColor = type === 'success' ? 'text-green-800' : type === 'error' ? 'text-red-800' : 'text-blue-800';
-            let btnStyle = 'bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg mt-4';
+            let btnStyle = 'bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg mt-4 w-full';
 
             messageBox.innerHTML = `
-                <div class="${bgColor} p-6 rounded-lg shadow-xl max-w-sm w-full text-center">
-                    <p class="text-lg font-semibold ${textColor} mb-4">${message}</p>
+                <div class="${bgColor} p-6 rounded-lg shadow-xl max-w-sm w-full text-center border-t-4 ${type==='error' ? 'border-red-500' : (type==='success' ? 'border-green-500' : 'border-blue-500')}">
+                    <p class="text-lg font-semibold ${textColor} mb-6">${message}</p>
                     <button id="message-box-ok" class="${btnStyle}">OK</button>
                 </div>
             `;
@@ -296,6 +318,7 @@
                 availSection.classList.add('hidden');
                 jobsList.innerHTML = '';
                 noJobsMessage.classList.add('hidden');
+                isAvailabilityDirty = false;
             }
         }
 
@@ -324,6 +347,10 @@
         });
 
         logoutButton.addEventListener('click', () => {
+            if (isAvailabilityDirty) {
+                showCustomMessage('You have unsaved changes to your schedule! Please click "Save Availability" before logging out.', 'error');
+                return;
+            }
             authToken = null;
             localStorage.removeItem('authToken');
             localStorage.removeItem('contractorEmail');
@@ -348,6 +375,7 @@
                 
                 const data = await res.json();
                 renderSchedule(data.availability);
+                isAvailabilityDirty = false; // Reset dirty flag after a fresh load
             } catch (e) { 
                 grid.innerHTML = '<p class="text-center text-red-500 font-bold py-10">Error loading schedule. Please check your connection.</p>';
             }
@@ -395,6 +423,10 @@
 
         window.toggleSlotUI = function(checkbox) {
             if(checkbox.disabled) return;
+            
+            // Mark schedule as unsaved
+            isAvailabilityDirty = true;
+            
             const label = checkbox.parentElement;
             if(checkbox.checked) {
                 label.classList.remove("bg-white", "text-gray-600", "border-gray-300");
@@ -425,6 +457,7 @@
                 });
                 if(res.ok) {
                     showCustomMessage('Availability saved successfully! The dispatch calendar has been updated.', 'success');
+                    isAvailabilityDirty = false; // Successfully saved
                     loadAvailability();
                 } else {
                     const data = await res.json();
