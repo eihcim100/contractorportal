@@ -3,269 +3,453 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Michie Auto Detailing Contractor Admin</title>
+    <title>Michie Auto Detailing Master Admin</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Google Places API configured with your restricted key -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCDfR7Vv_UgVUyhzdv6CmESubuV1MwufIw&libraries=places"></script>
     <style>
         body { font-family: 'Inter', sans-serif; }
         [v-cloak] { display: none; }
+        
+        /* Master Tabs */
+        .master-tab {
+            padding: 1rem 1.5rem; border-bottom: 3px solid transparent; font-weight: 700; transition: all 0.2s; color: #64748b;
+        }
+        .master-tab.active { border-bottom-color: #3b82f6; color: #1e293b; }
+        .master-tab:hover:not(.active) { color: #334155; border-bottom-color: #cbd5e1; }
+
+        /* Sub Tabs */
         .tab-button {
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.5rem;
-            font-weight: 600;
-            transition: all 0.2s;
+            padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.2s;
         }
-        .tab-button.active {
-            background-color: #3b82f6; 
-            color: white;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        .tab-button:not(.active) {
-            background-color: #e5e7eb; 
-            color: #4b5563; 
-        }
-        .tab-button:not(.active):hover {
-            background-color: #d1d5db; 
-        }
+        .tab-button.active { background-color: #3b82f6; color: white; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        .tab-button:not(.active) { background-color: #e5e7eb; color: #4b5563; }
+        .tab-button:not(.active):hover { background-color: #d1d5db; }
+        
         .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 1000;
         }
         .modal-content {
-            background-color: white;
-            padding: 2rem;
-            border-radius: 0.75rem;
-            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
-            width: 90%;
-            max-width: 500px;
+            background-color: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto;
         }
-        .contractor-card {
-            transition: all 0.3s ease-in-out;
+        .contractor-card { transition: all 0.3s ease-in-out; }
+        .custom-input, .custom-select {
+            padding: 0.75rem 1rem; border: 1px solid #d1d5db; border-radius: 0.5rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); 
+            background-color: #f9fafb; color: #1f2937; transition: all 0.2s ease-in-out; width: 100%;
         }
-        .custom-input {
-            padding: 0.75rem 1rem; 
-            border: 1px solid #d1d5db; 
-            border-radius: 0.5rem; 
-            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); 
-            background-color: #f9fafb; 
-            color: #1f2937; 
-            transition: all 0.2s ease-in-out;
+        .custom-input:focus, .custom-select:focus {
+            outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25); background-color: #ffffff; 
         }
-        .custom-input:focus {
-            outline: none;
-            border-color: #3b82f6; 
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25); 
-            background-color: #ffffff; 
-        }
-        .custom-input:disabled {
-            background-color: #e5e7eb; 
-            cursor: not-allowed;
-        }
+        .custom-input:disabled { background-color: #e5e7eb; cursor: not-allowed; }
+        
+        /* AutoComplete Dropdown Fix for Modals */
+        .pac-container { z-index: 2000 !important; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); font-family: 'Inter', sans-serif;}
+        
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 16px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+        th { background: #f8fafc; font-size: 0.85em; text-transform: uppercase; color: #64748b; font-weight: 700; }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+<body class="bg-slate-50 min-h-screen">
 
-    <div id="app" v-cloak class="container mx-auto max-w-4xl p-4 sm:p-8 my-10">
-        <div class="bg-white p-8 rounded-2xl shadow-lg">
-            <header class="text-center mb-8">
-                <h1 class="text-3xl sm:text-4xl font-bold text-gray-800">Contractor Admin Panel</h1>
-                <p class="text-gray-600 mt-2">Manage Michie Auto Detailing Contractor Accounts</p>
+    <div id="app" v-cloak class="container mx-auto max-w-6xl p-4 sm:p-8 my-6">
+        
+        <div v-if="!isAdminLoggedIn" class="max-w-md mx-auto p-8 bg-white rounded-2xl shadow-xl mt-10">
+            <h2 class="text-3xl font-black text-slate-800 mb-2 text-center">Master Admin</h2>
+            <p class="text-slate-500 text-center mb-8 font-medium">Log in to manage operations</p>
+            <div class="mb-6">
+                <label for="admin-api-key" class="block text-slate-700 text-sm font-bold mb-2">Admin API Key:</label>
+                <input type="password" id="admin-api-key" v-model="adminApiKey" @keyup.enter="loginAdmin" class="custom-input">
+            </div>
+            <button @click="loginAdmin" :disabled="isLoggingIn"
+                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg w-full transition duration-300 ease-in-out disabled:opacity-50">
+                {{ isLoggingIn ? 'Authenticating...' : 'Secure Login' }}
+            </button>
+            <p v-if="loginMessage" class="text-rose-500 text-sm font-medium mt-4 text-center">{{ loginMessage }}</p>
+        </div>
+
+        <div v-else class="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
+            
+            <header class="bg-slate-900 text-white p-6 sm:px-10 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div>
+                    <h1 class="text-2xl sm:text-3xl font-black tracking-tight">Michie Operations Center</h1>
+                    <p class="text-slate-400 font-medium text-sm mt-1">Calendar, Dispatch & Contractors</p>
+                </div>
+                <button @click="logoutAdmin" class="bg-slate-800 hover:bg-rose-600 text-white font-bold py-2.5 px-6 rounded-xl transition duration-300 shadow">
+                    Logout
+                </button>
             </header>
 
-            <div v-if="!isAdminLoggedIn" class="max-w-md mx-auto p-6 bg-gray-50 rounded-lg shadow-md">
-                <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Admin Login</h2>
-                <div class="mb-4">
-                    <label for="admin-api-key" class="block text-gray-700 text-sm font-bold mb-2">Admin API Key:</label>
-                    <input type="password" id="admin-api-key" v-model="adminApiKey"
-                           class="custom-input w-full">
-                </div>
-                <button @click="loginAdmin" :disabled="isLoggingIn"
-                        class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline w-full transition duration-300 ease-in-out disabled:bg-gray-400">
-                    {{ isLoggingIn ? 'Logging In...' : 'Login' }}
-                </button>
-                <p v-if="loginMessage" class="text-red-500 text-xs italic mt-4 text-center">{{ loginMessage }}</p>
+            <div class="flex overflow-x-auto border-b border-slate-200 bg-slate-50 px-6 scrollbar-hide">
+                <button @click="activeMainTab = 'calendar'" :class="['master-tab whitespace-nowrap', { 'active': activeMainTab === 'calendar' }]">Master Calendar</button>
+                <button @click="activeMainTab = 'contractors'" :class="['master-tab whitespace-nowrap', { 'active': activeMainTab === 'contractors' }]">Contractor Database</button>
+                <button @click="activeMainTab = 'checker'" :class="['master-tab whitespace-nowrap', { 'active': activeMainTab === 'checker' }]">Radius Diagnostics Tool</button>
             </div>
 
-            <div v-else>
-                <div class="flex justify-between items-center mb-6">
-                    <div class="flex space-x-4">
-                        <button @click="activeTab = 'create'" :class="['tab-button', { 'active': activeTab === 'create' }]">Create Contractor</button>
-                        <button @click="activeTab = 'manage'" :class="['tab-button', { 'active': activeTab === 'manage' }]">Manage Contractors</button>
+            <div class="p-6 sm:p-10">
+
+                <!-- TAB 1: MASTER CALENDAR -->
+                <div v-show="activeMainTab === 'calendar'" class="space-y-8 animate-fade-in">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200 shadow-sm">
+                            <h3 class="text-lg font-bold text-slate-800 mb-4">Master Global Capacity</h3>
+                            <div class="flex items-center gap-4">
+                                <label class="font-medium text-slate-600 whitespace-nowrap">Default Slots per hour:</label>
+                                <input type="number" v-model="calendar.defaultCap" class="custom-input w-24 bg-white">
+                                <button @click="updateDefaultCap" class="bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 px-5 rounded-lg shadow transition">Save</button>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200 shadow-sm">
+                            <h3 class="text-lg font-bold text-slate-800 mb-4">Custom Overrides (Block/Cap)</h3>
+                            <div class="flex flex-col gap-3">
+                                <div class="flex gap-3">
+                                    <input type="date" v-model="ruleForm.date" class="custom-input bg-white">
+                                    <select v-model="ruleForm.time" class="custom-select bg-white">
+                                        <option value="ALL">ALL DAY</option>
+                                        <option v-for="t in calendar.slotOptions" :value="t">{{ format12Hr(t) }}</option>
+                                    </select>
+                                </div>
+                                <div class="flex items-center justify-between gap-4">
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-medium text-slate-600">Cap:</span>
+                                        <input type="number" v-model="ruleForm.cap" class="custom-input w-20 bg-white">
+                                    </div>
+                                    <label class="flex items-center gap-2 cursor-pointer font-medium text-rose-600 bg-rose-50 px-3 py-2 rounded-lg border border-rose-200">
+                                        <input type="checkbox" v-model="ruleForm.isBlocked" class="w-5 h-5 accent-rose-600"> Fully Block
+                                    </label>
+                                    <button @click="addRule" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-5 rounded-lg shadow transition">Apply</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <button @click="logoutAdmin" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out">
-                        Logout
-                    </button>
+                    
+                    <div v-if="calendar.rules.length > 0" class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                        <div class="bg-slate-100 px-4 py-3 border-b border-slate-200 font-bold text-slate-700">Active Rule Overrides</div>
+                        <div class="p-4 flex flex-wrap gap-3">
+                            <div v-for="r in calendar.rules" :key="r.id" class="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-2 rounded-lg text-sm">
+                                <span class="font-bold">{{ r.date }}</span> @ 
+                                <span class="text-blue-600 font-bold">{{ r.time === 'ALL' ? 'ALL DAY' : format12Hr(r.time) }}</span> 
+                                &rarr; <span :class="r.is_blocked ? 'text-rose-600 font-bold' : 'text-emerald-600 font-bold'">{{ r.is_blocked ? 'BLOCKED' : 'CAP: ' + r.max_bookings }}</span>
+                                <button @click="deleteRule(r.id)" class="ml-2 text-slate-400 hover:text-rose-600 bg-white border border-slate-200 rounded-full w-6 h-6 flex items-center justify-center leading-none">&times;</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-800 mb-4 flex items-center"><span class="w-3 h-3 rounded-full bg-emerald-500 mr-2"></span> Active Appointments</h3>
+                        <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm overflow-x-auto">
+                            <table v-if="calendar.activeAppts.length > 0">
+                                <thead><tr><th>Client</th><th>Date</th><th>Time</th><th>Details</th><th>Reschedule / Action</th></tr></thead>
+                                <tbody>
+                                    <tr v-for="a in calendar.activeAppts" :key="a.deal_id" class="hover:bg-slate-50 transition">
+                                        <td class="font-bold text-slate-900">{{ a.customer_name }}</td>
+                                        <td>{{ a.display_date }}</td>
+                                        <td class="font-bold text-blue-600">{{ a.display_time }}</td>
+                                        <td class="text-sm text-slate-600">{{ a.vehicle }}</td>
+                                        <td>
+                                            <div class="flex gap-2">
+                                                <input type="date" v-model="a.new_date" class="custom-input py-1.5 px-2 text-sm w-auto bg-white">
+                                                <select v-model="a.new_time" class="custom-select py-1.5 px-2 text-sm w-auto bg-white">
+                                                    <option v-if="!calendar.slotOptions.includes(a.appointment_time)" :value="a.appointment_time">{{ a.display_time }} (Current)</option>
+                                                    <option v-for="s in calendar.slotOptions" :value="s">{{ format12Hr(s) }}</option>
+                                                </select>
+                                                <button @click="reschedule(a)" class="bg-sky-100 hover:bg-sky-200 text-sky-700 font-bold px-3 py-1.5 rounded-lg text-sm transition">Move</button>
+                                                <button @click="cancelAppt(a)" class="bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold px-3 py-1.5 rounded-lg text-sm transition">Cancel</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div v-else class="p-8 text-center text-slate-500 font-medium">No active appointments scheduled.</div>
+                        </div>
+                    </div>
                 </div>
 
-                <div v-if="activeTab === 'create'">
-                    <h2 class="text-2xl font-semibold text-gray-700 mb-4 border-b pb-2">Create New Contractor Account</h2>
-                    <form @submit.prevent="createContractor" class="space-y-4">
-                        <div>
-                            <label for="new-contractor-email" class="block text-sm font-medium text-gray-700">Email (Username):</label>
-                            <input type="email" id="new-contractor-email" v-model="newContractor.email" required
-                                   class="custom-input w-full" :class="{'border-red-500': newContractor.email && !isNewEmailValid}">
-                            <p v-if="newContractor.email && !isNewEmailValid" class="text-red-500 text-xs mt-1">Please enter a valid email address.</p>
+                <!-- TAB 2: CONTRACTOR MANAGEMENT (Retained exactly as requested, plus service cities) -->
+                <div v-show="activeMainTab === 'contractors'" class="animate-fade-in">
+                    
+                    <div class="flex space-x-4 mb-8">
+                        <button @click="contractorTab = 'create'" :class="['tab-button', { 'active': contractorTab === 'create' }]">Create Contractor</button>
+                        <button @click="contractorTab = 'manage'" :class="['tab-button', { 'active': contractorTab === 'manage' }]">Manage Contractors</button>
+                    </div>
+
+                    <!-- CREATE CONTRACTOR -->
+                    <div v-show="contractorTab === 'create'">
+                        <h2 class="text-2xl font-semibold text-gray-700 mb-4 border-b pb-2">Create New Contractor Account</h2>
+                        <form @submit.prevent="createContractor" class="space-y-4 max-w-2xl">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div class="sm:col-span-2">
+                                    <label for="new-contractor-email" class="block text-sm font-medium text-gray-700">Email (Username):</label>
+                                    <input type="email" id="new-contractor-email" v-model="newContractor.email" required
+                                           class="custom-input w-full bg-white" :class="{'border-red-500': newContractor.email && !isNewEmailValid}">
+                                    <p v-if="newContractor.email && !isNewEmailValid" class="text-red-500 text-xs mt-1">Please enter a valid email address.</p>
+                                </div>
+                                <div class="sm:col-span-2">
+                                    <label for="new-contractor-password" class="block text-sm font-medium text-gray-700">Password:</label>
+                                    <input type="password" id="new-contractor-password" v-model="newContractor.password" required
+                                           class="custom-input w-full bg-white">
+                                </div>
+                                <div>
+                                    <label for="new-contractor-first-name" class="block text-sm font-medium text-gray-700">First Name:</label>
+                                    <input type="text" id="new-contractor-first-name" v-model="newContractor.first_name"
+                                           class="custom-input w-full bg-white">
+                                </div>
+                                <div>
+                                    <label for="new-contractor-last-name" class="block text-sm font-medium text-gray-700">Last Name:</label>
+                                    <input type="text" id="new-contractor-last-name" v-model="newContractor.last_name"
+                                           class="custom-input w-full bg-white">
+                                </div>
+                                <div>
+                                    <label for="new-contractor-phone" class="block text-sm font-medium text-gray-700">Phone Number:</label>
+                                    <input type="tel" id="new-contractor-phone" v-model="newContractor.phone_number"
+                                           class="custom-input w-full bg-white">
+                                </div>
+                                
+                                <div>
+                                    <label for="new-contractor-deel-id" class="block text-sm font-medium text-gray-700">Deel Contract ID <span class="text-xs font-normal text-gray-500">(Auto-payouts)</span>:</label>
+                                    <input type="text" id="new-contractor-deel-id" v-model="newContractor.deel_contract_id"
+                                           class="custom-input w-full bg-white" placeholder="e.g. wg5abc123">
+                                </div>
+                            </div>
+
+                            <div class="mt-6 pt-6 border-t border-gray-200">
+                                <label class="block text-sm font-bold text-emerald-800 mb-2">Service Coverage Areas (Cities)</label>
+                                <p class="text-xs text-gray-500 mb-3 font-medium">Type a city name (e.g., "Dallas, TX") to assign a 20-mile operational radius.</p>
+                                
+                                <input type="text" id="create-city-input" placeholder="Search for a city..." class="custom-input w-full border-emerald-300 focus:border-emerald-500 bg-white" @keydown.enter.prevent>
+                                
+                                <div class="flex flex-wrap gap-2 mt-4">
+                                    <span v-for="(city, idx) in newContractor.service_cities" :key="idx" class="bg-emerald-100 text-emerald-800 text-sm font-bold px-3 py-1.5 rounded-lg flex items-center shadow-sm border border-emerald-200">
+                                        {{ city }}
+                                        <button type="button" @click="newContractor.service_cities.splice(idx, 1)" class="ml-2 text-emerald-600 hover:text-emerald-900 focus:outline-none">&times;</button>
+                                    </span>
+                                    <span v-if="newContractor.service_cities.length === 0" class="text-sm text-slate-400 italic">No areas assigned yet. Calendar logic will exclude them.</span>
+                                </div>
+                            </div>
+
+                            <div class="pt-6">
+                                <button type="submit" :disabled="isCreatingContractor || !isNewEmailValid"
+                                        class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out disabled:bg-gray-400 shadow-md">
+                                    {{ isCreatingContractor ? 'Creating...' : 'Create Contractor' }}
+                                </button>
+                                <p v-if="createContractorMessage" :class="{'text-green-600': createContractorSuccess, 'text-red-600': !createContractorSuccess}" class="mt-2 text-sm font-medium">{{ createContractorMessage }}</p>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- MANAGE CONTRACTORS -->
+                    <div v-show="contractorTab === 'manage'">
+                        <div class="flex justify-between items-end mb-4 border-b pb-2">
+                            <h2 class="text-2xl font-semibold text-gray-700">Manage Existing Contractors</h2>
+                            <button @click="fetchContractors" :disabled="isLoadingContractors" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-400 shadow-sm transition">
+                                {{ isLoadingContractors ? 'Loading...' : 'Refresh Database' }}
+                            </button>
                         </div>
-                        <div>
-                            <label for="new-contractor-password" class="block text-sm font-medium text-gray-700">Password:</label>
-                            <input type="password" id="new-contractor-password" v-model="newContractor.password" required
+                        <p v-if="contractorListMessage" class="text-red-500 text-sm mb-4">{{ contractorListMessage }}</p>
+
+                        <div v-if="contractors.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div v-for="contractor in contractors" :key="contractor.email" class="contractor-card bg-white p-6 rounded-xl shadow border border-gray-200 flex flex-col justify-between">
+                                <div>
+                                    <h3 class="text-xl font-bold text-gray-900">{{ contractor.first_name }} {{ contractor.last_name }}</h3>
+                                    <p class="text-sm text-gray-500 font-medium mb-3">{{ contractor.email }}</p>
+                                    <p class="text-sm text-gray-700 flex items-center mb-1"><svg class="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg> {{ contractor.phone_number || 'N/A' }}</p>
+                                    <p class="text-sm text-gray-700 flex items-center mb-3">
+                                        <svg class="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                        <span v-if="contractor.deel_contract_id" class="font-mono text-xs bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded border border-indigo-200">{{ contractor.deel_contract_id }}</span>
+                                        <span v-else class="font-mono text-xs bg-rose-100 text-rose-800 px-2 py-0.5 rounded border border-rose-200">No Deel ID</span>
+                                    </p>
+                                    
+                                    <div class="mt-4 pt-3 border-t border-gray-100">
+                                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Service Areas</p>
+                                        <div class="flex flex-wrap gap-1.5">
+                                            <span v-for="city in contractor.cityArray" class="bg-emerald-50 text-emerald-700 text-[11px] font-bold px-2 py-1 rounded border border-emerald-200">
+                                                {{ city }}
+                                            </span>
+                                            <span v-if="!contractor.cityArray || contractor.cityArray.length === 0" class="text-xs text-gray-400 italic">No areas assigned</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-6 flex space-x-2 border-t border-gray-100 pt-4">
+                                    <button @click="openEditModal(contractor)" class="bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-5 rounded-lg text-sm transition duration-300 ease-in-out shadow-sm w-1/2">Edit</button>
+                                    <button @click="confirmDeleteContractor(contractor)" class="bg-rose-500 hover:bg-rose-600 text-white font-bold py-2 px-5 rounded-lg text-sm transition duration-300 ease-in-out shadow-sm w-1/2">Delete</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-else-if="!isLoadingContractors" class="bg-slate-50 p-10 rounded-xl border border-slate-200 text-center">
+                            <p class="text-slate-500 font-medium text-lg">No contractors found.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 3: AVAILABILITY CHECKER -->
+                <div v-show="activeMainTab === 'checker'" class="animate-fade-in">
+                    <div class="bg-emerald-50 border border-emerald-200 p-8 rounded-3xl max-w-3xl mx-auto shadow-sm">
+                        <div class="flex items-center mb-6">
+                            <div class="bg-emerald-600 p-3 rounded-xl text-white mr-4 shadow-lg shadow-emerald-600/30">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            </div>
+                            <div>
+                                <h2 class="text-2xl font-black text-emerald-900">Live Radius Availability</h2>
+                                <p class="text-emerald-700 font-medium text-sm mt-1">Simulate frontend scheduling logic (Factors 20-mile radius & 6hr blocks)</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex flex-col sm:flex-row gap-4 mb-6">
+                            <div class="flex-1">
+                                <label class="block text-emerald-800 text-sm font-bold mb-2">Target Date</label>
+                                <input type="date" v-model="checker.date" class="custom-input border-emerald-300 focus:border-emerald-500 bg-white">
+                            </div>
+                            <div class="flex-1">
+                                <label class="block text-emerald-800 text-sm font-bold mb-2">Target Zip Code</label>
+                                <input type="text" v-model="checker.zip" placeholder="e.g. 75208" class="custom-input border-emerald-300 focus:border-emerald-500 bg-white" @keyup.enter="runDiagnostics">
+                            </div>
+                        </div>
+                        <button @click="runDiagnostics" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-wide py-4 px-4 rounded-xl shadow-xl transition">Run Diagnostics Scan</button>
+                        
+                        <div v-if="checker.results" class="mt-8 pt-6 border-t border-emerald-200/60">
+                            <h4 class="font-bold text-emerald-900 mb-4">Diagnostic Results for {{ checker.date }}</h4>
+                            <div class="flex flex-wrap gap-2">
+                                <div v-for="s in checker.results" class="px-4 py-2 rounded-lg font-bold text-sm border" :class="s.available ? 'bg-white border-emerald-400 text-emerald-700 shadow-sm' : 'bg-rose-50 border-rose-200 text-rose-500 line-through opacity-70'">
+                                    {{ format12Hr(s.time) }} 
+                                    <span v-if="!s.available" class="text-xs block font-medium mt-0.5">{{ s.reason }}</span>
+                                    <span v-else class="text-xs block font-medium mt-0.5 text-emerald-500">Available</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- EDIT CONTRACTOR MODAL -->
+        <div v-if="showEditModal" class="modal-overlay">
+            <div class="modal-content">
+                <h3 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Edit Contractor Profile</h3>
+                <form @submit.prevent="updateContractor" class="space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="sm:col-span-2">
+                            <label for="edit-email" class="block text-sm font-medium text-gray-700">Email:</label>
+                            <input type="email" id="edit-email" v-model="editingContractor.email" disabled
+                                   class="custom-input w-full disabled:bg-gray-200">
+                            <p v-if="editingContractor.email && !isEditEmailValid" class="text-red-500 text-xs mt-1">Please enter a valid email address.</p>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label for="edit-password" class="block text-sm font-medium text-gray-700">New Password <span class="font-normal text-gray-500">(leave blank to keep)</span>:</label>
+                            <input type="password" id="edit-password" v-model="editingContractor.new_password"
                                    class="custom-input w-full">
                         </div>
                         <div>
-                            <label for="new-contractor-first-name" class="block text-sm font-medium text-gray-700">First Name:</label>
-                            <input type="text" id="new-contractor-first-name" v-model="newContractor.first_name"
+                            <label for="edit-first-name" class="block text-sm font-medium text-gray-700">First Name:</label>
+                            <input type="text" id="edit-first-name" v-model="editingContractor.first_name"
                                    class="custom-input w-full">
                         </div>
                         <div>
-                            <label for="new-contractor-last-name" class="block text-sm font-medium text-gray-700">Last Name:</label>
-                            <input type="text" id="new-contractor-last-name" v-model="newContractor.last_name"
+                            <label for="edit-last-name" class="block text-sm font-medium text-gray-700">Last Name:</label>
+                            <input type="text" id="edit-last-name" v-model="editingContractor.last_name"
                                    class="custom-input w-full">
                         </div>
                         <div>
-                            <label for="new-contractor-phone" class="block text-sm font-medium text-gray-700">Phone Number:</label>
-                            <input type="tel" id="new-contractor-phone" v-model="newContractor.phone_number"
+                            <label for="edit-phone" class="block text-sm font-medium text-gray-700">Phone Number:</label>
+                            <input type="tel" id="edit-phone" v-model="editingContractor.phone_number"
                                    class="custom-input w-full">
                         </div>
                         
                         <div>
-                            <label for="new-contractor-deel-id" class="block text-sm font-medium text-gray-700">Deel Contract ID <span class="text-xs font-normal text-gray-500">(Required for auto-payouts)</span>:</label>
-                            <input type="text" id="new-contractor-deel-id" v-model="newContractor.deel_contract_id"
+                            <label for="edit-deel-id" class="block text-sm font-medium text-gray-700">Deel Contract ID:</label>
+                            <input type="text" id="edit-deel-id" v-model="editingContractor.deel_contract_id"
                                    class="custom-input w-full" placeholder="e.g. wg5abc123">
                         </div>
+                    </div>
 
-                        <button type="submit" :disabled="isCreatingContractor || !isNewEmailValid"
-                                class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out disabled:bg-gray-400">
-                            {{ isCreatingContractor ? 'Creating...' : 'Create Contractor' }}
-                        </button>
-                        <p v-if="createContractorMessage" :class="{'text-green-600': createContractorSuccess, 'text-red-600': !createContractorSuccess}" class="mt-2 text-sm">{{ createContractorMessage }}</p>
-                    </form>
-                </div>
-
-                <div v-if="activeTab === 'manage'">
-                    <h2 class="text-2xl font-semibold text-gray-700 mb-4 border-b pb-2">Manage Existing Contractors</h2>
-                    <button @click="fetchContractors" :disabled="isLoadingContractors" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg mb-4 disabled:bg-gray-400">
-                        {{ isLoadingContractors ? 'Loading...' : 'Refresh Contractors' }}
-                    </button>
-                    <p v-if="contractorListMessage" class="text-red-500 text-sm mb-4">{{ contractorListMessage }}</p>
-
-                    <div v-if="contractors.length > 0" class="space-y-4">
-                        <div v-for="contractor in contractors" :key="contractor.email" class="contractor-card bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <h3 class="text-lg font-semibold text-gray-800">{{ contractor.first_name }} {{ contractor.last_name }}</h3>
-                                    <p class="text-sm text-gray-600">{{ contractor.email }}</p>
-                                    <p class="text-sm text-gray-600">Phone: {{ contractor.phone_number || 'N/A' }}</p>
-                                    <p class="text-sm text-gray-600 mt-1">
-                                        Deel ID: 
-                                        <span v-if="contractor.deel_contract_id" class="font-mono text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">{{ contractor.deel_contract_id }}</span>
-                                        <span v-else class="font-mono text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded">Not Configured</span>
-                                    </p>
-                                </div>
-                            </div>
-                            <div class="mt-4 flex space-x-2">
-                                <button @click="openEditModal(contractor)" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg text-sm transition duration-300 ease-in-out">Edit</button>
-                                <button @click="confirmDeleteContractor(contractor)" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg text-sm transition duration-300 ease-in-out">Delete</button>
-                            </div>
+                    <!-- Radius Input for Edit -->
+                    <div class="mt-4 pt-4 border-t border-gray-200">
+                        <label class="block text-sm font-bold text-emerald-800 mb-2">Service Coverage Areas (Cities)</label>
+                        <input type="text" id="edit-city-input" placeholder="Search for a city..." class="custom-input w-full border-emerald-300 focus:border-emerald-500" @keydown.enter.prevent>
+                        
+                        <div class="flex flex-wrap gap-2 mt-4">
+                            <span v-for="(city, idx) in editingContractor.service_cities" :key="idx" class="bg-emerald-100 text-emerald-800 text-sm font-bold px-3 py-1.5 rounded-lg flex items-center shadow-sm border border-emerald-200">
+                                {{ city }}
+                                <button type="button" @click="editingContractor.service_cities.splice(idx, 1)" class="ml-2 text-emerald-600 hover:text-emerald-900 focus:outline-none">&times;</button>
+                            </span>
+                            <span v-if="editingContractor.service_cities.length === 0" class="text-sm text-slate-400 italic">No areas assigned.</span>
                         </div>
                     </div>
-                    <p v-else-if="!isLoadingContractors" class="text-gray-500 text-center mt-4">No contractors found.</p>
-                </div>
-            </div>
-        </div>
 
-        <div v-if="showEditModal" class="modal-overlay">
-            <div class="modal-content">
-                <h3 class="text-xl font-bold text-gray-800 mb-4">Edit Contractor</h3>
-                <form @submit.prevent="updateContractor" class="space-y-4">
-                    <div>
-                        <label for="edit-email" class="block text-sm font-medium text-gray-700">Email:</label>
-                        <input type="email" id="edit-email" v-model="editingContractor.email" disabled
-                               class="custom-input w-full disabled:bg-gray-200">
-                        <p v-if="editingContractor.email && !isEditEmailValid" class="text-red-500 text-xs mt-1">Please enter a valid email address.</p>
-                    </div>
-                    <div>
-                        <label for="edit-password" class="block text-sm font-medium text-gray-700">New Password (leave blank to keep current):</label>
-                        <input type="password" id="edit-password" v-model="editingContractor.new_password"
-                               class="custom-input w-full">
-                    </div>
-                    <div>
-                        <label for="edit-first-name" class="block text-sm font-medium text-gray-700">First Name:</label>
-                        <input type="text" id="edit-first-name" v-model="editingContractor.first_name"
-                               class="custom-input w-full">
-                    </div>
-                    <div>
-                        <label for="edit-last-name" class="block text-sm font-medium text-gray-700">Last Name:</label>
-                        <input type="text" id="edit-last-name" v-model="editingContractor.last_name"
-                               class="custom-input w-full">
-                    </div>
-                    <div>
-                        <label for="edit-phone" class="block text-sm font-medium text-gray-700">Phone Number:</label>
-                        <input type="tel" id="edit-phone" v-model="editingContractor.phone_number"
-                               class="custom-input w-full">
-                    </div>
-                    
-                    <div>
-                        <label for="edit-deel-id" class="block text-sm font-medium text-gray-700">Deel Contract ID:</label>
-                        <input type="text" id="edit-deel-id" v-model="editingContractor.deel_contract_id"
-                               class="custom-input w-full" placeholder="e.g. wg5abc123">
-                    </div>
-
-                    <div class="flex justify-end space-x-2 mt-6">
-                        <button type="button" @click="showEditModal = false" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out">Cancel</button>
-                        <button type="submit" :disabled="isUpdatingContractor || !isEditEmailValid" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-400 transition duration-300 ease-in-out">
+                    <div class="flex justify-end space-x-2 mt-8 pt-4 border-t border-gray-100">
+                        <button type="button" @click="showEditModal = false" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-2.5 px-5 rounded-lg transition duration-300 ease-in-out">Cancel</button>
+                        <button type="submit" :disabled="isUpdatingContractor || !isEditEmailValid" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-lg disabled:opacity-50 transition duration-300 ease-in-out shadow-md">
                             {{ isUpdatingContractor ? 'Updating...' : 'Save Changes' }}
                         </button>
                     </div>
-                    <p v-if="updateContractorMessage" :class="{'text-green-600': updateContractorSuccess, 'text-red-600': !updateContractorSuccess}" class="mt-2 text-sm text-center">{{ updateContractorMessage }}</p>
+                    <p v-if="updateContractorMessage" :class="{'text-green-600': updateContractorSuccess, 'text-red-600': !updateContractorSuccess}" class="mt-2 text-sm text-center font-medium">{{ updateContractorMessage }}</p>
                 </form>
             </div>
         </div>
 
+        <!-- DELETE CONTRACTOR MODAL -->
         <div v-if="showDeleteConfirmModal" class="modal-overlay">
-            <div class="modal-content">
-                <h3 class="text-xl font-bold text-gray-800 mb-4">Confirm Deletion</h3>
-                <p class="text-gray-700 mb-6">Are you sure you want to delete {{ contractorToDelete ? contractorToDelete.email : 'this contractor' }}?</p>
-                <div class="flex justify-end space-x-2">
-                    <button @click="showDeleteConfirmModal = false" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out">Cancel</button>
-                    <button @click="deleteContractor" :disabled="isDeletingContractor" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-400 transition duration-300 ease-in-out">
+            <div class="modal-content text-center">
+                <div class="w-16 h-16 rounded-full bg-rose-100 text-rose-500 flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                </div>
+                <h3 class="text-2xl font-black text-slate-900 mb-2">Confirm Deletion</h3>
+                <p class="text-slate-600 mb-8 font-medium">Are you sure you want to permanently delete <br><span class="font-bold text-slate-900">{{ contractorToDelete ? contractorToDelete.email : 'this contractor' }}</span>?</p>
+                <div class="flex justify-center space-x-3">
+                    <button @click="showDeleteConfirmModal = false" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-3 px-6 rounded-xl transition duration-300 ease-in-out">Cancel</button>
+                    <button @click="deleteContractor" :disabled="isDeletingContractor" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-3 px-8 rounded-xl disabled:opacity-50 transition duration-300 ease-in-out shadow-lg shadow-rose-600/30">
                         {{ isDeletingContractor ? 'Deleting...' : 'Delete' }}
                     </button>
                 </div>
-                <p v-if="deleteContractorMessage" :class="{'text-green-600': deleteContractorSuccess, 'text-red-600': !deleteContractorSuccess}" class="mt-2 text-sm text-center">{{ deleteContractorMessage }}</p>
+                <p v-if="deleteContractorMessage" :class="{'text-green-600': deleteContractorSuccess, 'text-red-600': !deleteContractorSuccess}" class="mt-4 text-sm text-center font-medium">{{ deleteContractorMessage }}</p>
             </div>
         </div>
     </div>
 
     <script>
-        const { createApp, ref, reactive, onMounted, computed } = Vue;
+        const { createApp, ref, reactive, onMounted, computed, watch, nextTick } = Vue;
 
         const app = createApp({
             setup() {
-                const API_BASE_URL = 'https://michie-detailing-admin.onrender.com'; 
+                // Hardcoded API URLs to connect UI exactly to the correct backends
+                const ADMIN_API_URL = 'https://michie-detailing-admin.onrender.com'; 
+                const CALENDAR_API_URL = 'https://calendar-system-l6vb.onrender.com';
 
                 const isAdminLoggedIn = ref(false);
                 const adminApiKey = ref('');
                 const isLoggingIn = ref(false);
                 const loginMessage = ref('');
 
-                const activeTab = ref('manage');
+                // Master Navigation
+                const activeMainTab = ref('calendar');
+                
+                // --- CALENDAR & CHECKER STATE ---
+                const calendar = reactive({
+                    defaultCap: 1,
+                    slotOptions: [],
+                    rules: [],
+                    activeAppts: [],
+                    prevAppts: []
+                });
+                const ruleForm = reactive({ date: '', time: 'ALL', cap: 1, isBlocked: false });
+                
+                const checker = reactive({
+                    date: new Date().toISOString().split('T')[0],
+                    zip: '',
+                    results: null
+                });
+
+                // --- CONTRACTOR STATE ---
+                const contractorTab = ref('manage');
 
                 const newContractor = reactive({
-                    email: '',
-                    password: '',
-                    first_name: '',
-                    last_name: '',
-                    phone_number: '',
-                    deel_contract_id: '' 
+                    email: '', password: '', first_name: '', last_name: '', phone_number: '', deel_contract_id: '', service_cities: []
                 });
                 const isCreatingContractor = ref(false);
                 const createContractorMessage = ref('');
@@ -277,12 +461,7 @@
 
                 const showEditModal = ref(false);
                 const editingContractor = reactive({
-                    email: '',
-                    new_password: '', 
-                    first_name: '',
-                    last_name: '',
-                    phone_number: '',
-                    deel_contract_id: '' 
+                    email: '', new_password: '', first_name: '', last_name: '', phone_number: '', deel_contract_id: '', service_cities: []
                 });
                 const isUpdatingContractor = ref(false);
                 const updateContractorMessage = ref('');
@@ -295,40 +474,31 @@
                 const deleteContractorSuccess = ref(false);
 
                 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                const isNewEmailValid = computed(() => emailRegex.test(newContractor.email));
+                const isEditEmailValid = computed(() => emailRegex.test(editingContractor.email));
 
-                const isNewEmailValid = computed(() => {
-                    return emailRegex.test(newContractor.email);
-                });
-
-                const isEditEmailValid = computed(() => {
-                    return emailRegex.test(editingContractor.email);
-                });
-
+                // --- GLOBAL AUTH LOGIC ---
                 const loginAdmin = async () => {
                     isLoggingIn.value = true;
                     loginMessage.value = '';
                     try {
-                        const response = await fetch(`${API_BASE_URL}/admin/users`, {
+                        // Validate token against the Contractor Admin backend
+                        const response = await fetch(`${ADMIN_API_URL}/admin/users`, {
                             method: 'GET',
-                            headers: {
-                                'Authorization': `Bearer ${adminApiKey.value}`,
-                                'Content-Type': 'application/json',
-                            },
+                            headers: { 'Authorization': `Bearer ${adminApiKey.value}` },
                         });
 
                         if (response.ok) {
-                            localStorage.setItem('contractorAdminAuthToken', adminApiKey.value); 
+                            localStorage.setItem('masterAdminToken', adminApiKey.value); 
                             isAdminLoggedIn.value = true;
-                            loginMessage.value = 'Login successful!';
-                            fetchContractors(); 
+                            fetchAllData(); 
                         } else {
                             const errorData = await response.json();
-                            loginMessage.value = errorData.message || 'Login failed. Invalid API Key.';
+                            loginMessage.value = errorData.message || 'Login failed. Invalid Secure Key.';
                             isAdminLoggedIn.value = false;
                         }
                     } catch (error) {
-                        console.error('Admin login error:', error);
-                        loginMessage.value = 'An error occurred during login. Please check network or server.';
+                        loginMessage.value = 'An error occurred during login. Check network.';
                         isAdminLoggedIn.value = false;
                     } finally {
                         isLoggingIn.value = false;
@@ -336,296 +506,269 @@
                 };
 
                 const logoutAdmin = () => {
-                    localStorage.removeItem('contractorAdminAuthToken');
+                    localStorage.removeItem('masterAdminToken');
                     isAdminLoggedIn.value = false;
                     adminApiKey.value = ''; 
-                    loginMessage.value = 'Logged out successfully.';
                     contractors.value = []; 
                 };
 
+                const fetchAllData = async () => {
+                    await fetchContractors();
+                    await fetchCalendarData();
+                };
+
+                // --- CALENDAR LOGIC ---
+                const fetchCalendarData = async () => {
+                    try {
+                        const res = await fetch(`${CALENDAR_API_URL}/api/admin/dashboard_data`, {
+                            headers: { 'Authorization': `Bearer ${adminApiKey.value}` }
+                        });
+                        if (!res.ok) return;
+                        const data = await res.json();
+                        calendar.defaultCap = data.default_cap;
+                        calendar.rules = data.rules;
+                        calendar.slotOptions = data.admin_slot_values;
+                        calendar.activeAppts = data.active_appointments.map(a => ({...a, new_date: a.appointment_date, new_time: a.appointment_time}));
+                        calendar.prevAppts = data.previous_appointments;
+                    } catch (e) { console.error('Calendar Fetch Error', e); }
+                };
+
+                const updateDefaultCap = async () => {
+                    await fetch(`${CALENDAR_API_URL}/api/admin/update_default`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${adminApiKey.value}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ default_max_bookings: calendar.defaultCap })
+                    });
+                    fetchCalendarData();
+                };
+
+                const addRule = async () => {
+                    if(!ruleForm.date) return alert('Date required');
+                    await fetch(`${CALENDAR_API_URL}/api/admin/add_rule`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${adminApiKey.value}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ date: ruleForm.date, time: ruleForm.time, max_bookings: ruleForm.cap, is_blocked: ruleForm.isBlocked })
+                    });
+                    fetchCalendarData();
+                };
+
+                const deleteRule = async (id) => {
+                    await fetch(`${CALENDAR_API_URL}/api/admin/delete_rule/${id}`, {
+                        method: 'DELETE', headers: { 'Authorization': `Bearer ${adminApiKey.value}` }
+                    });
+                    fetchCalendarData();
+                };
+
+                const reschedule = async (appt) => {
+                    await fetch(`${CALENDAR_API_URL}/api/admin/reschedule/${appt.deal_id}`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${adminApiKey.value}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ new_date: appt.new_date, new_time: appt.new_time })
+                    });
+                    fetchCalendarData();
+                };
+
+                const cancelAppt = async (appt) => {
+                    if(!confirm(`Are you sure you want to cancel the job for ${appt.customer_name}?`)) return;
+                    await fetch(`${CALENDAR_API_URL}/api/admin/cancel/${appt.deal_id}`, {
+                        method: 'POST', headers: { 'Authorization': `Bearer ${adminApiKey.value}` }
+                    });
+                    fetchCalendarData();
+                };
+
+                // --- RADIUS CHECKER LOGIC ---
+                const runDiagnostics = async () => {
+                    if (!checker.date) return;
+                    checker.results = null;
+                    try {
+                        const url = `${CALENDAR_API_URL}/api/available_slots?date=${checker.date}${checker.zip ? '&zip_code='+checker.zip : ''}`;
+                        const res = await fetch(url);
+                        const data = await res.json();
+                        checker.results = data.slots;
+                    } catch (e) { alert("Error running diagnostics"); }
+                };
+
+                // --- CONTRACTOR CRUD LOGIC ---
                 const fetchContractors = async () => {
                     isLoadingContractors.value = true;
                     contractorListMessage.value = '';
-                    const token = localStorage.getItem('contractorAdminAuthToken');
-                    
-                    if (!token) {
-                        contractorListMessage.value = 'Authentication token missing. Please log in.';
-                        isLoadingContractors.value = false;
-                        isAdminLoggedIn.value = false; 
-                        return;
-                    }
-
                     try {
-                        const response = await fetch(`${API_BASE_URL}/admin/users`, {
-                            method: 'GET',
-                            headers: {
-                                'Authorization': `Bearer ${token}`,
-                                'Content-Type': 'application/json',
-                            },
+                        const response = await fetch(`${ADMIN_API_URL}/admin/users`, {
+                            method: 'GET', headers: { 'Authorization': `Bearer ${adminApiKey.value}` },
                         });
-
                         if (response.ok) {
-                            contractors.value = await response.json();
-                            if (contractors.value.length === 0) {
-                                contractorListMessage.value = 'No contractors found.';
-                            } else {
-                                contractorListMessage.value = '';
-                            }
+                            const data = await response.json();
+                            contractors.value = data.map(c => ({
+                                ...c,
+                                cityArray: c.service_cities ? c.service_cities.split(',').map(s=>s.trim()).filter(s=>s) : []
+                            }));
                         } else {
-                            const errorData = await response.json();
-                            contractorListMessage.value = errorData.message || 'Failed to fetch contractors.';
-                            contractors.value = [];
-                            if (response.status === 401 || response.status === 403) {
-                                logoutAdmin();
-                                loginMessage.value = 'Session expired or unauthorized. Please log in again.';
-                            }
+                            if (response.status === 401 || response.status === 403) logoutAdmin();
                         }
-                    } catch (error) {
-                        console.error('Error fetching contractors:', error);
-                        contractorListMessage.value = 'An error occurred while fetching contractors.';
-                        contractors.value = [];
-                    } finally {
-                        isLoadingContractors.value = false;
-                    }
+                    } catch (error) { contractorListMessage.value = 'An error occurred while fetching contractors.'; } 
+                    finally { isLoadingContractors.value = false; }
                 };
 
                 const createContractor = async () => {
                     isCreatingContractor.value = true;
                     createContractorMessage.value = '';
-                    createContractorSuccess.value = false;
-                    const token = localStorage.getItem('contractorAdminAuthToken');
-
-                    if (!token) {
-                        createContractorMessage.value = 'Authentication token missing. Please log in.';
-                        isCreatingContractor.value = false;
-                        isAdminLoggedIn.value = false;
-                        return;
-                    }
-
-                    if (!isNewEmailValid.value) {
-                        createContractorMessage.value = 'Please enter a valid email address.';
-                        createContractorSuccess.value = false;
-                        isCreatingContractor.value = false;
-                        return;
-                    }
-
                     const payload = {
-                        email: newContractor.email,
-                        password: newContractor.password,
-                        first_name: newContractor.first_name,
-                        last_name: newContractor.last_name,
-                        phone_number: newContractor.phone_number,
-                        deel_contract_id: newContractor.deel_contract_id 
+                        email: newContractor.email, password: newContractor.password, first_name: newContractor.first_name,
+                        last_name: newContractor.last_name, phone_number: newContractor.phone_number,
+                        deel_contract_id: newContractor.deel_contract_id, service_cities: newContractor.service_cities.join(', ')
                     };
-
                     try {
-                        const response = await fetch(`${API_BASE_URL}/admin/users`, {
+                        const response = await fetch(`${ADMIN_API_URL}/admin/users`, {
                             method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${token}`,
-                                'Content-Type': 'application/json',
-                            },
+                            headers: { 'Authorization': `Bearer ${adminApiKey.value}`, 'Content-Type': 'application/json' },
                             body: JSON.stringify(payload),
                         });
-
                         if (response.ok) {
                             createContractorMessage.value = 'Contractor created successfully!';
                             createContractorSuccess.value = true;
-                            newContractor.email = '';
-                            newContractor.password = '';
-                            newContractor.first_name = '';
-                            newContractor.last_name = '';
-                            newContractor.phone_number = '';
-                            newContractor.deel_contract_id = ''; 
+                            Object.assign(newContractor, { email: '', password: '', first_name: '', last_name: '', phone_number: '', deel_contract_id: '', service_cities: [] });
                             fetchContractors(); 
                         } else {
-                            const errorData = await response.json();
-                            createContractorMessage.value = errorData.message || 'Failed to create contractor.';
+                            const data = await response.json();
+                            createContractorMessage.value = data.message || 'Failed to create contractor.';
                             createContractorSuccess.value = false;
-                            if (response.status === 401 || response.status === 403) {
-                                logoutAdmin();
-                                loginMessage.value = 'Session expired or unauthorized. Please log in again.';
-                            }
                         }
                     } catch (error) {
-                        console.error('Error creating contractor:', error);
                         createContractorMessage.value = 'An error occurred during contractor creation.';
                         createContractorSuccess.value = false;
-                    } finally {
-                        isCreatingContractor.value = false;
-                    }
+                    } finally { isCreatingContractor.value = false; }
                 };
 
                 const openEditModal = (contractor) => {
-                    editingContractor.email = contractor.email;
-                    editingContractor.new_password = ''; 
-                    editingContractor.first_name = contractor.first_name;
-                    editingContractor.last_name = contractor.last_name;
-                    editingContractor.phone_number = contractor.phone_number;
-                    editingContractor.deel_contract_id = contractor.deel_contract_id || ''; 
+                    Object.assign(editingContractor, {
+                        email: contractor.email, new_password: '', first_name: contractor.first_name, last_name: contractor.last_name,
+                        phone_number: contractor.phone_number, deel_contract_id: contractor.deel_contract_id || '', service_cities: [...contractor.cityArray]
+                    });
                     updateContractorMessage.value = ''; 
-                    updateContractorSuccess.value = false;
                     showEditModal.value = true;
                 };
 
                 const updateContractor = async () => {
                     isUpdatingContractor.value = true;
                     updateContractorMessage.value = '';
-                    updateContractorSuccess.value = false;
-                    const token = localStorage.getItem('contractorAdminAuthToken');
-
-                    if (!token) {
-                        updateContractorMessage.value = 'Authentication token missing. Please log in.';
-                        isUpdatingContractor.value = false;
-                        isAdminLoggedIn.value = false;
-                        return;
-                    }
-
-                    if (!isEditEmailValid.value) { 
-                        updateContractorMessage.value = 'Invalid email address detected.';
-                        updateContractorSuccess.value = false;
-                        isUpdatingContractor.value = false;
-                        return;
-                    }
-
                     const payload = {
-                        new_password: editingContractor.new_password || undefined,
-                        new_first_name: editingContractor.first_name,
-                        new_last_name: editingContractor.last_name,
-                        new_phone_number: editingContractor.phone_number,
-                        deel_contract_id: editingContractor.deel_contract_id,
+                        new_password: editingContractor.new_password || undefined, new_first_name: editingContractor.first_name,
+                        new_last_name: editingContractor.last_name, new_phone_number: editingContractor.phone_number,
+                        deel_contract_id: editingContractor.deel_contract_id, service_cities: editingContractor.service_cities.join(', ')
                     };
-
                     Object.keys(payload).forEach(key => payload[key] === undefined && delete payload[key]);
 
                     try {
-                        const response = await fetch(`${API_BASE_URL}/admin/users/${editingContractor.email}`, {
+                        const response = await fetch(`${ADMIN_API_URL}/admin/users/${editingContractor.email}`, {
                             method: 'PUT',
-                            headers: {
-                                'Authorization': `Bearer ${token}`, 
-                                'Content-Type': 'application/json',
-                            },
+                            headers: { 'Authorization': `Bearer ${adminApiKey.value}`, 'Content-Type': 'application/json' },
                             body: JSON.stringify(payload),
                         });
-
                         if (response.ok) {
-                            updateContractorMessage.value = 'Contractor updated successfully!';
-                            updateContractorSuccess.value = true;
                             showEditModal.value = false;
                             fetchContractors(); 
                         } else {
-                            const errorData = await response.json();
-                            updateContractorMessage.value = errorData.message || 'Failed to update contractor.';
+                            const data = await response.json();
+                            updateContractorMessage.value = data.message || 'Failed to update contractor.';
                             updateContractorSuccess.value = false;
-                            if (response.status === 401 || response.status === 403) {
-                                logoutAdmin();
-                                loginMessage.value = 'Session expired or unauthorized. Please log in again.';
-                            }
                         }
                     } catch (error) {
-                        console.error('Error updating contractor:', error);
                         updateContractorMessage.value = 'An error occurred during contractor update.';
                         updateContractorSuccess.value = false;
-                    } finally {
-                        isUpdatingContractor.value = false;
-                    }
+                    } finally { isUpdatingContractor.value = false; }
                 };
 
                 const confirmDeleteContractor = (contractor) => {
                     contractorToDelete.value = contractor;
                     deleteContractorMessage.value = ''; 
-                    deleteContractorSuccess.value = false;
                     showDeleteConfirmModal.value = true;
                 };
 
                 const deleteContractor = async () => {
                     isDeletingContractor.value = true;
-                    deleteContractorMessage.value = '';
-                    deleteContractorSuccess.value = false;
-                    const token = localStorage.getItem('contractorAdminAuthToken');
-
-                    if (!token) {
-                        deleteContractorMessage.value = 'Authentication token missing. Please log in.';
-                        isDeletingContractor.value = false;
-                        isAdminLoggedIn.value = false;
-                        return;
-                    }
-
                     try {
-                        const response = await fetch(`${API_BASE_URL}/admin/users/${contractorToDelete.value.email}`, { 
-                            method: 'DELETE',
-                            headers: {
-                                'Authorization': `Bearer ${token}`, 
-                            },
+                        const response = await fetch(`${ADMIN_API_URL}/admin/users/${contractorToDelete.value.email}`, { 
+                            method: 'DELETE', headers: { 'Authorization': `Bearer ${adminApiKey.value}` },
                         });
-
                         if (response.ok) {
-                            deleteContractorMessage.value = 'Contractor deleted successfully!';
-                            deleteContractorSuccess.value = true;
                             showDeleteConfirmModal.value = false;
                             fetchContractors(); 
                         } else {
-                            const errorData = await response.json();
-                            deleteContractorMessage.value = errorData.message || 'Failed to delete contractor.';
+                            const data = await response.json();
+                            deleteContractorMessage.value = data.message || 'Failed to delete contractor.';
                             deleteContractorSuccess.value = false;
-                            if (response.status === 401 || response.status === 403) {
-                                logoutAdmin();
-                                loginMessage.value = 'Session expired or unauthorized. Please log in again.';
-                            }
                         }
                     } catch (error) {
-                        console.error('Error deleting contractor:', error);
                         deleteContractorMessage.value = 'An error occurred during contractor deletion.';
                         deleteContractorSuccess.value = false;
-                    } finally {
-                        isDeletingContractor.value = false;
+                    } finally { isDeletingContractor.value = false; }
+                };
+
+                // --- GOOGLE PLACES API INITIALIZATION LOGIC ---
+                const initPlacesAPI = (inputId, targetArray) => {
+                    const input = document.getElementById(inputId);
+                    if(!input) return;
+                    
+                    // Prevent multiple initializations if already done
+                    if (input.dataset.placesLoaded) return;
+                    input.dataset.placesLoaded = "true";
+
+                    const autocomplete = new google.maps.places.Autocomplete(input, { types: ['(cities)'], componentRestrictions: { country: 'us' }});
+                    autocomplete.addListener('place_changed', () => {
+                        const place = autocomplete.getPlace();
+                        if (place.formatted_address) {
+                            if(!targetArray.includes(place.formatted_address)) {
+                                targetArray.push(place.formatted_address);
+                            }
+                            input.value = ''; // Reset input after adding
+                        }
+                    });
+                };
+
+                // Watchers to trigger Google Places script binding when elements become visible
+                watch(() => contractorTab.value, (newVal) => {
+                    if (newVal === 'create' && activeMainTab.value === 'contractors') {
+                        nextTick(() => initPlacesAPI('create-city-input', newContractor.service_cities));
                     }
+                });
+                watch(() => activeMainTab.value, (newVal) => {
+                    if (newVal === 'contractors' && contractorTab.value === 'create') {
+                        nextTick(() => initPlacesAPI('create-city-input', newContractor.service_cities));
+                    }
+                });
+                watch(() => showEditModal.value, (newVal) => {
+                    if (newVal) {
+                        nextTick(() => initPlacesAPI('edit-city-input', editingContractor.service_cities));
+                    }
+                });
+
+                const format12Hr = (timeStr) => {
+                    if (!timeStr || timeStr === "N/A") return "N/A";
+                    try {
+                        const [h, m] = timeStr.split(':');
+                        let hour = parseInt(h, 10);
+                        const suffix = hour >= 12 ? 'PM' : 'AM';
+                        hour = hour % 12 || 12;
+                        return `${hour}:${m} ${suffix}`;
+                    } catch(e) { return timeStr; }
                 };
 
                 onMounted(() => {
-                    const token = localStorage.getItem('contractorAdminAuthToken');
+                    const token = localStorage.getItem('masterAdminToken');
                     if (token) {
                         adminApiKey.value = token;
-                        isAdminLoggedIn.value = true;
-                        if (activeTab.value === 'manage') {
-                            fetchContractors(); 
-                        }
+                        loginAdmin();
                     }
                 });
 
                 return {
-                    isAdminLoggedIn,
-                    adminApiKey,
-                    isLoggingIn,
-                    loginMessage,
-                    loginAdmin,
-                    logoutAdmin,
-                    activeTab,
-                    newContractor,
-                    isCreatingContractor,
-                    createContractorMessage,
-                    createContractorSuccess,
-                    createContractor,
-                    isNewEmailValid,
-                    contractors,
-                    isLoadingContractors,
-                    contractorListMessage,
-                    fetchContractors,
-                    showEditModal,
-                    editingContractor,
-                    isUpdatingContractor,
-                    updateContractorMessage,
-                    updateContractorSuccess,
-                    openEditModal,
-                    updateContractor,
-                    isEditEmailValid, 
-                    showDeleteConfirmModal,
-                    contractorToDelete,
-                    isDeletingContractor,
-                    deleteContractorMessage,
-                    deleteContractorSuccess,
-                    confirmDeleteContractor,
-                    deleteContractor,
+                    isAdminLoggedIn, adminApiKey, isLoggingIn, loginMessage, loginAdmin, logoutAdmin, 
+                    activeMainTab, calendar, ruleForm, updateDefaultCap, addRule, deleteRule, reschedule, cancelAppt, format12Hr,
+                    checker, runDiagnostics,
+                    contractorTab, newContractor, isCreatingContractor, createContractorMessage, createContractorSuccess, createContractor, isNewEmailValid,
+                    contractors, isLoadingContractors, contractorListMessage, fetchContractors,
+                    showEditModal, editingContractor, isUpdatingContractor, updateContractorMessage, updateContractorSuccess, openEditModal, updateContractor, isEditEmailValid, 
+                    showDeleteConfirmModal, contractorToDelete, isDeletingContractor, deleteContractorMessage, deleteContractorSuccess, confirmDeleteContractor, deleteContractor
                 };
             }
         });
