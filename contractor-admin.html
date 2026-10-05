@@ -9,7 +9,7 @@
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     
     <!-- Google Places API configured with your restricted key, using loading=async to fix the warning -->
-    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCDfR7Vv_UgVUyhzdv6CmESubuV1MwufIw&libraries=places&loading=async&v=weekly"></script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCDfR7Vv_UgVUyhzdv6CmESubuV1MwufIw&libraries=places&loading=async"></script>
     
     <style>
         body { font-family: 'Inter', sans-serif; }
@@ -50,19 +50,6 @@
         
         /* AutoComplete Dropdown Fix for Modals */
         .pac-container { z-index: 2000 !important; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); font-family: 'Inter', sans-serif;}
-        
-        /* New Google Places Web Component Styling */
-        gmp-place-autocomplete {
-            width: 100%;
-            display: block;
-        }
-        gmp-place-autocomplete::part(input) {
-            padding: 0.75rem 1rem; border: 1px solid #d1d5db; border-radius: 0.5rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); 
-            background-color: #f9fafb; color: #1f2937; transition: all 0.2s ease-in-out; width: 100%; font-family: 'Inter', sans-serif;
-        }
-        gmp-place-autocomplete::part(input):focus {
-            outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25); background-color: #ffffff; 
-        }
 
         table { width: 100%; border-collapse: collapse; }
         th, td { padding: 12px 16px; border-bottom: 1px solid #e2e8f0; text-align: left; }
@@ -237,11 +224,9 @@
                                 <label class="block text-sm font-bold text-emerald-800 mb-2">Service Coverage Areas (Cities)</label>
                                 <p class="text-xs text-gray-500 mb-3 font-medium">Type a city name (e.g., "Dallas, TX") to assign a 20-mile operational radius.</p>
                                 
-                                <!-- Google Places Component directly in HTML -->
+                                <!-- Restored Standard Input for classic Google Maps Autocomplete -->
                                 <div class="flex gap-2 mb-4">
-                                    <div class="flex-grow">
-                                        <gmp-place-autocomplete id="create-city-autocomplete" placeholder="Search for a city..." component-restrictions='{"country":["us"]}' types='["(cities)"]'></gmp-place-autocomplete>
-                                    </div>
+                                    <input type="text" id="create-city-autocomplete" placeholder="Search for a city..." class="custom-input flex-grow">
                                     <button type="button" @click="fallbackAddCity('create')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-sm transition">Add</button>
                                 </div>
                                 
@@ -394,11 +379,9 @@
                     <div class="mt-4 pt-4 border-t border-gray-200">
                         <label class="block text-sm font-bold text-emerald-800 mb-2">Service Coverage Areas (Cities)</label>
                         
-                        <!-- Google Places Component directly in HTML -->
+                        <!-- Restored Standard Input for classic Google Maps Autocomplete -->
                         <div class="flex gap-2 mb-4">
-                            <div class="flex-grow">
-                                <gmp-place-autocomplete id="edit-city-autocomplete" placeholder="Search for a city..." component-restrictions='{"country":["us"]}' types='["(cities)"]'></gmp-place-autocomplete>
-                            </div>
+                            <input type="text" id="edit-city-autocomplete" placeholder="Search for a city..." class="custom-input flex-grow">
                             <button type="button" @click="fallbackAddCity('edit')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-sm transition">Add</button>
                         </div>
                         
@@ -511,7 +494,6 @@
                     isLoggingIn.value = true;
                     loginMessage.value = '';
                     try {
-                        // Validate token against the Contractor Admin backend
                         const response = await fetch(`${ADMIN_API_URL}/admin/users`, {
                             method: 'GET',
                             headers: { 'Authorization': `Bearer ${adminApiKey.value}` },
@@ -638,6 +620,70 @@
                     finally { isLoadingContractors.value = false; }
                 };
 
+                const initClassicPlaces = (elementId, targetArray) => {
+                    const inputEl = document.getElementById(elementId);
+                    if (!inputEl) return;
+                    
+                    if (inputEl._mapsInitialized) return;
+                    inputEl._mapsInitialized = true;
+
+                    if (window.google && window.google.maps && window.google.maps.places) {
+                        const autocomplete = new google.maps.places.Autocomplete(inputEl, {
+                            types: ['(cities)'],
+                            componentRestrictions: { country: "us" }
+                        });
+
+                        autocomplete.addListener('place_changed', () => {
+                            const place = autocomplete.getPlace();
+                            let cityName = '';
+                            
+                            // STRICT EXTRACTION: Force split by comma to prevent "Dallas, TX, USA" from saving as 3 badges
+                            if (place.name) {
+                                cityName = place.name.split(',')[0].trim();
+                            } else if (inputEl.value) {
+                                cityName = inputEl.value.split(',')[0].trim();
+                            }
+
+                            if (cityName && !targetArray.includes(cityName)) {
+                                targetArray.push(cityName);
+                            }
+                            
+                            // Let the DOM update, then clear the input box
+                            setTimeout(() => { inputEl.value = ''; }, 10);
+                        });
+                    }
+                };
+
+                const fallbackAddCity = (mode) => {
+                    const elId = mode === 'create' ? 'create-city-autocomplete' : 'edit-city-autocomplete';
+                    const el = document.getElementById(elId);
+                    if (el && el.value && el.value.trim()) {
+                        const val = el.value.split(',')[0].trim(); // Safely strip out the extra states/countries if manually typed
+                        const targetArray = mode === 'create' ? newContractor.service_cities : editingContractor.service_cities;
+                        if (!targetArray.includes(val)) {
+                            targetArray.push(val);
+                        }
+                        el.value = ''; 
+                    }
+                };
+
+                // Watchers to trigger Classic Google Places bind when elements become visible
+                watch(() => contractorTab.value, (newVal) => {
+                    if (newVal === 'create' && activeMainTab.value === 'contractors') {
+                        nextTick(() => initClassicPlaces('create-city-autocomplete', newContractor.service_cities));
+                    }
+                });
+                watch(() => activeMainTab.value, (newVal) => {
+                    if (newVal === 'contractors' && contractorTab.value === 'create') {
+                        nextTick(() => initClassicPlaces('create-city-autocomplete', newContractor.service_cities));
+                    }
+                });
+                watch(() => showEditModal.value, (newVal) => {
+                    if (newVal) {
+                        nextTick(() => initClassicPlaces('edit-city-autocomplete', editingContractor.service_cities));
+                    }
+                });
+
                 const createContractor = async () => {
                     isCreatingContractor.value = true;
                     createContractorMessage.value = '';
@@ -732,64 +778,6 @@
                         deleteContractorSuccess.value = false;
                     } finally { isDeletingContractor.value = false; }
                 };
-
-                // --- GOOGLE PLACES API INITIALIZATION LOGIC ---
-                const attachGmpListener = (elementId, targetArray) => {
-                    const el = document.getElementById(elementId);
-                    if (!el) return;
-                    
-                    if (el._gmpListener) {
-                        el.removeEventListener('gmp-placeselect', el._gmpListener);
-                    }
-
-                    el._gmpListener = (event) => {
-                        const place = event.place;
-                        if (!place) return;
-                        
-                        // Safely extract the city name without calling fetchFields() to prevent API version errors
-                        const cityName = (place && place.name) || (event.target && event.target.inputValue);
-                        
-                        if (cityName) {
-                            if (!targetArray.includes(cityName)) {
-                                targetArray.push(cityName);
-                            }
-                            // Clear input after adding
-                            setTimeout(() => { el.value = ''; }, 50); 
-                        }
-                    };
-
-                    el.addEventListener('gmp-placeselect', el._gmpListener);
-                };
-
-                const fallbackAddCity = (mode) => {
-                    const elId = mode === 'create' ? 'create-city-autocomplete' : 'edit-city-autocomplete';
-                    const el = document.getElementById(elId);
-                    if (el && el.value && el.value.trim()) {
-                        const val = el.value.trim();
-                        const targetArray = mode === 'create' ? newContractor.service_cities : editingContractor.service_cities;
-                        if (!targetArray.includes(val)) {
-                            targetArray.push(val);
-                        }
-                        el.value = ''; 
-                    }
-                };
-
-                // Watchers to trigger Google Places script binding when elements become visible
-                watch(() => contractorTab.value, (newVal) => {
-                    if (newVal === 'create' && activeMainTab.value === 'contractors') {
-                        nextTick(() => attachGmpListener('create-city-autocomplete', newContractor.service_cities));
-                    }
-                });
-                watch(() => activeMainTab.value, (newVal) => {
-                    if (newVal === 'contractors' && contractorTab.value === 'create') {
-                        nextTick(() => attachGmpListener('create-city-autocomplete', newContractor.service_cities));
-                    }
-                });
-                watch(() => showEditModal.value, (newVal) => {
-                    if (newVal) {
-                        nextTick(() => attachGmpListener('edit-city-autocomplete', editingContractor.service_cities));
-                    }
-                });
 
                 const format12Hr = (timeStr) => {
                     if (!timeStr || timeStr === "N/A") return "N/A";
