@@ -28,7 +28,7 @@
         }
         /* --- CUSTOM CLASS FOR SEMI-TRANSPARENT WHITE BACKGROUND --- */
         .bg-white-77 {
-            background-color: rgba(255, 255, 255, 0.85);
+            background-color: rgba(255, 255, 255, 0.85); /* Slightly increased opacity for better readability */
         }
 
         .address-display {
@@ -133,7 +133,7 @@
                 <h2 class="text-3xl font-bold text-gray-800 mb-2">Manage Availability</h2>
                 <p class="text-gray-700 font-medium leading-relaxed">
                     Select the hours you are free to accept jobs for the next 7 days. If a time is unchecked, the system will mark you as unavailable. 
-                    <br><span class="text-red-600 font-bold">Note:</span> For days within 48 hours (or days you have an accepted job), you can <strong>add</strong> availability, but you <strong>cannot remove</strong> slots you are already committed to. Past times are automatically locked.
+                    <br><span class="text-red-600 font-bold">Note:</span> For specific time slots within 48 hours (or days you have an accepted job), you can <strong>add</strong> availability, but you <strong>cannot remove</strong> slots you are already committed to. Past times are automatically locked.
                 </p>
             </div>
 
@@ -385,17 +385,20 @@
             const grid = document.getElementById('schedule-grid');
             grid.innerHTML = '';
             
-            const now = new Date(); // Local time check
+            const now = new Date(); 
             
             days.forEach(day => {
                 const dayCard = document.createElement('div');
-                const bgClass = 'bg-white border-blue-200';
+                
+                // If the backend marked any slots locked for this day, we'll give the card the locked styling and label
+                const hasLockedSlots = day.locked_slots && day.locked_slots.length > 0;
+                const bgClass = hasLockedSlots ? 'bg-gray-50 border-gray-300' : 'bg-white border-blue-200';
                 
                 dayCard.className = `p-5 rounded-2xl shadow-sm border ${bgClass} transition`;
                 
                 let html = `<div class="flex justify-between items-center mb-4">
                     <h3 class="font-bold text-lg text-gray-800">${day.display_date}</h3>
-                    ${day.is_locked ? `<span class="text-xs bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full font-bold flex items-center shadow-inner uppercase tracking-wider"><svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" fill-rule="evenodd"></path></svg> Removals Locked</span>` : ''}
+                    ${hasLockedSlots ? `<span class="text-xs bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full font-bold flex items-center shadow-inner uppercase tracking-wider"><svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" fill-rule="evenodd"></path></svg> Removals Locked</span>` : ''}
                 </div>
                 <div class="flex flex-wrap gap-3">`;
                 
@@ -404,11 +407,14 @@
                     let hour = parseInt(slot.split(':')[0]);
                     let displayTime = hour === 12 ? '12PM' : (hour < 12 ? hour + 'AM' : (hour - 12) + 'PM');
                     
-                    // Check if time has already passed today
+                    // Client-side block for strictly passing times (so they can't book slots in the past)
                     const [yyyy, mm, dd] = day.date.split('-');
                     const [hh, mmm] = slot.split(':');
                     const slotTime = new Date(yyyy, mm - 1, dd, hh, mmm);
                     const hasPassed = slotTime < now;
+                    
+                    // Backend precise 48h check
+                    const isSlotLocked = day.locked_slots && day.locked_slots.includes(slot);
                     
                     let disabledStr = '';
                     let opacityClass = 'cursor-pointer hover:shadow-md';
@@ -416,8 +422,8 @@
                     if (hasPassed) {
                         disabledStr = 'disabled';
                         opacityClass = 'opacity-50 cursor-not-allowed';
-                    } else if (day.is_locked && isSelected) {
-                        // If day is locked (<48 hrs) and they ALREADY have this slot checked, they cannot uncheck it
+                    } else if (isSlotLocked && isSelected) {
+                        // If locked by backend (<48hrs or Job Accepted) AND already selected, CANNOT REMOVE
                         disabledStr = 'disabled';
                         opacityClass = 'opacity-60 cursor-not-allowed';
                     }
