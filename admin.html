@@ -437,9 +437,7 @@
     // --- INTEGRATION CONFIGURATION ---
     // Make sure QA_SERVER_URL matches the exact render URL of your QA app!
     const QUOTE_SERVER_URL = 'https://quote.michieauto.com';
-    const QUOTE_ADMIN_PASSWORD = 'BigBossMan6767'; // Make sure this matches your quote server's password!
     const QA_SERVER_URL = 'https://inspection.michieauto.com'; // <-- UPDATE THIS IF NEEDED
-    const QA_ADMIN_PASSWORD = 'BigBossMan6767';
 
     const { createApp, ref, computed, onMounted } = Vue;
     const API_BASE_URL = 'https://michie-detailing-backend.onrender.com';
@@ -609,7 +607,7 @@
                 activeQaReport.value = null;
                 try {
                     const res = await fetch(`${QA_SERVER_URL}/admin/reports`, {
-                        headers: { 'Authorization': `Bearer ${QA_ADMIN_PASSWORD}` }
+                        headers: { 'Authorization': `Bearer ${apiKey.value}` }
                     });
                     if (res.ok) {
                         const reports = await res.json();
@@ -629,7 +627,7 @@
                 try {
                     // Fetch all quotes using the same admin endpoint as admin(23).html
                     const response = await fetch(`${QUOTE_SERVER_URL}/admin/leads`, {
-                        headers: { 'Authorization': `Bearer ${QUOTE_ADMIN_PASSWORD}` }
+                        headers: { 'Authorization': `Bearer ${apiKey.value}` }
                     });
                     
                     if (response.ok) {
