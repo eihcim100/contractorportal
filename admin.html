@@ -134,7 +134,6 @@
 
             <!-- Reports Tab (Financials) -->
             <div v-if="currentTab === 'reports'" class="space-y-4">
-                <!-- (Skipped rendering the Reports tab body in this snippet for brevity, it remains identical to the original) -->
                 <!-- The original Financial Reports Tab content goes here -->
                 <div class="bg-white p-5 rounded-2xl shadow-sm border flex flex-col md:flex-row gap-4">
                     <div class="flex-1">
@@ -625,6 +624,23 @@
                 isFetchingQa.value = false;
             };
 
+            const fetchQuoteForJob = async (quoteId) => {
+                try {
+                    const response = await fetch(`${QUOTE_SERVER_URL}/api/quote/${quoteId}`);
+                    const result = await response.json();
+                    
+                    // The server returns { success: true, data: { ... } } if found
+                    if (result.success && result.data && result.data.report) {
+                        // Attach the AI report to the currently active lead in the modal
+                        activeLead.value.report = result.data.report;
+                    } else {
+                        console.warn("No pre-job photos/quote found for this ID.");
+                    }
+                } catch (e) {
+                    console.error("Failed to fetch quote data:", e);
+                }
+            };
+
             const editLead = (lead) => {
                 activeLead.value = JSON.parse(JSON.stringify(lead));
                 activeLead.value.display_date = formatDateForDisplay(lead.appointment_date);
@@ -632,13 +648,16 @@
                 activeLead.value._error = '';
                 activeLead.value._isCalling = false;
                 activeLead.value._callSuccess = false;
+                
                 if (!activeLead.value.service_cost) activeLead.value.service_cost = extractPrice(lead.deal_name);
                 if (!activeLead.value.contractor_expense) activeLead.value.contractor_expense = extractPrice(lead.pay);
                 
-                // Fetch the QA report for this lead immediately!
+                // Fetch both external reports immediately
                 fetchQaReportForJob(lead.id);
+                fetchQuoteForJob(lead.id); // <-- NEW API CALL
 
                 showModal.value = true;
+                
                 setTimeout(() => {
                     const inp = document.getElementById('autocomplete-address');
                     if (inp && window.google && window.google.maps && window.google.maps.places) {
