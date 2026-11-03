@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIP Detail Club Updates | Michie Auto Detailing</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti Library -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-amber-500 selection:text-slate-900">
+
+    <!-- Header / Branding -->
+    <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center text-slate-950 font-bold text-xl shadow-lg shadow-amber-500/20">
+                    <i class="fa-solid font-black fa-car-side"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight tracking-tight text-white">Michie Auto Detailing</h1>
+                    <p class="text-xs text-amber-400 font-medium tracking-wide uppercase">VIP Membership Notice</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <a href="https://quote.michieauto.com" target="_blank" class="text-xs font-semibold bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-2 rounded-lg transition flex items-center gap-2 shadow-sm">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    <span class="hidden sm:inline">Get a Quote</span>
+                </a>
+                <a href="tel:14052955189" class="text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-lg transition border border-slate-700 flex items-center gap-2">
+                    <i class="fa-solid fa-phone text-amber-400"></i>
+                    <span class="hidden sm:inline">+1 (405) 295-5189</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="max-w-3xl mx-auto px-4 py-8 sm:py-12 flex-1 w-full">
+        
+        <!-- Welcome Hero -->
+        <div class="mb-10 text-center sm:text-left">
+            <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 mb-4">
+                <i class="fa-solid fa-star text-amber-400"></i> VIP Club Enhancements
+            </span>
+            <h2 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-4">
+                We're upgrading your VIP Detail Club experience!
+            </h2>
+            <p class="text-slate-300 text-base sm:text-lg leading-relaxed">
+                Thank you for being one of our founding VIP members! We're making key updates to our club structure to continue pairing you with the highest-rated mobile detailers in the area.
+            </p>
+        </div>
+
+        <!-- Before vs After Comparison Card -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            <!-- Old Way -->
+            <div class="bg-slate-800/40 border border-slate-800 rounded-2xl p-6 relative overflow-hidden">
+                <div class="absolute top-0 right-0 bg-slate-700/50 text-slate-400 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-bl-lg">
+                    Previous Plan
+                </div>
+                <h3 class="text-lg font-bold text-slate-400 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left text-slate-500"></i> Old Structure
+                </h3>
+                <ul class="space-y-3 text-sm text-slate-400">
+                    <li class="flex items-start gap-2">
+                        <i class="fa-solid fa-xmark text-red-400 mt-1"></i>
+                        <span>$24.99 / month subscription</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="fa-solid fa-xmark text-red-400 mt-1"></i>
+                        <span>Must wait 6 full months for 1 free detail</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="fa-solid fa-xmark text-red-400 mt-1"></i>
+                        <span>Cancel early = lose all accumulated value</span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- New Way -->
+            <div class="bg-gradient-to-br from-slate-800 to-slate-800/90 border border-amber-500/30 rounded-2xl p-6 relative overflow-hidden shadow-xl shadow-amber-500/5">
+                <div class="absolute top-0 right-0 bg-amber-500 text-slate-950 text-[10px] font-extrabold uppercase tracking-wider px-3 py-1 rounded-bl-lg">
+                    New & Improved
+                </div>
+                <h3 class="text-lg font-bold text-amber-400 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-gem text-amber-400"></i> Upgraded Structure
+                </h3>
+                <ul class="space-y-3 text-sm text-slate-200">
+                    <li class="flex items-start gap-2">
+                        <i class="fa-solid fa-check text-emerald-400 mt-1"></i>
+                        <span><strong>$39.99 / month</strong> (Higher quality guarantee)</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="fa-solid fa-check text-emerald-400 mt-1"></i>
+                        <span><strong>100% turns into Detail Credits</strong> ($39.99/mo)</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="fa-solid fa-check text-emerald-400 mt-1"></i>
+                        <span><strong>$239.94 credit balance</strong> after 6 months</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="fa-solid fa-check text-emerald-400 mt-1"></i>
+                        <span>Use credits anytime on any service menu!</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Detailed Feature Breakdown -->
+        <div class="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-6 sm:p-8 mb-8 backdrop-blur-sm space-y-6">
+            <h3 class="text-xl font-bold text-white border-b border-slate-700/80 pb-4">
+                What This Means For You
+            </h3>
+
+            <!-- Feature 1 -->
+            <div class="flex gap-4">
+                <div class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex-shrink-0 flex items-center justify-center text-amber-400 font-bold">
+                    1
+                </div>
+                <div>
+                    <h4 class="font-bold text-white text-base mb-1">Zero Wasted Dollars (Detail Credits)</h4>
+                    <p class="text-sm text-slate-300 leading-relaxed">
+                        Every dollar of your $39.99 monthly fee now goes directly into a personal <strong>Detailing Credit Bank</strong>. Instead of locked promises, your money accumulates and can be applied directly toward any detailing service whenever you need it.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Feature 2 -->
+            <div class="flex gap-4">
+                <div class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex-shrink-0 flex items-center justify-center text-amber-400 font-bold">
+                    2
+                </div>
+                <div>
+                    <h4 class="font-bold text-white text-base mb-1">Unlimited 50% Off Member Rates</h4>
+                    <p class="text-sm text-slate-300 leading-relaxed">
+                        You retain your founding member privilege: receive <strong>50% off all standard menu services</strong> whenever you schedule additional detailing dispatches throughout the year.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Feature 3 -->
+            <div class="flex gap-4">
+                <div class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex-shrink-0 flex items-center justify-center text-amber-400 font-bold">
+                    3
+                </div>
+                <div>
+                    <h4 class="font-bold text-white text-base mb-1">Top-Tier Detailer Guarantee</h4>
+                    <p class="text-sm text-slate-300 leading-relaxed">
+                        As contractor labor rates increase, this adjustment guarantees we only send experienced, vetted, and top-rated mobile detailers to care for your vehicle.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action / Response Section -->
+        <div class="bg-gradient-to-b from-slate-800/90 to-slate-900 border border-slate-700 rounded-2xl p-6 sm:p-8 text-center space-y-4">
+            <h3 class="text-xl font-bold text-white">Next Steps for Members</h3>
+            <p class="text-sm text-slate-300 max-w-lg mx-auto">
+                These updates take effect on your next renewal date after <strong>November 5th, 2026</strong>.
+            </p>
+
+            <div class="pt-2 flex flex-col sm:flex-row gap-3 justify-center">
+                <button id="keepMembershipBtn" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-6 py-3.5 rounded-xl transition shadow-lg shadow-amber-500/20 text-sm">
+                    <i class="fa-solid fa-thumbs-up"></i> Keep My VIP Club Active
+                </button>
+                <a href="mailto:andrew@michieauto.com?subject=VIP%20Detail%20Club%20Cancellation%20Request&body=Hello%2C%20my%20name%20is%20%28YOUR%20NAME%29%20I%20would%20like%20to%20cancel%20my%20VIP%20Detail%20Club%20Membership%0A%0AThe%20reasons%20for%20the%20cancelation%20is%3A%0A%28Please%20list%20your%20reasons%20below%29" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-6 py-3.5 rounded-xl transition border border-slate-700 text-sm">
+                    <i class="fa-solid fa-pause"></i> Pause or Cancel Membership
+                </a>
+            </div>
+            <p class="text-xs text-slate-500 pt-2">
+                If you choose to stay, no action is needed! Your card on file will update automatically on your next bill date.
+            </p>
+        </div>
+
+    </main>
+
+    <!-- Thank You Modal Popup -->
+    <div id="thankYouModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-amber-500/30 rounded-2xl p-6 sm:p-8 max-w-md w-full text-center space-y-4 shadow-2xl relative">
+            <div class="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center text-3xl mx-auto mb-2">
+                <i class="fa-solid fa-heart"></i>
+            </div>
+            <h3 class="text-2xl font-extrabold text-white">Thank You!</h3>
+            <p class="text-slate-300 text-base leading-relaxed">
+                Thank you for choosing Michie Auto Detailing. We are glad to serve you!
+            </p>
+            <div class="pt-4 flex flex-col gap-2">
+                <a href="https://quote.michieauto.com" target="_blank" class="w-full inline-flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-5 py-3 rounded-xl transition text-sm">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Get an AI Vehicle Scan Quote
+                </a>
+                <button id="closeModalBtn" class="w-full inline-flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-5 py-2.5 rounded-xl transition border border-slate-700 text-sm">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script for Confetti & Modal Interactivity -->
+    <script>
+        const keepBtn = document.getElementById('keepMembershipBtn');
+        const modal = document.getElementById('thankYouModal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+
+        keepBtn.addEventListener('click', () => {
+            // Trigger Confetti
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 120,
+                    spread: 80,
+                    origin: { y: 0.6 }
+                });
+            }
+
+            // Open Modal
+            modal.classList.remove('hidden');
+        });
+
+        closeModalBtn.addEventListener('click', () => {
+            modal.classList.add('hidden');
+        });
+
+        // Close modal on backdrop click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+            }
+        });
+    </script>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800 bg-slate-950 py-6 text-center text-xs text-slate-500">
+        <div class="max-w-3xl mx-auto px-4 space-y-2">
+            <p>&copy; 2026 Michie Auto Detailing LLC. All rights reserved.</p>
+            <p class="text-slate-600">Questions? Text or call us directly at <a href="tel:14052955189" class="underline text-slate-400">+1 (405) 295-5189</a> or get an instant quote at <a href="https://quote.michieauto.com" target="_blank" class="underline text-amber-400">quote.michieauto.com</a></p>
+        </div>
+    </footer>
+
+</body>
+</html>
