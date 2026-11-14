@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Contractor Job Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -26,9 +26,8 @@
             opacity: 0.77; 
             z-index: -1; 
         }
-        /* --- CUSTOM CLASS FOR SEMI-TRANSPARENT WHITE BACKGROUND --- */
         .bg-white-77 {
-            background-color: rgba(255, 255, 255, 0.85); /* Slightly increased opacity for better readability */
+            background-color: rgba(255, 255, 255, 0.88);
         }
 
         .address-display {
@@ -42,19 +41,84 @@
             text-align: center;
         }
 
-        /* Hide scrollbar for photo gallery */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        /* Availability Schedule toggles */
         input[type="checkbox"]:checked + label {
             background-color: #22c55e;
             color: white;
             border-color: #16a34a;
         }
+
+        /* DoorDash-style Offer Animations */
+        @keyframes payPop {
+            0% { transform: scale(1); }
+            40% { transform: scale(1.08); }
+            100% { transform: scale(1); }
+        }
+        .pay-pop-animate {
+            animation: payPop 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes dasherSlideUp {
+            0% { transform: translateY(30px) scale(0.96); opacity: 0; }
+            100% { transform: translateY(0) scale(1); opacity: 1; }
+        }
+        .dasher-popup-enter {
+            animation: dasherSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+        }
     </style>
 </head>
 <body class="min-h-screen">
+
+    <!-- DoorDash-style Random Incoming Offer Popup -->
+    <div id="dasher-offer-modal" class="fixed inset-0 bg-slate-950/75 hidden z-[90] flex items-end sm:items-center justify-center p-3 sm:p-4 backdrop-blur-sm">
+        <div class="dasher-popup-enter bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border-2 border-red-500">
+            <!-- Header Bar -->
+            <div class="bg-gradient-to-r from-red-600 to-rose-600 text-white px-5 py-3.5 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-white animate-ping"></span>
+                    <span class="font-black uppercase tracking-wider text-sm">New Detail Offer</span>
+                </div>
+                <div class="flex items-center gap-1.5 bg-black/25 px-3 py-1 rounded-full text-xs font-extrabold">
+                    <span>Expires in</span>
+                    <span id="dasher-offer-countdown" class="text-yellow-300 tabular-nums">15s</span>
+                </div>
+            </div>
+            <!-- Countdown Progress Bar -->
+            <div class="w-full h-1.5 bg-gray-200">
+                <div id="dasher-offer-progress" class="h-full bg-red-600 transition-all duration-1000 ease-linear" style="width: 100%"></div>
+            </div>
+
+            <div class="p-5 sm:p-6">
+                <!-- Dynamic Pay Hero -->
+                <div class="bg-slate-900 text-white rounded-2xl p-4 mb-4 text-center shadow-inner relative overflow-hidden">
+                    <div id="dasher-offer-tier" class="inline-block text-[11px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full mb-2 bg-amber-400 text-slate-950">
+                        ⚡ HIGH DEMAND
+                    </div>
+                    <div class="flex items-baseline justify-center gap-2 flex-wrap">
+                        <span id="dasher-offer-amount" class="text-4xl font-black tracking-tight text-emerald-400 tabular-nums">$0.00</span>
+                        <span id="dasher-offer-tip" class="text-sm font-extrabold text-amber-300 bg-white/10 px-2.5 py-1 rounded-lg">+ TIPS</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 font-semibold mt-1 uppercase tracking-wide">Guaranteed Base Pay + Tips</p>
+                </div>
+
+                <!-- Job Details -->
+                <div class="space-y-2 mb-5 text-sm text-slate-700 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <p id="dasher-offer-vehicle" class="text-lg font-extrabold text-slate-900 leading-tight"></p>
+                    <p><strong>Service:</strong> <span id="dasher-offer-service"></span></p>
+                    <p><strong>Zip Code:</strong> <span id="dasher-offer-zip"></span></p>
+                    <p><strong>When:</strong> <span id="dasher-offer-when"></span></p>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex gap-3">
+                    <button id="dasher-offer-pass-btn" class="w-1/3 bg-slate-200 hover:bg-slate-300 text-slate-800 font-black uppercase text-sm py-4 rounded-xl transition">Pass</button>
+                    <button id="dasher-offer-accept-btn" class="w-2/3 bg-red-600 hover:bg-red-700 text-white font-black uppercase text-base py-4 rounded-xl shadow-lg shadow-red-600/30 transition">Accept Offer</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Accept Confirmation Warning Modal -->
     <div id="accept-confirm-modal" class="fixed inset-0 bg-slate-900/80 hidden z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
@@ -101,8 +165,12 @@
 
         <!-- Jobs Section -->
         <div id="jobs-section" class="hidden p-4 md:p-8 bg-white-77 rounded-2xl shadow-xl">
-            <div class="mb-4">
+            <div class="mb-4 flex items-center justify-between flex-wrap gap-2">
                 <h2 class="text-3xl font-bold text-gray-800">Available Jobs</h2>
+                <span class="inline-flex items-center gap-1.5 bg-red-100 text-red-700 text-xs font-extrabold uppercase px-3 py-1.5 rounded-full border border-red-200">
+                    <span class="w-2 h-2 rounded-full bg-red-600 animate-pulse"></span>
+                    Live Market Offers
+                </span>
             </div>
 
             <!-- Reliability Score Reminder Banner -->
@@ -138,7 +206,6 @@
             </div>
 
             <div id="schedule-grid" class="space-y-4 mb-4 pb-24">
-                <!-- 7 days of availability blocks will be injected here -->
                 <p class="text-center text-gray-600 font-medium">Loading schedule...</p>
             </div>
 
@@ -178,15 +245,244 @@
         let authToken = localStorage.getItem('authToken');
         let currentMessageBox = null;
         let pendingAcceptJobId = null; 
-        
-        // Track unsaved changes
+        let pendingAcceptRate = null;
         let isAvailabilityDirty = false;
+
+        // --- DYNAMIC PAY STATE & TIMERS ---
+        let currentPendingJobs = [];
+        let dynamicOffers = {};
+        let bounceInterval = null;
+        let randomOfferTimeout = null;
+        let dasherPopupCountdownInterval = null;
+        let currentPopupOffer = null;
+
+        function clearDynamicPayTimers() {
+            if (bounceInterval) { clearInterval(bounceInterval); bounceInterval = null; }
+            if (randomOfferTimeout) { clearTimeout(randomOfferTimeout); randomOfferTimeout = null; }
+            if (dasherPopupCountdownInterval) { clearInterval(dasherPopupCountdownInterval); dasherPopupCountdownInterval = null; }
+        }
+
+        function extractFirstNumber(str) {
+            if (str === null || str === undefined) return 0;
+            const cleaned = String(str).replace(/,/g, '').replace(/\$/g, '');
+            const match = cleaned.match(/[-+]?\d*\.\d+|\d+/);
+            return match ? parseFloat(match[0]) : 0;
+        }
+
+        // Separates 100% base pay from static tip text (defaults to "+ TIPS" if no custom tip text is specified)
+        function parsePayComponents(job) {
+            const rawPay = String(job.pay || '').trim();
+            const expenseNum = parseFloat(job.contractor_expense);
+
+            let basePay = 0;
+            let tipSuffix = '+ TIPS';
+
+            if (rawPay && rawPay !== 'N/A' && rawPay !== '0' && rawPay !== '0.00') {
+                const plusIdx = rawPay.indexOf('+');
+                if (plusIdx !== -1) {
+                    const leftPart = rawPay.slice(0, plusIdx).trim();
+                    const rightPart = rawPay.slice(plusIdx + 1).trim();
+                    basePay = extractFirstNumber(leftPart);
+                    if (rightPart) {
+                        tipSuffix = `+ ${rightPart}`;
+                    }
+                } else {
+                    basePay = extractFirstNumber(rawPay);
+                }
+            }
+
+            if (!basePay || basePay <= 0) {
+                basePay = (!isNaN(expenseNum) && expenseNum > 0) ? expenseNum : 120.0;
+            }
+
+            return { basePay, tipSuffix };
+        }
+
+        // Generates a random offer between 60% and 100% of basePay (rounded cleanly to $0.50 increments)
+        function rollDynamicOffer(basePay) {
+            const pct = 0.60 + Math.random() * 0.40;
+            let raw = basePay * pct;
+            let rounded = Math.round(raw * 2) / 2;
+            const minPay = Math.round(basePay * 0.60 * 100) / 100;
+            const maxPay = Math.round(basePay * 100) / 100;
+            if (rounded < minPay) rounded = minPay;
+            if (rounded > maxPay) rounded = maxPay;
+            return {
+                amount: parseFloat(rounded.toFixed(2)),
+                pct: Math.round((rounded / basePay) * 100)
+            };
+        }
+
+        function getTierBadge(pct) {
+            if (pct >= 90) {
+                return { text: '🔥 PEAK PAY BOOST', classes: 'bg-red-500 text-white' };
+            } else if (pct >= 75) {
+                return { text: '⚡ HIGH DEMAND', classes: 'bg-amber-400 text-slate-950' };
+            }
+            return { text: 'STANDARD OFFER', classes: 'bg-slate-600 text-white' };
+        }
+
+        function updateCardOfferUI(jobId, animate = true) {
+            const state = dynamicOffers[jobId];
+            if (!state) return;
+
+            const amountEl = document.getElementById(`dyn-amount-${jobId}`);
+            const tierEl = document.getElementById(`dyn-tier-${jobId}`);
+            const acceptBtn = document.querySelector(`.accept-button[data-job-id="${jobId}"]`);
+            const barEl = document.getElementById(`dyn-bar-${jobId}`);
+
+            if (amountEl) {
+                amountEl.textContent = `$${state.currentOffer.toFixed(2)}`;
+                if (animate) {
+                    amountEl.classList.remove('pay-pop-animate');
+                    void amountEl.offsetWidth;
+                    amountEl.classList.add('pay-pop-animate');
+                }
+            }
+            if (tierEl) {
+                const badge = getTierBadge(state.pct);
+                tierEl.textContent = badge.text;
+                tierEl.className = `text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full ${badge.classes}`;
+            }
+            if (acceptBtn) {
+                const displayFull = `${state.currentOffer.toFixed(2)} ${state.tipSuffix}`;
+                acceptBtn.dataset.price = `$${displayFull}`;
+                acceptBtn.dataset.offeredRate = state.currentOffer.toFixed(2);
+            }
+            if (barEl && animate) {
+                barEl.style.transition = 'none';
+                barEl.style.width = '100%';
+                void barEl.offsetWidth;
+                barEl.style.transition = `width ${state.cycleMs}ms linear`;
+                barEl.style.width = '0%';
+            }
+        }
+
+        function startDynamicPayEngine() {
+            clearDynamicPayTimers();
+            if (currentPendingJobs.length === 0) return;
+
+            Object.keys(dynamicOffers).forEach(jobId => {
+                updateCardOfferUI(jobId, true);
+            });
+
+            bounceInterval = setInterval(() => {
+                if (!document.getElementById('accept-confirm-modal').classList.contains('hidden')) return;
+
+                const now = Date.now();
+                Object.keys(dynamicOffers).forEach(jobId => {
+                    const st = dynamicOffers[jobId];
+                    if (now >= st.nextRefreshAt) {
+                        const rolled = rollDynamicOffer(st.basePay);
+                        st.currentOffer = rolled.amount;
+                        st.pct = rolled.pct;
+                        st.cycleMs = 3500 + Math.floor(Math.random() * 1500);
+                        st.nextRefreshAt = now + st.cycleMs;
+                        updateCardOfferUI(jobId, true);
+                    }
+                });
+            }, 500);
+
+            scheduleNextRandomOfferPopup(6500);
+        }
+
+        function scheduleNextRandomOfferPopup(delayMs) {
+            if (randomOfferTimeout) clearTimeout(randomOfferTimeout);
+            if (currentPendingJobs.length === 0) return;
+
+            const wait = delayMs || (14000 + Math.floor(Math.random() * 10000));
+            randomOfferTimeout = setTimeout(() => {
+                const onJobsTab = !jobsSection.classList.contains('hidden');
+                const confirmHidden = document.getElementById('accept-confirm-modal').classList.contains('hidden');
+                const dasherHidden = document.getElementById('dasher-offer-modal').classList.contains('hidden');
+
+                if (authToken && onJobsTab && confirmHidden && dasherHidden && currentPendingJobs.length > 0) {
+                    const randomJob = currentPendingJobs[Math.floor(Math.random() * currentPendingJobs.length)];
+                    openDasherOfferPopup(randomJob);
+                } else {
+                    scheduleNextRandomOfferPopup(8000);
+                }
+            }, wait);
+        }
+
+        function openDasherOfferPopup(job) {
+            const { basePay, tipSuffix } = parsePayComponents(job);
+            const rolled = rollDynamicOffer(basePay);
+            const badge = getTierBadge(rolled.pct);
+
+            const jobYear = String(job.vehicle_year || job.year || '').trim();
+            const jobMake = String(job.vehicle_make || job.make || '').trim();
+            const jobModel = String(job.vehicle_model || job.model || '').trim();
+            const mainTitle = [jobYear, jobMake, jobModel].filter(s => s && s !== 'N/A').join(' ').trim() || job.deal_name || 'Detail Job';
+
+            currentPopupOffer = {
+                jobId: job.id,
+                pkg: job.service_level || 'Detail Service',
+                offeredRate: rolled.amount,
+                displayPrice: `$${rolled.amount.toFixed(2)} ${tipSuffix}`
+            };
+
+            const tierEl = document.getElementById('dasher-offer-tier');
+            tierEl.textContent = badge.text;
+            tierEl.className = `inline-block text-[11px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full mb-2 ${badge.classes}`;
+
+            document.getElementById('dasher-offer-amount').textContent = `$${rolled.amount.toFixed(2)}`;
+            const tipEl = document.getElementById('dasher-offer-tip');
+            tipEl.textContent = tipSuffix;
+
+            document.getElementById('dasher-offer-vehicle').textContent = mainTitle;
+            document.getElementById('dasher-offer-service').textContent = job.service_level || 'Detailing';
+            document.getElementById('dasher-offer-zip').textContent = job.zip_code || 'N/A';
+            document.getElementById('dasher-offer-when').textContent = `${formatAppointmentDate(job.appointment_date)} at ${formatAppointmentTime(job.appointment_time)}`;
+
+            const modal = document.getElementById('dasher-offer-modal');
+            const countdownEl = document.getElementById('dasher-offer-countdown');
+            const progressEl = document.getElementById('dasher-offer-progress');
+
+            let secondsLeft = 15;
+            countdownEl.textContent = `${secondsLeft}s`;
+            progressEl.style.transition = 'none';
+            progressEl.style.width = '100%';
+            modal.classList.remove('hidden');
+
+            setTimeout(() => {
+                progressEl.style.transition = 'width 15s linear';
+                progressEl.style.width = '0%';
+            }, 50);
+
+            if (dasherPopupCountdownInterval) clearInterval(dasherPopupCountdownInterval);
+            dasherPopupCountdownInterval = setInterval(() => {
+                secondsLeft -= 1;
+                countdownEl.textContent = `${Math.max(0, secondsLeft)}s`;
+                if (secondsLeft <= 0) {
+                    closeDasherOfferPopup();
+                }
+            }, 1000);
+        }
+
+        function closeDasherOfferPopup() {
+            if (dasherPopupCountdownInterval) {
+                clearInterval(dasherPopupCountdownInterval);
+                dasherPopupCountdownInterval = null;
+            }
+            document.getElementById('dasher-offer-modal').classList.add('hidden');
+            currentPopupOffer = null;
+            scheduleNextRandomOfferPopup();
+        }
+
+        document.getElementById('dasher-offer-pass-btn').addEventListener('click', closeDasherOfferPopup);
+        document.getElementById('dasher-offer-accept-btn').addEventListener('click', () => {
+            if (!currentPopupOffer) return;
+            const offer = currentPopupOffer;
+            closeDasherOfferPopup();
+            showAcceptModal(offer.jobId, offer.pkg, offer.displayPrice, offer.offeredRate);
+        });
 
         // --- BROWSER NAVIGATION GUARD ---
         window.addEventListener('beforeunload', (e) => {
             if (isAvailabilityDirty) {
                 e.preventDefault();
-                e.returnValue = ''; // Required for browser default unsaved changes prompt
+                e.returnValue = '';
             }
         });
 
@@ -212,6 +508,8 @@
                 showCustomMessage('You have unsaved changes to your schedule! Please click "Save Availability" at the bottom of the screen before leaving.', 'error');
                 return;
             }
+            clearDynamicPayTimers();
+            document.getElementById('dasher-offer-modal').classList.add('hidden');
             jobsSection.classList.add('hidden');
             availSection.classList.remove('hidden');
             navSchedule.classList.replace('bg-white', 'bg-green-600');
@@ -312,6 +610,7 @@
                     loadAvailability();
                 }
             } else {
+                clearDynamicPayTimers();
                 loginSection.classList.remove('hidden');
                 topNav.classList.add('hidden');
                 jobsSection.classList.add('hidden');
@@ -351,6 +650,7 @@
                 showCustomMessage('You have unsaved changes to your schedule! Please click "Save Availability" before logging out.', 'error');
                 return;
             }
+            clearDynamicPayTimers();
             authToken = null;
             localStorage.removeItem('authToken');
             localStorage.removeItem('contractorEmail');
@@ -375,7 +675,7 @@
                 
                 const data = await res.json();
                 renderSchedule(data.availability);
-                isAvailabilityDirty = false; // Reset dirty flag after a fresh load
+                isAvailabilityDirty = false;
             } catch (e) { 
                 grid.innerHTML = '<p class="text-center text-red-500 font-bold py-10">Error loading schedule. Please check your connection.</p>';
             }
@@ -384,16 +684,12 @@
         function renderSchedule(days) {
             const grid = document.getElementById('schedule-grid');
             grid.innerHTML = '';
-            
             const now = new Date(); 
             
             days.forEach(day => {
                 const dayCard = document.createElement('div');
-                
-                // If the backend marked any slots locked for this day, we'll give the card the locked styling and label
                 const hasLockedSlots = day.locked_slots && day.locked_slots.length > 0;
                 const bgClass = hasLockedSlots ? 'bg-gray-50 border-gray-300' : 'bg-white border-blue-200';
-                
                 dayCard.className = `p-5 rounded-2xl shadow-sm border ${bgClass} transition`;
                 
                 let html = `<div class="flex justify-between items-center mb-4">
@@ -407,13 +703,10 @@
                     let hour = parseInt(slot.split(':')[0]);
                     let displayTime = hour === 12 ? '12PM' : (hour < 12 ? hour + 'AM' : (hour - 12) + 'PM');
                     
-                    // Client-side block for strictly passing times (so they can't book slots in the past)
                     const [yyyy, mm, dd] = day.date.split('-');
                     const [hh, mmm] = slot.split(':');
                     const slotTime = new Date(yyyy, mm - 1, dd, hh, mmm);
                     const hasPassed = slotTime < now;
-                    
-                    // Backend precise 48h check
                     const isSlotLocked = day.locked_slots && day.locked_slots.includes(slot);
                     
                     let disabledStr = '';
@@ -423,7 +716,6 @@
                         disabledStr = 'disabled';
                         opacityClass = 'opacity-50 cursor-not-allowed';
                     } else if (isSlotLocked && isSelected) {
-                        // If locked by backend (<48hrs or Job Accepted) AND already selected, CANNOT REMOVE
                         disabledStr = 'disabled';
                         opacityClass = 'opacity-60 cursor-not-allowed';
                     }
@@ -446,10 +738,7 @@
 
         window.toggleSlotUI = function(checkbox) {
             if(checkbox.disabled) return;
-            
-            // Mark schedule as unsaved
             isAvailabilityDirty = true;
-            
             const label = checkbox.parentElement;
             if(checkbox.checked) {
                 label.classList.remove("bg-white", "text-gray-600", "border-gray-300");
@@ -469,7 +758,6 @@
             const availability = {};
             document.querySelectorAll('.slot-checkbox').forEach(cb => {
                 if(!availability[cb.dataset.date]) availability[cb.dataset.date] = [];
-                // Disabled checkboxes are still included here because we use .checked
                 if(cb.checked) availability[cb.dataset.date].push(cb.value);
             });
             
@@ -481,7 +769,7 @@
                 });
                 if(res.ok) {
                     showCustomMessage('Availability saved successfully! The dispatch calendar has been updated.', 'success');
-                    isAvailabilityDirty = false; // Successfully saved
+                    isAvailabilityDirty = false;
                     loadAvailability();
                 } else {
                     const data = await res.json();
@@ -565,6 +853,7 @@
 
         async function fetchJobs() {
             if (!authToken) return;
+            clearDynamicPayTimers();
             jobsList.innerHTML = ''; 
             noJobsMessage.textContent = 'Loading available jobs...';
             noJobsMessage.classList.remove('hidden');
@@ -596,7 +885,11 @@
         }
 
         function renderJobs(jobs) {
+            clearDynamicPayTimers();
             jobsList.innerHTML = '';
+            currentPendingJobs = [];
+            dynamicOffers = {};
+
             let renderedJobCount = 0;
             const contractorEmail = localStorage.getItem('contractorEmail');
 
@@ -630,28 +923,13 @@
                     const dealName = String(job.deal_name || '').trim();
                     const serviceLevelStr = String(job.service_level || '').trim();
                     const estTimeStr = String(job.estimated_time || '').trim();
-                    
-                    const legacyPay = String(job.pay || '').trim();
-                    let payDisplay = '$120.00 '; 
 
-                    if (legacyPay && legacyPay !== "N/A" && legacyPay !== "0" && legacyPay !== "0.00") {
-                        if (!isNaN(legacyPay)) {
-                            payDisplay = `$${parseFloat(legacyPay).toFixed(2)} `;
-                        } else {
-                            payDisplay = legacyPay;
-                            if (!payDisplay.toUpperCase().includes('TIPS')) {
-                                payDisplay += ' ';
-                            }
-                        }
-                    } else if (job.contractor_expense && parseFloat(job.contractor_expense) > 0) {
-                        payDisplay = `$${parseFloat(job.contractor_expense).toFixed(2)} `;
-                    }
+                    const { basePay, tipSuffix } = parsePayComponents(job);
 
                     let mainTitle = [jobYear, jobMake, jobModel].filter(s => s && s !== "N/A").join(' ');
                     mainTitle = mainTitle.trim() || dealName || "Untitled Job";
 
                     let payClass = "bg-green-600 text-white"; 
-                    
                     let jobDescriptionHTML = '';
                     
                     // 1. Customer Notes Component
@@ -681,8 +959,22 @@
                             </div>`;
                     }
 
-                    // --- PENDING JOB VIEW ---
+                    // --- PENDING JOB VIEW (Dynamic 60%-100% Dasher Offer) ---
                     if (job.status === 'pending') {
+                        currentPendingJobs.push(job);
+                        const rolled = rollDynamicOffer(basePay);
+                        const cycleMs = 3500 + Math.floor(Math.random() * 1500);
+                        dynamicOffers[job.id] = {
+                            basePay,
+                            tipSuffix,
+                            currentOffer: rolled.amount,
+                            pct: rolled.pct,
+                            cycleMs,
+                            nextRefreshAt: Date.now() + cycleMs
+                        };
+                        const badge = getTierBadge(rolled.pct);
+                        const initialDisplay = `$${rolled.amount.toFixed(2)} ${tipSuffix}`;
+
                         jobDescriptionHTML = `
                             <div class="p-5">
                                 <h3 class="text-xl font-semibold text-gray-900 mb-3">${mainTitle}</h3>
@@ -696,17 +988,36 @@
                                 ${jobNotesHTML}
                                 ${aiWorkOrderHTML}
                             </div>
-                            <div class="bg-gray-50 px-5 py-4 border-t border-gray-100 space-y-3">
-                                <div class="w-full ${payClass} font-bold py-3 px-4 rounded-lg text-center text-lg">${payDisplay}</div>
-                                <div class="flex space-x-3">
-                                    <button data-job-id="${job.id}" data-package="${job.service_level || 'Detail Service'}" data-price="${payDisplay}" class="accept-button w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out">Accept Job</button>
+                            <div class="bg-slate-900 px-5 py-4 border-t border-slate-800 space-y-3 text-white">
+                                <div class="flex items-center justify-between">
+                                    <span id="dyn-tier-${job.id}" class="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full ${badge.classes}">${badge.text}</span>
+                                    <span class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Live Offer</span>
+                                </div>
+
+                                <div class="flex items-baseline justify-center gap-2 flex-wrap py-1">
+                                    <span id="dyn-amount-${job.id}" class="text-3xl font-black text-emerald-400 tabular-nums">$${rolled.amount.toFixed(2)}</span>
+                                    <span class="text-sm font-extrabold text-amber-300 bg-white/10 px-2.5 py-1 rounded-lg">${tipSuffix}</span>
+                                </div>
+
+                                <div class="w-full h-1 bg-slate-700 rounded-full overflow-hidden">
+                                    <div id="dyn-bar-${job.id}" class="h-full bg-emerald-400" style="width: 100%"></div>
+                                </div>
+
+                                <div class="flex space-x-3 pt-1">
+                                    <button data-job-id="${job.id}" data-package="${job.service_level || 'Detail Service'}" data-price="${initialDisplay}" data-offered-rate="${rolled.amount.toFixed(2)}" class="accept-button w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out">Accept Job</button>
                                     <button data-job-id="${job.id}" class="decline-button w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out">Decline</button>
                                 </div>
                             </div>`;
                             
-                    // --- ACCEPTED JOB VIEW ---
+                    // --- ACCEPTED JOB VIEW (Locked Accepted Pay Rate + Static Tips) ---
                     } else if (job.status === 'accepted') {
-                        
+                        const cachedRate = localStorage.getItem(`acceptedRate_${job.id}`);
+                        const resolvedRate = (job.accepted_pay_rate !== null && job.accepted_pay_rate !== undefined && parseFloat(job.accepted_pay_rate) > 0)
+                            ? parseFloat(job.accepted_pay_rate)
+                            : (cachedRate && parseFloat(cachedRate) > 0 ? parseFloat(cachedRate) : basePay);
+
+                        const acceptedDisplay = `$${resolvedRate.toFixed(2)} ${tipSuffix}`;
+
                         let customerDetails = '';
                         if (job.customer_name && job.customer_name !== "N/A") {
                             customerDetails += `<div class="flex items-center"><svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg> <span>${job.customer_name}</span></div>`;
@@ -775,8 +1086,8 @@
                                 ${beforePhotosHTML}
                                 
                                 <div class="mt-4 border-t pt-4 border-gray-200">
-                                    <h4 class="text-xs uppercase text-gray-500 font-semibold mb-2">Pay</h4>
-                                    <div class="${payClass} text-lg font-bold py-3 px-5 rounded-lg text-center">${payDisplay}</div>
+                                    <h4 class="text-xs uppercase text-gray-500 font-semibold mb-2">Locked Accepted Pay</h4>
+                                    <div class="${payClass} text-lg font-bold py-3 px-5 rounded-lg text-center">${acceptedDisplay}</div>
                                 </div>
                                 
                                 ${job.customer_phone && job.customer_phone !== "N/A" ? `
@@ -809,7 +1120,8 @@
                     const jobId = button.dataset.jobId;
                     const pkg = button.dataset.package;
                     const price = button.dataset.price;
-                    showAcceptModal(jobId, pkg, price);
+                    const offeredRate = parseFloat(button.dataset.offeredRate);
+                    showAcceptModal(jobId, pkg, price, offeredRate);
                 });
             });
 
@@ -821,10 +1133,13 @@
                     sendAutoSMS(b.dataset.phone, msg, b);
                 });
             });
+
+            startDynamicPayEngine();
         }
 
-        function showAcceptModal(jobId, pkg, price) {
+        function showAcceptModal(jobId, pkg, price, offeredRate) {
             pendingAcceptJobId = jobId;
+            pendingAcceptRate = offeredRate;
             document.getElementById('confirm-pkg').textContent = pkg;
             document.getElementById('confirm-price').textContent = price;
             document.getElementById('accept-confirm-modal').classList.remove('hidden');
@@ -833,17 +1148,21 @@
         document.getElementById('cancel-accept-btn').addEventListener('click', () => {
             document.getElementById('accept-confirm-modal').classList.add('hidden');
             pendingAcceptJobId = null;
+            pendingAcceptRate = null;
         });
 
         document.getElementById('confirm-accept-btn').addEventListener('click', () => {
             if (pendingAcceptJobId) {
+                const jobId = pendingAcceptJobId;
+                const rate = pendingAcceptRate;
                 document.getElementById('accept-confirm-modal').classList.add('hidden');
-                handleJobAction(pendingAcceptJobId, 'accept');
                 pendingAcceptJobId = null;
+                pendingAcceptRate = null;
+                handleJobAction(jobId, 'accept', rate);
             }
         });
 
-        async function handleJobAction(jobId, actionType) {
+        async function handleJobAction(jobId, actionType, acceptedRate = null) {
             if (!authToken) return showCustomMessage('You must be logged in.', 'error');
             
             const acceptBtns = document.querySelectorAll(`button.accept-button[data-job-id="${jobId}"]`);
@@ -852,11 +1171,17 @@
             acceptBtns.forEach(b => { b.disabled = true; b.classList.add('opacity-50'); if(actionType === 'accept') b.textContent = 'Processing...'; });
             declineBtns.forEach(b => { b.disabled = true; b.classList.add('opacity-50'); if(actionType === 'decline') b.textContent = 'Processing...'; });
 
+            const fetchOptions = {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+            };
+            if (actionType === 'accept' && acceptedRate !== null && !isNaN(acceptedRate)) {
+                localStorage.setItem(`acceptedRate_${jobId}`, acceptedRate.toFixed(2));
+                fetchOptions.body = JSON.stringify({ accepted_pay_rate: acceptedRate });
+            }
+
             try { 
-                const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/${actionType}`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
-                });
+                const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/${actionType}`, fetchOptions);
                 
                 if (response.status === 401) {
                     logoutButton.click();
