@@ -113,7 +113,7 @@
 
                 <!-- Actions -->
                 <div class="flex gap-3">
-                    <button id="dasher-offer-pass-btn" class="w-1/3 bg-slate-200 hover:bg-slate-300 text-slate-800 font-black uppercase text-sm py-4 rounded-xl transition">Pass</button>
+                    <button id="dasher-offer-pass-btn" class="w-1/3 bg-slate-200 hover:bg-slate-300 text-slate-800 font-black uppercase text-sm py-4 rounded-xl transition">Reject</button>
                     <button id="dasher-offer-accept-btn" class="w-2/3 bg-red-600 hover:bg-red-700 text-white font-black uppercase text-base py-4 rounded-xl shadow-lg shadow-red-600/30 transition">Accept Offer</button>
                 </div>
             </div>
@@ -224,6 +224,7 @@
         const API_URL_SMS = 'https://client-notifications.onrender.com/send-sms';
         
         const AVAILABLE_SLOTS = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
+        const OFFER_INTERVAL_MS = 15000;
 
         const loginSection = document.getElementById('login-section');
         const jobsSection = document.getElementById('jobs-section');
@@ -353,8 +354,10 @@
                 barEl.style.transition = 'none';
                 barEl.style.width = '100%';
                 void barEl.offsetWidth;
-                barEl.style.transition = `width ${state.cycleMs}ms linear`;
-                barEl.style.width = '0%';
+                requestAnimationFrame(() => {
+                    barEl.style.transition = `width ${state.cycleMs}ms linear`;
+                    barEl.style.width = '0%';
+                });
             }
         }
 
@@ -376,21 +379,21 @@
                         const rolled = rollDynamicOffer(st.basePay);
                         st.currentOffer = rolled.amount;
                         st.pct = rolled.pct;
-                        st.cycleMs = 3500 + Math.floor(Math.random() * 1500);
+                        st.cycleMs = OFFER_INTERVAL_MS;
                         st.nextRefreshAt = now + st.cycleMs;
                         updateCardOfferUI(jobId, true);
                     }
                 });
             }, 500);
 
-            scheduleNextRandomOfferPopup(6500);
+            scheduleNextRandomOfferPopup(OFFER_INTERVAL_MS);
         }
 
         function scheduleNextRandomOfferPopup(delayMs) {
             if (randomOfferTimeout) clearTimeout(randomOfferTimeout);
             if (currentPendingJobs.length === 0) return;
 
-            const wait = delayMs || (14000 + Math.floor(Math.random() * 10000));
+            const wait = delayMs || OFFER_INTERVAL_MS;
             randomOfferTimeout = setTimeout(() => {
                 const onJobsTab = !jobsSection.classList.contains('hidden');
                 const confirmHidden = document.getElementById('accept-confirm-modal').classList.contains('hidden');
@@ -400,7 +403,7 @@
                     const randomJob = currentPendingJobs[Math.floor(Math.random() * currentPendingJobs.length)];
                     openDasherOfferPopup(randomJob);
                 } else {
-                    scheduleNextRandomOfferPopup(8000);
+                    scheduleNextRandomOfferPopup(OFFER_INTERVAL_MS);
                 }
             }, wait);
         }
@@ -467,7 +470,7 @@
             }
             document.getElementById('dasher-offer-modal').classList.add('hidden');
             currentPopupOffer = null;
-            scheduleNextRandomOfferPopup();
+            scheduleNextRandomOfferPopup(OFFER_INTERVAL_MS);
         }
 
         document.getElementById('dasher-offer-pass-btn').addEventListener('click', closeDasherOfferPopup);
@@ -963,7 +966,7 @@
                     if (job.status === 'pending') {
                         currentPendingJobs.push(job);
                         const rolled = rollDynamicOffer(basePay);
-                        const cycleMs = 3500 + Math.floor(Math.random() * 1500);
+                        const cycleMs = OFFER_INTERVAL_MS;
                         dynamicOffers[job.id] = {
                             basePay,
                             tipSuffix,
@@ -1003,9 +1006,8 @@
                                     <div id="dyn-bar-${job.id}" class="h-full bg-emerald-400" style="width: 100%"></div>
                                 </div>
 
-                                <div class="flex space-x-3 pt-1">
+                                <div class="pt-1">
                                     <button data-job-id="${job.id}" data-package="${job.service_level || 'Detail Service'}" data-price="${initialDisplay}" data-offered-rate="${rolled.amount.toFixed(2)}" class="accept-button w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out">Accept Job</button>
-                                    <button data-job-id="${job.id}" class="decline-button w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out">Decline</button>
                                 </div>
                             </div>`;
                             
@@ -1125,7 +1127,6 @@
                 });
             });
 
-            document.querySelectorAll('.decline-button').forEach(btn => btn.addEventListener('click', (e) => handleJobAction(e.target.dataset.jobId, 'decline')));
             document.querySelectorAll('.send-sms-button').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const b = e.currentTarget;
@@ -1166,10 +1167,8 @@
             if (!authToken) return showCustomMessage('You must be logged in.', 'error');
             
             const acceptBtns = document.querySelectorAll(`button.accept-button[data-job-id="${jobId}"]`);
-            const declineBtns = document.querySelectorAll(`button.decline-button[data-job-id="${jobId}"]`);
             
             acceptBtns.forEach(b => { b.disabled = true; b.classList.add('opacity-50'); if(actionType === 'accept') b.textContent = 'Processing...'; });
-            declineBtns.forEach(b => { b.disabled = true; b.classList.add('opacity-50'); if(actionType === 'decline') b.textContent = 'Processing...'; });
 
             const fetchOptions = {
                 method: 'POST',
@@ -1199,10 +1198,10 @@
                     const data = await response.json();
                     showCustomMessage(data.message || 'Failed action.', 'error');
                     acceptBtns.forEach(b => { b.disabled = false; b.classList.remove('opacity-50'); b.textContent = 'Accept Job'; });
-                    declineBtns.forEach(b => { b.disabled = false; b.classList.remove('opacity-50'); b.textContent = 'Decline'; });
                 }
             } catch (error) {
                 showCustomMessage('Network error occurred.', 'error');
+                acceptBtns.forEach(b => { b.disabled = false; b.classList.remove('opacity-50'); b.textContent = 'Accept Job'; });
             }
         }
         document.addEventListener('DOMContentLoaded', updateUI);
