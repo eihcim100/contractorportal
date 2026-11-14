@@ -779,17 +779,11 @@
                                     <div class="${payClass} text-lg font-bold py-3 px-5 rounded-lg text-center">${payDisplay}</div>
                                 </div>
                                 
-                                <div class="bg-green-50 text-green-800 p-4 rounded-lg border border-green-200 my-4">
-                                    <p class="font-bold mb-3">Bonus Opportunities</p>
-                                    <div class="mb-4">
-                                        <p class="mb-2"><strong>Protection Plan:</strong> $20 Commission per plan sold</p>
-                                        ${job.customer_phone !== "N/A" ? `<button data-phone="${job.customer_phone}" data-sms-type="protection" class="send-sms-button w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-3 rounded-lg text-sm transition shadow-sm">Send Protection Plan Message</button>` : ''}
-                                    </div>
-                                    <div>
-                                        <p class="mb-2"><strong>Google Review:</strong> $12 Bonus for a photo review</p>
-                                        ${job.customer_phone !== "N/A" ? `<button data-phone="${job.customer_phone}" data-sms-type="review" class="send-sms-button w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-3 rounded-lg text-sm transition shadow-sm">Send Review Request</button>` : ''}
-                                    </div>
-                                </div>
+                                ${job.customer_phone && job.customer_phone !== "N/A" ? `
+                                <div class="my-4">
+                                    <button data-phone="${job.customer_phone}" data-sms-type="review" class="send-sms-button w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg text-base transition shadow-sm">Request review</button>
+                                    <p class="text-xs text-gray-600 font-semibold text-center mt-1.5">5 Star Review Car Photo Earns $12</p>
+                                </div>` : ''}
                                 
                                 <div class="mt-5">
                                     <a href="https://inspection.michieauto.com/?job_id=${job.id}&v-year=${encodeURIComponent(jobYear)}&v-make=${encodeURIComponent(jobMake)}&v-model=${encodeURIComponent(jobModel)}&s-level=${encodeURIComponent(job.service_level || '')}" target="_blank" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-4 rounded-xl flex items-center justify-center text-lg shadow-md transition">
@@ -823,7 +817,7 @@
             document.querySelectorAll('.send-sms-button').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const b = e.currentTarget;
-                    const msg = b.dataset.smsType === 'protection' ? "Protect your vehicle with our protection plan which covers you for 60 days with one $0 out of pocket cost detail. Signup now at https://michieauto.com/protection" : "Michie Auto Detailing LLC would love your feedback. Post a photo review to our profile, it only takes 3 minutes! https://g.page/r/CcRJGcUyQxksEBE/review";
+                    const msg = "Michie Auto Detailing LLC would love your feedback. Post a photo review to our profile, it only takes 3 minutes! https://g.page/r/CcRJGcUyQxksEBE/review";
                     sendAutoSMS(b.dataset.phone, msg, b);
                 });
             });
