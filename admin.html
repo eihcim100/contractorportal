@@ -113,6 +113,9 @@
                                     </td>
                                     <td class="hidden lg:table-cell px-4 py-4">
                                         <div class="text-sm font-bold text-gray-600">{{ getContractorName(lead.contractor_id_field) }}</div>
+                                        <div v-if="lead.accepted_pay_rate && parseFloat(lead.accepted_pay_rate) > 0" class="text-[10px] font-black text-emerald-600 uppercase mt-0.5">
+                                            Accepted: ${{ parseFloat(lead.accepted_pay_rate).toFixed(2) }} + Tips
+                                        </div>
                                     </td>
                                     <td class="px-4 py-4">
                                         <span :class="getStatusBadgeClass(lead)">
@@ -163,7 +166,7 @@
                     </div>
                 </div>
 
-                <!-- Financial Cards (Updated) -->
+                <!-- Financial Cards -->
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                     <div class="bg-white p-5 rounded-2xl shadow-sm border-b-4 border-blue-500">
                         <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Total Jobs</h3>
@@ -190,7 +193,7 @@
                     </div>
                 </div>
 
-                <!-- Financial Table (Updated) -->
+                <!-- Financial Table -->
                 <div class="bg-white rounded-2xl shadow-sm border overflow-hidden mt-6">
                     <div class="p-4 border-b bg-gray-50">
                         <h2 class="text-sm font-black text-gray-700 uppercase tracking-wide">Job Breakdown</h2>
@@ -203,8 +206,9 @@
                                     <th class="px-4 py-3 text-left font-black text-gray-400 uppercase tracking-widest text-[10px]">Customer</th>
                                     <th class="hidden sm:table-cell px-4 py-3 text-left font-black text-gray-400 uppercase tracking-widest text-[10px]">Staff</th>
                                     <th class="px-4 py-3 text-right font-black text-gray-400 uppercase tracking-widest text-[10px]">Base Price</th>
+                                    <th class="px-4 py-3 text-right font-black text-gray-400 uppercase tracking-widest text-[10px]">Accepted Base</th>
                                     <th class="px-4 py-3 text-right font-black text-gray-400 uppercase tracking-widest text-[10px]">Tips</th>
-                                    <th class="px-4 py-3 text-right font-black text-gray-400 uppercase tracking-widest text-[10px]">Labor Cost</th>
+                                    <th class="px-4 py-3 text-right font-black text-gray-400 uppercase tracking-widest text-[10px]">Total Labor Cost</th>
                                     <th class="px-4 py-3 text-right font-black text-green-600 uppercase tracking-widest text-[10px]">Net Profit</th>
                                 </tr>
                             </thead>
@@ -214,6 +218,12 @@
                                     <td class="px-4 py-3 text-xs font-bold text-gray-900">{{ row.customer_name || 'N/A' }}</td>
                                     <td class="hidden sm:table-cell px-4 py-3 text-xs font-bold text-gray-500">{{ getContractorName(row.contractor_id_field) }}</td>
                                     <td class="px-4 py-3 text-right text-xs font-bold text-gray-700">${{ row.baseRev.toFixed(2) }}</td>
+                                    <td class="px-4 py-3 text-right text-xs font-bold text-blue-600">
+                                        ${{ row.acceptedBase.toFixed(2) }}
+                                        <span v-if="row.maxBase > 0" class="text-[10px] text-gray-400 block">
+                                            ({{ Math.round((row.acceptedBase / row.maxBase) * 100) }}% of ${{ row.maxBase.toFixed(0) }})
+                                        </span>
+                                    </td>
                                     <td class="px-4 py-3 text-right text-xs font-bold text-orange-500">${{ row.tips.toFixed(2) }}</td>
                                     <td class="px-4 py-3 text-right text-xs font-bold text-red-500">-${{ row.expense.toFixed(2) }}</td>
                                     <td class="px-4 py-3 text-right text-sm font-black" :class="row.profit >= 0 ? 'text-green-600' : 'text-red-500'">
@@ -221,7 +231,7 @@
                                     </td>
                                 </tr>
                                 <tr v-if="generatedReport.rows && generatedReport.rows.length === 0">
-                                    <td colspan="7" class="px-4 py-8 text-center text-gray-400 font-medium">No completed jobs found for this timeframe.</td>
+                                    <td colspan="8" class="px-4 py-8 text-center text-gray-400 font-medium">No completed jobs found for this timeframe.</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -326,16 +336,40 @@
                             </div>
                         </div>
 
-                        <div class="bg-green-50 p-4 rounded-xl border border-green-100">
-                            <p class="text-[10px] font-black text-green-600 uppercase tracking-widest mb-3">Financials</p>
-                            <div class="grid grid-cols-2 gap-3">
+                        <!-- Updated Financials Box with Accepted Pay Rate -->
+                        <div class="bg-green-50 p-4 rounded-xl border border-green-100 space-y-3">
+                            <p class="text-[10px] font-black text-green-600 uppercase tracking-widest">Financials</p>
+                            <div class="grid grid-cols-3 gap-3">
                                 <div>
-                                    <label class="text-[10px] font-black text-green-700 uppercase mb-1">Package Price ($)</label>
-                                    <input type="number" step="0.01" v-model="activeLead.service_cost" class="custom-input !border-green-200">
+                                    <label class="text-[10px] font-black text-green-700 uppercase mb-1 block">Package Price ($)</label>
+                                    <input type="number" step="0.01" v-model="activeLead.service_cost" class="custom-input !border-green-200 !py-2 text-sm">
                                 </div>
                                 <div>
-                                    <label class="text-[10px] font-black text-red-700 uppercase mb-1">Contractor Pay ($)</label>
-                                    <input type="number" step="0.01" v-model="activeLead.contractor_expense" class="custom-input !border-red-200">
+                                    <label class="text-[10px] font-black text-gray-500 uppercase mb-1 block">Max Pay 100% ($)</label>
+                                    <input type="number" step="0.01" v-model="activeLead.contractor_expense" class="custom-input !border-gray-200 !py-2 text-sm">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-black text-blue-700 uppercase mb-1 block">Accepted Rate ($)</label>
+                                    <input type="number" step="0.01" v-model="activeLead.accepted_pay_rate" placeholder="Not accepted" class="custom-input !border-blue-300 bg-blue-50/40 font-bold text-blue-900 !py-2 text-sm">
+                                </div>
+                            </div>
+
+                            <!-- Actual Payout Breakdown Banner -->
+                            <div class="bg-white/90 p-3 rounded-lg border border-green-200 flex items-center justify-between text-xs">
+                                <div>
+                                    <span class="font-black text-gray-500 uppercase text-[10px] block">Actual Contractor Payout (Accepted + Tips)</span>
+                                    <span class="font-bold text-gray-700">
+                                        Base: ${{ getActiveAcceptedBase(activeLead).toFixed(2) }}
+                                        + Tips: ${{ getActiveTips(activeLead).toFixed(2) }}
+                                    </span>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-lg font-black text-emerald-600">
+                                        ${{ (getActiveAcceptedBase(activeLead) + getActiveTips(activeLead)).toFixed(2) }}
+                                    </span>
+                                    <span v-if="activeLead.accepted_pay_rate && activeLead.contractor_expense > 0" class="block text-[10px] font-black text-blue-600 uppercase">
+                                        {{ Math.round((parseFloat(activeLead.accepted_pay_rate) / parseFloat(activeLead.contractor_expense)) * 100) }}% of Max Base
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -369,7 +403,7 @@
                     </div>
                 </div>
 
-                <!-- 🚀 NEW: AI Initial Quote (Before Photos) 🚀 -->
+                <!-- AI Initial Quote (Before Photos) -->
                 <div v-if="activeLead.report && activeLead.report.breakdown" class="bg-blue-50/50 p-5 rounded-2xl border border-blue-100 mt-4 shadow-sm">
                     <p class="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mb-4">AI Pre-Job Scan (Before Photos)</p>
                     <div class="mb-3 flex flex-col md:flex-row md:items-center justify-between gap-2">
@@ -393,7 +427,7 @@
                     </div>
                 </div>
 
-                <!-- 🚀 NEW: Post-Job QA Report (After Photos) 🚀 -->
+                <!-- Post-Job QA Report (After Photos) -->
                 <div class="bg-purple-50/50 p-5 rounded-2xl border border-purple-100 mt-4 shadow-sm">
                     <p class="text-[10px] font-black text-purple-600 uppercase tracking-[0.2em] mb-4">Post-Job QA Report (After Photos)</p>
                     
@@ -532,6 +566,21 @@
             const reportCustomStart = ref('');
             const reportCustomEnd = ref('');
             const reportContractor = ref('ALL');
+
+            const getActiveTips = (lead) => {
+                if (!lead) return 0;
+                const parsed = extractPayAndTips(lead.pay);
+                return parsed.tips || 0;
+            };
+
+            const getActiveAcceptedBase = (lead) => {
+                if (!lead) return 0;
+                if (lead.accepted_pay_rate !== null && lead.accepted_pay_rate !== undefined && lead.accepted_pay_rate !== '' && parseFloat(lead.accepted_pay_rate) > 0) {
+                    return parseFloat(lead.accepted_pay_rate);
+                }
+                const parsed = extractPayAndTips(lead.pay);
+                return parsed.exp > 0 ? parsed.exp : (parseFloat(lead.contractor_expense) || 0);
+            };
 
             const getEffectiveStatus = (lead) => {
                 if (lead.status === 'voided') return 'voided'; 
@@ -765,7 +814,13 @@
                 const rows = f.map(l => {
                     const parsedPay = extractPayAndTips(l.pay);
                     const tips = parsedPay.tips || 0;
-                    const basePay = parsedPay.exp > 0 ? parsedPay.exp : (parseFloat(l.contractor_expense) || 0);
+                    const maxBase = parsedPay.exp > 0 ? parsedPay.exp : (parseFloat(l.contractor_expense) || 0);
+                    
+                    // Use accepted_pay_rate if contractor accepted a dynamic offer; fallback to 100% maxBase
+                    const acceptedBase = (l.accepted_pay_rate !== null && l.accepted_pay_rate !== undefined && parseFloat(l.accepted_pay_rate) > 0)
+                        ? parseFloat(l.accepted_pay_rate)
+                        : maxBase;
+
                     let baseRev = parseFloat(l.service_cost) || extractPrice(l.deal_name) || 0;
                     const dealPrice = extractPrice(l.deal_name);
                     
@@ -773,7 +828,8 @@
                     if (dealPrice > 0 && baseRev === dealPrice + tips) baseRev = dealPrice;
                     
                     const totalRev = baseRev + tips;
-                    const laborCost = basePay + tips;
+                    // Actual Labor Cost = Accepted Pay Rate + Tips
+                    const laborCost = acceptedBase + tips;
                     // Standard net profit calculation
                     const netProfit = (totalRev * 0.80) - laborCost - 80;
 
@@ -783,7 +839,7 @@
                     totalTips += tips;
                     totalProfit += netProfit;
 
-                    return { ...l, revenue: totalRev, baseRev: baseRev, expense: laborCost, tips: tips, profit: netProfit };
+                    return { ...l, revenue: totalRev, baseRev, maxBase, acceptedBase, expense: laborCost, tips, profit: netProfit };
                 });
 
                 rows.sort((a,b) => new Date(b.appointment_date || '1970-01-01') - new Date(a.appointment_date || '1970-01-01'));
@@ -806,6 +862,7 @@
                 apiKey, isLoggedIn, isLoading, error, leads, contractors, searchQuery, sortedFilteredLeads, 
                 currentTab, showModal, activeLead, reportTimeframe, reportCustomStart, reportCustomEnd, reportContractor, generatedReport,
                 isFetchingQa, activeQaReport, getQuoteImgUrl, getQaImgUrl, openUrl, getQaScoreClass,
+                getActiveTips, getActiveAcceptedBase,
                 login, logout, editLead, saveLead, deleteLead, triggerManualCall, getContractorName, formatDateForDisplay, formatTime, getEffectiveStatus, getStatusBadgeClass
             };
         }
