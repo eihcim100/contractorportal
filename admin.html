@@ -114,7 +114,7 @@
                                     <td class="hidden lg:table-cell px-4 py-4">
                                         <div class="text-sm font-bold text-gray-600">{{ getContractorName(lead.contractor_id_field) }}</div>
                                         <div v-if="lead.accepted_pay_rate && parseFloat(lead.accepted_pay_rate) > 0" class="text-[10px] font-black text-emerald-600 uppercase mt-0.5">
-                                            Accepted: ${{ parseFloat(lead.accepted_pay_rate).toFixed(2) }} + Tips
+                                            Contractor Pay: ${{ getTotalContractorPay(lead).toFixed(2) }}
                                         </div>
                                     </td>
                                     <td class="px-4 py-4">
@@ -178,7 +178,7 @@
                         <p class="text-3xl font-black text-gray-800">${{ generatedReport.avgTicketBeforeTips.toFixed(2) }}</p>
                     </div>
                     <div class="bg-white p-5 rounded-2xl shadow-sm border-b-4 border-orange-500">
-                        <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Total Tips</h3>
+                        <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Total Tips / Extra</h3>
                         <p class="text-3xl font-black text-gray-800">${{ generatedReport.totalTips.toFixed(2) }}</p>
                     </div>
                     <div class="bg-white p-5 rounded-2xl shadow-sm border-b-4 border-red-500">
@@ -206,9 +206,9 @@
                                     <th class="px-4 py-3 text-left font-black text-gray-400 uppercase tracking-widest text-[10px]">Customer</th>
                                     <th class="hidden sm:table-cell px-4 py-3 text-left font-black text-gray-400 uppercase tracking-widest text-[10px]">Staff</th>
                                     <th class="px-4 py-3 text-right font-black text-gray-400 uppercase tracking-widest text-[10px]">Base Price</th>
-                                    <th class="px-4 py-3 text-right font-black text-gray-400 uppercase tracking-widest text-[10px]">Accepted Base</th>
-                                    <th class="px-4 py-3 text-right font-black text-gray-400 uppercase tracking-widest text-[10px]">Tips</th>
-                                    <th class="px-4 py-3 text-right font-black text-gray-400 uppercase tracking-widest text-[10px]">Total Labor Cost</th>
+                                    <th class="px-4 py-3 text-right font-black text-gray-400 uppercase tracking-widest text-[10px]">Accepted Rate</th>
+                                    <th class="px-4 py-3 text-right font-black text-gray-400 uppercase tracking-widest text-[10px]">Tips / Extra</th>
+                                    <th class="px-4 py-3 text-right font-black text-gray-400 uppercase tracking-widest text-[10px]">Contractor Pay</th>
                                     <th class="px-4 py-3 text-right font-black text-green-600 uppercase tracking-widest text-[10px]">Net Profit</th>
                                 </tr>
                             </thead>
@@ -218,12 +218,7 @@
                                     <td class="px-4 py-3 text-xs font-bold text-gray-900">{{ row.customer_name || 'N/A' }}</td>
                                     <td class="hidden sm:table-cell px-4 py-3 text-xs font-bold text-gray-500">{{ getContractorName(row.contractor_id_field) }}</td>
                                     <td class="px-4 py-3 text-right text-xs font-bold text-gray-700">${{ row.baseRev.toFixed(2) }}</td>
-                                    <td class="px-4 py-3 text-right text-xs font-bold text-blue-600">
-                                        ${{ row.acceptedBase.toFixed(2) }}
-                                        <span v-if="row.maxBase > 0" class="text-[10px] text-gray-400 block">
-                                            ({{ Math.round((row.acceptedBase / row.maxBase) * 100) }}% of ${{ row.maxBase.toFixed(0) }})
-                                        </span>
-                                    </td>
+                                    <td class="px-4 py-3 text-right text-xs font-bold text-blue-600">${{ row.acceptedBase.toFixed(2) }}</td>
                                     <td class="px-4 py-3 text-right text-xs font-bold text-orange-500">${{ row.tips.toFixed(2) }}</td>
                                     <td class="px-4 py-3 text-right text-xs font-bold text-red-500">-${{ row.expense.toFixed(2) }}</td>
                                     <td class="px-4 py-3 text-right text-sm font-black" :class="row.profit >= 0 ? 'text-green-600' : 'text-red-500'">
@@ -331,12 +326,12 @@
                                 </div>
                                 <div>
                                     <label class="text-[10px] font-black text-gray-400 uppercase mb-1">Legacy Pay Text</label>
-                                    <input type="text" v-model="activeLead.pay" class="custom-input !py-2 text-sm" placeholder="e.g. $120 + Tips">
+                                    <input type="text" v-model="activeLead.pay" class="custom-input !py-2 text-sm" placeholder="e.g. $120 + $20 Tips">
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Updated Financials Box with Accepted Pay Rate -->
+                        <!-- Financials Box: Contractor Pay ($) = Accepted Rate + Tips/Other Amounts in Legacy Pay Text -->
                         <div class="bg-green-50 p-4 rounded-xl border border-green-100 space-y-3">
                             <p class="text-[10px] font-black text-green-600 uppercase tracking-widest">Financials</p>
                             <div class="grid grid-cols-3 gap-3">
@@ -345,33 +340,19 @@
                                     <input type="number" step="0.01" v-model="activeLead.service_cost" class="custom-input !border-green-200 !py-2 text-sm">
                                 </div>
                                 <div>
-                                    <label class="text-[10px] font-black text-gray-500 uppercase mb-1 block">Max Pay 100% ($)</label>
-                                    <input type="number" step="0.01" v-model="activeLead.contractor_expense" class="custom-input !border-gray-200 !py-2 text-sm">
-                                </div>
-                                <div>
                                     <label class="text-[10px] font-black text-blue-700 uppercase mb-1 block">Accepted Rate ($)</label>
-                                    <input type="number" step="0.01" v-model="activeLead.accepted_pay_rate" placeholder="Not accepted" class="custom-input !border-blue-300 bg-blue-50/40 font-bold text-blue-900 !py-2 text-sm">
+                                    <input type="number" step="0.01" v-model="activeLead.accepted_pay_rate" placeholder="Pending" class="custom-input !border-blue-300 bg-blue-50/40 font-bold text-blue-900 !py-2 text-sm">
                                 </div>
-                            </div>
-
-                            <!-- Actual Payout Breakdown Banner -->
-                            <div class="bg-white/90 p-3 rounded-lg border border-green-200 flex items-center justify-between text-xs">
                                 <div>
-                                    <span class="font-black text-gray-500 uppercase text-[10px] block">Actual Contractor Payout (Accepted + Tips)</span>
-                                    <span class="font-bold text-gray-700">
-                                        Base: ${{ getActiveAcceptedBase(activeLead).toFixed(2) }}
-                                        + Tips: ${{ getActiveTips(activeLead).toFixed(2) }}
-                                    </span>
-                                </div>
-                                <div class="text-right">
-                                    <span class="text-lg font-black text-emerald-600">
-                                        ${{ (getActiveAcceptedBase(activeLead) + getActiveTips(activeLead)).toFixed(2) }}
-                                    </span>
-                                    <span v-if="activeLead.accepted_pay_rate && activeLead.contractor_expense > 0" class="block text-[10px] font-black text-blue-600 uppercase">
-                                        {{ Math.round((parseFloat(activeLead.accepted_pay_rate) / parseFloat(activeLead.contractor_expense)) * 100) }}% of Max Base
-                                    </span>
+                                    <label class="text-[10px] font-black text-red-700 uppercase mb-1 block">Contractor Pay ($)</label>
+                                    <input type="number" step="0.01" :value="getTotalContractorPay(activeLead).toFixed(2)" readonly class="custom-input !border-red-200 bg-white font-black text-red-600 !py-2 text-sm cursor-not-allowed" title="Accepted Rate + Tips/Other amounts from Legacy Pay Text">
                                 </div>
                             </div>
+                            <p class="text-[11px] font-bold text-gray-600">
+                                Formula: Accepted Rate (${{ getActiveAcceptedBase(activeLead).toFixed(2) }})
+                                + Legacy Tips/Extra (${{ getActiveTips(activeLead).toFixed(2) }})
+                                = <span class="text-red-600 font-black">${{ getTotalContractorPay(activeLead).toFixed(2) }}</span>
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -536,13 +517,22 @@
         return 0;
     }
 
+    // Extracts base pay (first number) and sums ALL tips or other amounts listed in legacy pay text
     function extractPayAndTips(str) {
         let exp = 0;
         let tips = 0;
         if (!str) return { exp, tips };
-        const matches = [...String(str).replace(/,/g, '').matchAll(/[0-9]+(?:\.[0-9]+)?/g)];
-        if (matches.length > 0) exp = parseFloat(matches[0][0]);
-        if (matches.length > 1) tips = parseFloat(matches[1][0]);
+        const cleaned = String(str).replace(/,/g, '').trim();
+        const matches = [...cleaned.matchAll(/[0-9]+(?:\.[0-9]+)?/g)].map(m => parseFloat(m[0]));
+
+        if (cleaned.startsWith('+')) {
+            tips = matches.reduce((sum, val) => sum + val, 0);
+        } else {
+            if (matches.length > 0) exp = matches[0];
+            if (matches.length > 1) {
+                tips = matches.slice(1).reduce((sum, val) => sum + val, 0);
+            }
+        }
         return { exp, tips };
     }
 
@@ -580,6 +570,12 @@
                 }
                 const parsed = extractPayAndTips(lead.pay);
                 return parsed.exp > 0 ? parsed.exp : (parseFloat(lead.contractor_expense) || 0);
+            };
+
+            // Contractor Pay = Accepted Rate + Tips/Other amounts in Legacy Pay Text
+            const getTotalContractorPay = (lead) => {
+                if (!lead) return 0;
+                return getActiveAcceptedBase(lead) + getActiveTips(lead);
             };
 
             const getEffectiveStatus = (lead) => {
@@ -812,14 +808,9 @@
                 let totalTips = 0, totalBaseRev = 0;
                 
                 const rows = f.map(l => {
-                    const parsedPay = extractPayAndTips(l.pay);
-                    const tips = parsedPay.tips || 0;
-                    const maxBase = parsedPay.exp > 0 ? parsedPay.exp : (parseFloat(l.contractor_expense) || 0);
-                    
-                    // Use accepted_pay_rate if contractor accepted a dynamic offer; fallback to 100% maxBase
-                    const acceptedBase = (l.accepted_pay_rate !== null && l.accepted_pay_rate !== undefined && parseFloat(l.accepted_pay_rate) > 0)
-                        ? parseFloat(l.accepted_pay_rate)
-                        : maxBase;
+                    const tips = getActiveTips(l);
+                    const acceptedBase = getActiveAcceptedBase(l);
+                    const laborCost = getTotalContractorPay(l); // Accepted Rate + Tips/Other amounts in Legacy Pay Text
 
                     let baseRev = parseFloat(l.service_cost) || extractPrice(l.deal_name) || 0;
                     const dealPrice = extractPrice(l.deal_name);
@@ -828,8 +819,6 @@
                     if (dealPrice > 0 && baseRev === dealPrice + tips) baseRev = dealPrice;
                     
                     const totalRev = baseRev + tips;
-                    // Actual Labor Cost = Accepted Pay Rate + Tips
-                    const laborCost = acceptedBase + tips;
                     // Standard net profit calculation
                     const netProfit = (totalRev * 0.80) - laborCost - 80;
 
@@ -839,7 +828,7 @@
                     totalTips += tips;
                     totalProfit += netProfit;
 
-                    return { ...l, revenue: totalRev, baseRev, maxBase, acceptedBase, expense: laborCost, tips, profit: netProfit };
+                    return { ...l, revenue: totalRev, baseRev, acceptedBase, expense: laborCost, tips, profit: netProfit };
                 });
 
                 rows.sort((a,b) => new Date(b.appointment_date || '1970-01-01') - new Date(a.appointment_date || '1970-01-01'));
@@ -862,7 +851,7 @@
                 apiKey, isLoggedIn, isLoading, error, leads, contractors, searchQuery, sortedFilteredLeads, 
                 currentTab, showModal, activeLead, reportTimeframe, reportCustomStart, reportCustomEnd, reportContractor, generatedReport,
                 isFetchingQa, activeQaReport, getQuoteImgUrl, getQaImgUrl, openUrl, getQaScoreClass,
-                getActiveTips, getActiveAcceptedBase,
+                getActiveTips, getActiveAcceptedBase, getTotalContractorPay,
                 login, logout, editLead, saveLead, deleteLead, triggerManualCall, getContractorName, formatDateForDisplay, formatTime, getEffectiveStatus, getStatusBadgeClass
             };
         }
