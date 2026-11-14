@@ -139,13 +139,6 @@
 
     <!-- Main App Container -->
     <div id="app" class="w-full max-w-3xl mx-auto p-4 md:my-8">
-        
-        <!-- Navigation Tabs -->
-        <div id="top-nav" class="hidden bg-white-77 shadow-xl mb-6 p-4 rounded-2xl flex flex-wrap gap-4 items-center">
-            <button id="nav-jobs" class="nav-btn bg-green-600 text-white px-5 py-3 rounded-lg font-bold transition shadow-sm">My Jobs</button>
-            <button id="nav-schedule" class="nav-btn bg-white border border-gray-200 text-gray-800 px-5 py-3 rounded-lg font-bold transition hover:bg-gray-50 shadow-sm">My Availability</button>
-            <button id="logout-button" class="ml-auto bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-5 rounded-lg transition text-sm shadow-sm">Logout</button>
-        </div>
 
         <!-- Login Section -->
         <div id="login-section" class="bg-white-77 rounded-2xl shadow-xl p-6 md:p-10">
@@ -173,20 +166,11 @@
                 </span>
             </div>
 
-            <!-- Reliability Score Reminder Banner -->
-            <div class="bg-blue-50 border-l-4 border-blue-500 text-blue-900 p-4 mb-4 rounded-xl shadow-sm text-sm font-semibold flex items-center gap-3">
-                <svg class="w-6 h-6 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                <p>Reminder: Cancelations or late arrivals after accepting will impact your reliability score.</p>
-            </div>
-            
-            <!-- Important Update Banner -->
-            <div class="bg-amber-50 border-l-4 border-amber-500 text-amber-900 p-5 mb-6 rounded-xl flex flex-col md:flex-row justify-between items-center shadow-sm" role="alert">
-                <div class="mb-4 md:mb-0 md:mr-6 text-center md:text-left">
-                    <p class="font-bold text-amber-700 text-lg mb-1">IMPORTANT UPDATE:</p>
-                    <p class="font-medium text-base leading-snug">
-                        All vehicle details must be digitally inspected to receive payment. Snap photos using the AI Scanner after each detail is complete.
-                    </p>
-                </div>
+            <!-- Navigation Tabs (Placed directly below Available Jobs & Live Market Offers) -->
+            <div id="top-nav" class="hidden mb-6 flex flex-wrap gap-3 items-center">
+                <button id="nav-jobs" class="nav-btn bg-green-600 text-white px-5 py-3 rounded-lg font-bold transition shadow-sm">My Jobs</button>
+                <button id="nav-schedule" class="nav-btn bg-white border border-gray-200 text-gray-800 px-5 py-3 rounded-lg font-bold transition hover:bg-gray-50 shadow-sm">My Availability</button>
+                <button id="logout-button" class="ml-auto bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-5 rounded-lg transition text-sm shadow-sm">Logout</button>
             </div>
             
             <p id="no-jobs-message" class="text-gray-600 text-center hidden">No jobs available at the moment.</p>
@@ -197,8 +181,19 @@
 
         <!-- Availability Section -->
         <div id="availability-section" class="hidden p-4 md:p-8 bg-white-77 rounded-2xl shadow-xl relative">
+            <div class="mb-4 flex items-center justify-between flex-wrap gap-2">
+                <h2 class="text-3xl font-bold text-gray-800">Available Jobs</h2>
+                <span class="inline-flex items-center gap-1.5 bg-red-100 text-red-700 text-xs font-extrabold uppercase px-3 py-1.5 rounded-full border border-red-200">
+                    <span class="w-2 h-2 rounded-full bg-red-600 animate-pulse"></span>
+                    Live Market Offers
+                </span>
+            </div>
+
+            <!-- Slot where top-nav moves when Availability tab is active so buttons remain directly below Available Jobs -->
+            <div id="avail-nav-slot" class="mb-6"></div>
+
             <div class="mb-6 border-b border-gray-300 pb-4">
-                <h2 class="text-3xl font-bold text-gray-800 mb-2">Manage Availability</h2>
+                <h3 class="text-2xl font-bold text-gray-800 mb-2">Manage Availability</h3>
                 <p class="text-gray-700 font-medium leading-relaxed">
                     Select the hours you are free to accept jobs for the next 7 days. If a time is unchecked, the system will mark you as unavailable. 
                     <br><span class="text-red-600 font-bold">Note:</span> For specific time slots within 48 hours (or days you have an accepted job), you can <strong>add</strong> availability, but you <strong>cannot remove</strong> slots you are already committed to. Past times are automatically locked.
@@ -230,6 +225,7 @@
         const jobsSection = document.getElementById('jobs-section');
         const availSection = document.getElementById('availability-section');
         const topNav = document.getElementById('top-nav');
+        const availNavSlot = document.getElementById('avail-nav-slot');
         
         const usernameInput = document.getElementById('username');
         const passwordInput = document.getElementById('password');
@@ -495,6 +491,7 @@
                 showCustomMessage('You have unsaved changes to your schedule! Please click "Save Availability" at the bottom of the screen before leaving.', 'error');
                 return;
             }
+            jobsSection.insertBefore(topNav, noJobsMessage);
             jobsSection.classList.remove('hidden');
             availSection.classList.add('hidden');
             navJobs.classList.replace('bg-white', 'bg-green-600');
@@ -513,6 +510,7 @@
             }
             clearDynamicPayTimers();
             document.getElementById('dasher-offer-modal').classList.add('hidden');
+            availNavSlot.appendChild(topNav);
             jobsSection.classList.add('hidden');
             availSection.classList.remove('hidden');
             navSchedule.classList.replace('bg-white', 'bg-green-600');
@@ -604,10 +602,12 @@
                 topNav.classList.remove('hidden');
                 
                 if (navJobs.classList.contains('bg-green-600')) {
+                    jobsSection.insertBefore(topNav, noJobsMessage);
                     jobsSection.classList.remove('hidden');
                     availSection.classList.add('hidden');
                     fetchJobs();
                 } else {
+                    availNavSlot.appendChild(topNav);
                     jobsSection.classList.add('hidden');
                     availSection.classList.remove('hidden');
                     loadAvailability();
