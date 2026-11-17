@@ -707,6 +707,10 @@
                 if (activeLead.value.display_date) activeLead.value.appointment_date = formatDateForDB(activeLead.value.display_date);
                 activeLead.value.appointment_time = formatTime(activeLead.value.appointment_time);
                 activeLead.value.customer_phone = formatPhone(activeLead.value.customer_phone);
+                const parsedPay = extractPayAndTips(activeLead.value.pay);
+                if (parsedPay.exp > 0) {
+                    activeLead.value.contractor_expense = parsedPay.exp;
+                }
                 try {
                     const res = await fetch(`${API_BASE_URL}/admin/leads/${activeLead.value.id}`, {
                         method: 'PUT',
