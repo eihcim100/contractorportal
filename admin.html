@@ -237,14 +237,14 @@
     </div>
 
     <!-- Job Details Modal -->
-    <div v-if="showModal" class="modal-overlay" @click.self="showModal = false">
+    <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
         <div class="modal-content">
             <div class="flex justify-between items-center mb-6">
                 <div>
                     <h3 class="text-2xl font-black text-gray-800 leading-tight">Job Details</h3>
                     <p class="text-xs font-bold text-blue-600 uppercase tracking-widest">ID #{{ activeLead.id }}</p>
                 </div>
-                <button @click="showModal = false" class="bg-gray-100 text-gray-400 hover:text-gray-800 p-2 rounded-full transition">✕</button>
+                <button @click="closeModal" class="bg-gray-100 text-gray-400 hover:text-gray-800 p-2 rounded-full transition">✕</button>
             </div>
             
             <form @submit.prevent="saveLead" class="space-y-6">
@@ -447,6 +447,74 @@
                     </div>
                 </div>
 
+                <!-- Masked Call Recordings & Contact Logs -->
+                <div class="bg-emerald-50/60 p-5 rounded-2xl border border-emerald-100 mt-4 shadow-sm">
+                    <div class="flex items-center justify-between mb-4">
+                        <p class="text-[10px] font-black text-emerald-700 uppercase tracking-[0.2em]">Masked Call Recordings &amp; Logs</p>
+                        <button type="button" @click="fetchMaskedLogsForJob(activeLead.id)" class="text-[10px] font-black uppercase tracking-wider text-emerald-700 hover:text-emerald-900 bg-white border border-emerald-200 px-2.5 py-1 rounded-lg transition">
+                            Refresh
+                        </button>
+                    </div>
+
+                    <div v-if="isFetchingMaskedLogs" class="flex items-center gap-3 py-4">
+                        <div class="w-5 h-5 border-2 border-emerald-200 border-t-emerald-600 rounded-full animate-spin"></div>
+                        <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">Loading Call Recordings...</span>
+                    </div>
+
+                    <div v-else-if="activeMaskedLogs.length === 0" class="py-3">
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">No masked calls or recordings logged for this job yet.</p>
+                    </div>
+
+                    <div v-else class="space-y-3">
+                        <div v-for="log in activeMaskedLogs" :key="log.id" class="bg-white p-4 rounded-xl border border-emerald-100 shadow-sm space-y-2.5">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full"
+                                          :class="log.channel === 'voice' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'">
+                                        {{ log.channel === 'voice' ? '📞 Voice Call' : '💬 SMS' }}
+                                    </span>
+                                    <span class="text-xs font-bold text-gray-800">
+                                        {{ log.direction === 'contractor_to_client' ? 'Contractor → Client' : 'Client → Contractor' }}
+                                    </span>
+                                    <span v-if="log.recording_duration !== null && log.recording_duration !== undefined" class="text-[11px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                                        {{ formatDuration(log.recording_duration) }}
+                                    </span>
+                                </div>
+                                <span class="text-[11px] font-semibold text-gray-400">{{ formatLogTimestamp(log.created_at) }}</span>
+                            </div>
+
+                            <div v-if="log.channel === 'sms' && log.message_body" class="text-xs text-gray-700 bg-gray-50 p-2.5 rounded-lg border border-gray-100 whitespace-pre-wrap">
+                                {{ log.message_body }}
+                            </div>
+
+                            <div v-if="log.channel === 'voice'">
+                                <div v-if="log.recording_sid">
+                                    <div v-if="!log._audioUrl" class="flex items-center gap-2">
+                                        <button type="button" @click="loadAndPlayRecording(log)" :disabled="log._loadingAudio"
+                                                class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-lg transition shadow-sm flex items-center gap-1.5 disabled:opacity-60">
+                                            <span>{{ log._loadingAudio ? '⏳ Loading Audio...' : '▶ Play Recording' }}</span>
+                                        </button>
+                                        <span class="text-[11px] text-gray-400 font-mono">{{ log.recording_sid }}</span>
+                                    </div>
+                                    <div v-else class="space-y-2">
+                                        <audio controls autoplay :src="log._audioUrl" class="w-full h-10"></audio>
+                                        <div class="flex justify-end">
+                                            <a :href="log._audioUrl" :download="`job-${activeLead.id}-${log.recording_sid}.mp3`"
+                                               class="text-[11px] font-bold text-emerald-700 hover:underline">
+                                                ⬇ Download MP3
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <p v-if="log._audioError" class="text-xs text-red-500 font-bold mt-1">{{ log._audioError }}</p>
+                                </div>
+                                <div v-else class="text-[11px] font-semibold text-gray-400 italic">
+                                    Status: {{ log.status || 'initiated' }} (no completed recording available)
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <p v-if="activeLead._error" class="text-red-500 text-sm font-bold mt-2">{{ activeLead._error }}</p>
 
                 <div class="flex flex-col sm:flex-row gap-3 pt-4 border-t">
@@ -498,10 +566,10 @@
 
     function formatTime(timeStr) {
         if (!timeStr || timeStr === 'N/A') return 'N/A';
-        const match = String(timeStr).trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp][Mm])?$/);
+        const match = String(timeStr).trim().match(/^(\d{1,2})(?::(\d{2}))?(?::\d{2})?\s*([AaPp][Mm])?$/);
         if (!match) return timeStr;
-        let hours = parseInt(match[1]);
-        let minutes = match[2];
+        let hours = parseInt(match[1], 10);
+        let minutes = match[2] || '00';
         let suffix = match[3] ? match[3].toUpperCase() : (hours >= 12 ? 'PM' : 'AM');
         hours = hours % 12 || 12;
         return `${hours}:${minutes} ${suffix}`;
@@ -551,6 +619,8 @@
             
             const isFetchingQa = ref(false);
             const activeQaReport = ref(null);
+            const isFetchingMaskedLogs = ref(false);
+            const activeMaskedLogs = ref([]);
 
             const reportTimeframe = ref('30days');
             const reportCustomStart = ref('');
@@ -678,6 +748,88 @@
                 isFetchingQa.value = false;
             };
 
+            const revokeMaskedAudioUrls = () => {
+                activeMaskedLogs.value.forEach(log => {
+                    if (log._audioUrl) {
+                        URL.revokeObjectURL(log._audioUrl);
+                    }
+                });
+            };
+
+            const fetchMaskedLogsForJob = async (jobId) => {
+                revokeMaskedAudioUrls();
+                isFetchingMaskedLogs.value = true;
+                activeMaskedLogs.value = [];
+                try {
+                    const res = await fetch(`${API_BASE_URL}/admin/leads/${jobId}/masked-logs`, {
+                        headers: { 'Authorization': `Bearer ${apiKey.value}`, 'X-Admin-API-Key': apiKey.value }
+                    });
+                    if (res.ok) {
+                        const logs = await res.json();
+                        activeMaskedLogs.value = logs.map(l => ({
+                            ...l,
+                            _audioUrl: null,
+                            _loadingAudio: false,
+                            _audioError: ''
+                        }));
+                    }
+                } catch (e) {
+                    console.error("Could not fetch masked logs:", e);
+                }
+                isFetchingMaskedLogs.value = false;
+            };
+
+            const loadAndPlayRecording = async (log) => {
+                if (!log.recording_sid || log._audioUrl) return;
+                log._loadingAudio = true;
+                log._audioError = '';
+                try {
+                    const res = await fetch(`${API_BASE_URL}/admin/recordings/${encodeURIComponent(log.recording_sid)}`, {
+                        headers: { 'Authorization': `Bearer ${apiKey.value}`, 'X-Admin-API-Key': apiKey.value }
+                    });
+                    if (!res.ok) {
+                        const errData = await res.json().catch(() => ({}));
+                        log._audioError = errData.message || 'Recording could not be loaded.';
+                    } else {
+                        const blob = await res.blob();
+                        log._audioUrl = URL.createObjectURL(blob);
+                    }
+                } catch (e) {
+                    log._audioError = 'Network error loading recording.';
+                }
+                log._loadingAudio = false;
+            };
+
+            const formatLogTimestamp = (ts) => {
+                if (!ts) return '';
+                try {
+                    const d = new Date(ts);
+                    if (isNaN(d.getTime())) return ts;
+                    return d.toLocaleString('en-US', {
+                        timeZone: 'America/Chicago',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit'
+                    }) + ' CT';
+                } catch (e) {
+                    return ts;
+                }
+            };
+
+            const formatDuration = (sec) => {
+                const s = parseInt(sec, 10);
+                if (isNaN(s)) return '';
+                const mins = Math.floor(s / 60);
+                const rem = s % 60;
+                return mins > 0 ? `${mins}m ${rem}s` : `${rem}s`;
+            };
+
+            const closeModal = () => {
+                revokeMaskedAudioUrls();
+                showModal.value = false;
+            };
+
             const editLead = (lead) => {
                 activeLead.value = JSON.parse(JSON.stringify(lead));
                 activeLead.value.display_date = formatDateForDisplay(lead.appointment_date);
@@ -689,6 +841,7 @@
                 if (!activeLead.value.contractor_expense) activeLead.value.contractor_expense = extractPrice(lead.pay);
                 
                 fetchQaReportForJob(lead.id);
+                fetchMaskedLogsForJob(lead.id);
 
                 showModal.value = true;
                 setTimeout(() => {
@@ -717,7 +870,7 @@
                         headers: { 'Authorization': `Bearer ${apiKey.value}`, 'X-Admin-API-Key': apiKey.value, 'Content-Type': 'application/json' },
                         body: JSON.stringify(activeLead.value)
                     });
-                    if (res.ok) { showModal.value = false; login(); }
+                    if (res.ok) { closeModal(); login(); }
                     else { activeLead.value._error = 'Failed to save changes.'; }
                 } catch (e) { activeLead.value._error = 'Network error while saving.'; }
             };
@@ -765,7 +918,7 @@
                         method: 'DELETE',
                         headers: { 'Authorization': `Bearer ${apiKey.value}`, 'X-Admin-API-Key': apiKey.value }
                     });
-                    if (res.ok) { showModal.value = false; login(); }
+                    if (res.ok) { closeModal(); login(); }
                     else { activeLead.value._error = 'Failed to void record.'; }
                 } catch (e) { activeLead.value._error = 'Network error while voiding.'; }
             };
@@ -855,6 +1008,7 @@
                 apiKey, isLoggedIn, isLoading, error, leads, contractors, searchQuery, sortedFilteredLeads, 
                 currentTab, showModal, activeLead, reportTimeframe, reportCustomStart, reportCustomEnd, reportContractor, generatedReport,
                 isFetchingQa, activeQaReport, getQuoteImgUrl, getQaImgUrl, openUrl, getQaScoreClass,
+                isFetchingMaskedLogs, activeMaskedLogs, fetchMaskedLogsForJob, loadAndPlayRecording, formatLogTimestamp, formatDuration, closeModal,
                 getActiveTips, getActiveAcceptedBase, getTotalContractorPay,
                 login, logout, editLead, saveLead, deleteLead, triggerManualCall, getContractorName, formatDateForDisplay, formatTime, getEffectiveStatus, getStatusBadgeClass
             };
